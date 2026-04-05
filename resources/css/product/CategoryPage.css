@@ -219,12 +219,29 @@
     color: gray;
     font-size: 18px;
     padding-bottom: 10px;
+    width: 100%;
+    display: inline-block;
 }
 
 .shop-products__empty strong {
     color: var(--background);
 }
 
+
+.shop-products__reset-btn{
+    border-radius: 8px;
+    background: var(--background);
+    padding: 13px 20px;
+    cursor: pointer;
+    font-weight: var(--fw-500);
+    font-size: 16px;
+    transition: background 0.2s;
+    color:white;
+    border: none;
+}
+.shop-products__reset-btn:hover {
+    background: #e85f5f;
+}
 /* ========== АДАПТИВ ========== */
 @media (max-width: 1024px) {
     .shop-sidebar {

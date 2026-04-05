@@ -1,11 +1,8 @@
 <?php
-
 namespace App\Http\Controllers;
-
 use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Models\Nft;
-use App\Models\User;
 use Inertia\Inertia;
 
 class CategoryController extends Controller
@@ -47,7 +44,6 @@ class CategoryController extends Controller
             'category' => $category,
             'products'     => $products,
             'LikeProducts'     => $LikeProducts,
-            'search'      => $request->query('search'),
             'filters'  => [
                 'search'      => $request->query('search'),
                 'sort'        => $sort,

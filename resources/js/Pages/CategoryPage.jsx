@@ -36,10 +36,16 @@ export default function CategoryPage({ auth }) {
                     category={category}
                     filters={filters || {}}
                 />
-                <section className="category-header">
-                    <h2>Возможно, вам понравится</h2>
-                </section>
-                <LikeProductsCom key={LikeProducts.id} nftsData={LikeProducts} />
+                {LikeProductsCom &&
+                    (
+                        <>
+                            <section className="category-header">
+                                <h2>Возможно, вам понравится</h2>
+                            </section>
+                            <LikeProductsCom key={LikeProducts.id} nftsData={LikeProducts} />
+                        </>
+                    )
+                }
             </div>
         </MainLayout>
     );

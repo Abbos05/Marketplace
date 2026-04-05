@@ -35,7 +35,7 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
     let targetPath = '/';
 
     if (currentPath.startsWith('/admins')) targetPath = '/admins';
-    /*    else if (currentPath.startsWith('/category')) {
+     else if (currentPath.startsWith('/category')) {
           targetPath = currentPath;
           router.visit(targetPath, {
             data: { search: searchQuery.trim(), price_from: filters?.price_from, price_to: filters?.price_to },
@@ -44,7 +44,6 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
           });
           return;
         }
-      */
 
     router.visit(targetPath, { data: { search: searchQuery.trim() }, preserveState: true });
   };

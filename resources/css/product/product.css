@@ -7,6 +7,7 @@
 }
 
 .products__grid {
+  max-width: max-content;
   border: 1px solid #808d9a7b;
   padding: 20px;
   min-height: 300px;
@@ -198,7 +199,13 @@
   color: #808D9A;
 }
 
-.products__rating-stars {
+.info_dop {
+  font-weight: 500;
+  font-size: 32px;
+  color: black;
+  margin-bottom: -10px;
+}
+.products__ratin-stars {
   color: #000 !important;
 }
 
@@ -448,7 +455,6 @@
   justify-content: start;
   gap: 15px;
   flex-wrap: wrap;
-  overflow: auto;
 }
 
 

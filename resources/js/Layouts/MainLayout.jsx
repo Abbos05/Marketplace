@@ -34,40 +34,41 @@ const MainLayout = ({
 
 
 
-    const [position, setPosition] = useState({ x: 0, y: 0 });
-    const orbitRef = useRef(null);
-    
-    useEffect(() => {
-      const handleMouseMove = (e) => {
-        // Плавное следование с задержкой
-        const targetX = e.clientX;
-        const targetY = e.clientY;
-        
-        // Используем requestAnimationFrame для плавности
-        requestAnimationFrame(() => {
-          setPosition({ x: targetX, y: targetY });
-        });
-      };
-      
-      window.addEventListener('mousemove', handleMouseMove);
-      return () => window.removeEventListener('mousemove', handleMouseMove);
-    }, []);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const orbitRef = useRef(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      // Плавное следование с задержкой
+      const targetX = e.clientX;
+      const targetY = e.clientY;
+
+      // Используем requestAnimationFrame для плавности
+      requestAnimationFrame(() => {
+        setPosition({ x: targetX, y: targetY });
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
   return (
-    <div className="main-layout">
+   <>
+    <div className="main-layout container">
       <Header
         setIsModalOpen={setIsModalOpen}
         setIsLogin={setIsLogin}
         flash={flash}
       />
-        <div
-          ref={orbitRef}
-          className="golden-orbit"
-          style={{
-            transform: `translate(${position.x - 250}px, ${position.y - 250}px)`,
-          }}
-        >
-        </div>
-        {children}
+      <div
+        ref={orbitRef}
+        className="golden-orbit"
+        style={{
+          transform: `translate(${position.x - 250}px, ${position.y - 250}px)`,
+        }}
+      >
+      </div>
+      {children}
 
       <AuthModal
         isOpen={isModalOpen}
@@ -81,10 +82,11 @@ const MainLayout = ({
           setIsModalOpen(false);
         }}
       />
-      <Footer />
 
 
     </div>
+      <Footer />
+   </>
 
   );
 };

@@ -85,8 +85,8 @@ const TopNFTs = ({ nftsData = [], acces = [] }) => {
                                 </div>
                                 <div className="products__rating">
                                     <div className="products__rating-stars">
-                                        <img src="img/products/star-icon.png" alt="Рейтинг" />
-                                        <span>5.0</span>
+                                        <img src="/img/products/star-icon.png" alt="Рейтинг" />
+                                        <span>5.0</spa  n>
                                     </div>
                                     <div className="products__reviews">
                                         <img src="/img/products/reviews-icon.png" alt="Отзывы" />

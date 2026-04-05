@@ -1,34 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
-import ProductCard from '@/Components/Product/ProductCard'; // 👈 ЭТО СТРОКА БЫЛА ПРОПУЩЕНА
-
-
+import ProductCard from '@/Components/Product/ProductCard';
+import '../../../css/product/CategoryPage.css';
 
 export default function ProductsCatalog({
     dataProduct,
-    category,        
-    filters = {}     
+    category,
+    filters = {},
+    isHomePage = false 
 }) {
-    // Не используйте usePage().props внутри ProductsCatalog!
-    // Передавайте всё через пропсы из родителя
-    
     const initialProducts = dataProduct || [];
-    
-    // Используем переданный category или fallback
     const categoryName = category?.name || 'категории';
     const categoryId = category?.id;
     
+    const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const [sort, setSort] = useState(filters?.sort || 'new');
     const [priceFrom, setPriceFrom] = useState(filters?.price_from || '');
     const [priceTo, setPriceTo] = useState(filters?.price_to || '');
-    const [searchTerm, setSearchTerm] = useState(filters?.search || '');
-
+    
     const timeoutRef = useRef(null);
 
-    // Применение фильтров с debounce
+    // Синхронизация с пропсами
+    useEffect(() => {
+        setSearchTerm(filters?.search || '');
+        setSort(filters?.sort || 'new');
+        setPriceFrom(filters?.price_from || '');
+        setPriceTo(filters?.price_to || '');
+    }, [filters]);
+
+    //  Исправленная функция applyFilters
     const applyFilters = () => {
-        if (!categoryId) return; // Защита от отсутствия категории
-        
         const params = {};
 
         if (searchTerm) params.search = searchTerm;
@@ -36,16 +37,36 @@ export default function ProductsCatalog({
         if (priceFrom && priceFrom !== '') params.price_from = priceFrom;
         if (priceTo && priceTo !== '') params.price_to = priceTo;
 
-        router.get(
-            route('category.show', categoryId),
-            params,
-            {
-                preserveState: true,
-                replace: true,
-                preserveScroll: true,
-                only: ['products', 'filters'],
-            }
-        );
+        //  Определяем маршрут в зависимости от страницы
+        if (isHomePage || !categoryId) {
+            // Главная страница
+            router.get(
+                '/',
+                params,
+                {
+                    preserveState: true,
+                    replace: true,
+                    preserveScroll: true,
+                    only: ['mysqlNftsData', 'search', 'sort', 'filters']
+                }
+            );
+        } else {
+            // Страница категории
+            router.get(
+                route('category.show', categoryId),
+                params,
+                {
+                    preserveState: true,
+                    replace: true,
+                    preserveScroll: true,
+                    only: ['products', 'filters'],
+                }
+            );
+        }
+    };
+
+    const clearSearch = () => {
+        setSearchTerm('');
     };
 
     // Debounce для фильтров
@@ -59,14 +80,23 @@ export default function ProductsCatalog({
         return () => clearTimeout(timeoutRef.current);
     }, [sort, priceFrom, priceTo, searchTerm]);
 
-    // Очистка всех фильтров
     const clearAllFilters = () => {
         setSort('new');
         setPriceFrom('');
         setPriceTo('');
         setSearchTerm('');
-
-        if (categoryId) {
+        
+        if (isHomePage || !categoryId) {
+            router.get(
+                '/',
+                {},
+                {
+                    preserveState: true,
+                    replace: true,
+                    preserveScroll: true,
+                }
+            );
+        } else {
             router.get(
                 route('category.show', categoryId),
                 {},
@@ -79,41 +109,14 @@ export default function ProductsCatalog({
         }
     };
 
-    const clearSearch = () => {
-        setSearchTerm('');
-    };
-    
     return (
         <div className="category-page container">
-         
-
             <div className="shop-layout">
                 <div className="container shop-layout__inner">
                     <aside className="shop-sidebar">
                         <div className="shop-sidebar__content">
                             <div className="shop-sidebar__header">
                                 <h2 className="shop-sidebar__title">Фильтры</h2>
-                                {(sort !== 'new' || priceFrom || priceTo || searchTerm) && (
-                                    <button onClick={clearAllFilters} className="shop-sidebar__reset">
-                                        Сбросить все
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="shop-sidebar__filter-group">
-                                <label className="shop-sidebar__filter-label">Поиск</label>
-                                <input
-                                    type="text"
-                                    placeholder="Поиск товаров..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="shop-sidebar__search-input"
-                                />
-                                {searchTerm && (
-                                    <button onClick={clearSearch} className="shop-sidebar__clear-btn">
-                                        Очистить
-                                    </button>
-                                )}
                             </div>
 
                             <div className="shop-sidebar__filter-group">
@@ -179,8 +182,10 @@ export default function ProductsCatalog({
                         ) : (
                             <div className="shop-products__empty">
                                 <p>
-                                    Пока нет товаров в категории <strong>{categoryName}</strong>
-                                    {searchTerm && ` по запросу "${searchTerm}"`}
+                                    {searchTerm 
+                                        ? `Товаров по запросу "${searchTerm}" не найдено`
+                                        : `Пока нет товаров в категории ${categoryName}`
+                                    }
                                 </p>
                                 {(searchTerm || sort !== 'new' || priceFrom || priceTo) && (
                                     <button onClick={clearAllFilters} className="shop-products__reset-btn">
