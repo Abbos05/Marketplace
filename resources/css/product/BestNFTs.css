@@ -1,0 +1,316 @@
+/* bestNFT */
+.bestNFT {
+  color: white;
+  margin-top: 50px;
+  padding-bottom: 25px;
+}
+
+
+
+.bestTitle {
+  font-weight: 600;
+  font-size: 54px;
+  line-height: 119%;
+  text-decoration-skip-ink: none;
+  margin-bottom: 30px;
+}
+
+.bestTitle span {
+  color: #fc0;
+}
+
+.bestNFT_block {
+  margin-top: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 25px;
+  flex-wrap: wrap;
+}
+
+.bestNFT_item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 20px;
+  width: 560px;
+  padding: 20px;
+  overflow: hidden;
+  background: #111826;
+  cursor: pointer;
+  transition: 0.2s all;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.bestNFT_item:hover {
+  background-color: #050B1C;
+  transform: translateY(-5px);
+}
+
+.bestNFT_item:active {
+  opacity: 0.4;
+}
+
+.bestNFT_item_left {
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  overflow: hidden;
+}
+
+.bestNFT_item > span {
+  font-weight: 600;
+  font-size: 32px;
+  letter-spacing: 0.19em;
+  color: #464a59;
+}
+
+.bestNFT_img_block {
+  position: relative;
+  padding-left: 15px;
+}
+.bestNFT_img_block img:first-child{
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+}
+
+.bestNFT_img_block img:last-child {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+}
+
+.bestNFT_title {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  color: #fff;
+  padding: 0 15px;
+  overflow: hidden;
+}
+
+.bestNFT_title p:first-child {
+  font-weight: 600;
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bestNFT_title p:last-child {
+  font-weight: 400;
+  font-size: 16px;
+  text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bestNFT_title p:last-child span {
+  font-size: 16px;
+  font-weight: 400;
+  color: #848a9c;
+}
+
+.bestNFT_cash {
+  font-weight: 400;
+  font-size: 16px;
+  text-transform: capitalize;
+  text-align: right;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  gap: 15px;
+  overflow: hidden;
+}
+
+.bestNFT_cash p:first-child {
+  color: #24bd5e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bestNFT_cash p:last-child {
+  color: #848a9c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* ==== BEST NFT — 100% АДАПТИВНЫЙ И БЕЗ ГОРИЗОНТАЛЬНОГО СКРОЛЛА ==== */
+.bestNFT {
+  color: white;
+  margin-top: 50px;
+  padding-bottom: 25px;
+}
+
+.bestTitle {
+  font-weight: 600;
+  font-size: clamp(36px, 8vw, 54px);
+  line-height: 119%;
+  text-decoration-skip-ink: none;
+  margin-bottom: 30px;
+}
+
+.bestTitle span {
+  color: #fc0;
+}
+
+.bestNFT_block {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+/* Главная карточка — теперь гибкая */
+.bestNFT_item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 20px;
+  width: 100%;                    /* вместо жёстких 560px */
+  max-width: 560px;               /* на больших экранах не растягивается больше оригинала */
+  min-height: 120px;
+  padding: 18px;
+  background: #111826;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+  overflow: hidden;
+  margin: 0 auto;                 /* центрируем при одной карточке */
+}
+
+.bestNFT_item:hover {
+  background-color: #050B1C;
+  transform: translateY(-6px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.bestNFT_item:active {
+  opacity: 0.7;
+}
+
+/* Номер позиции (1, 2, 3...) */
+.bestNFT_item > span {
+  font-weight: 600;
+  font-size: clamp(28px, 6vw, 32px);
+  letter-spacing: 0.19em;
+  color: #464a59;
+  flex-shrink: 0;
+}
+
+/* Левая часть с аватаркой и текстом */
+.bestNFT_item_left {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;                   /* важно для корректного ellipsis */
+}
+
+.bestNFT_img_block {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.bestNFT_img_block img:first-child {
+  border-radius: 50%;
+  width: clamp(60px, 12vw, 80px);
+  height: clamp(60px, 12vw, 80px);
+  object-fit: cover;
+}
+
+.bestNFT_img_block img:last-child {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: clamp(20px, 4vw, 28px);
+  height: auto;
+}
+
+/* Текст названия и коллекции */
+.bestNFT_title {
+  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.bestNFT_title p:first-child {
+  font-weight: 600;
+  font-size: clamp(17px, 4vw, 20px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bestNFT_title p:last-child {
+  font-weight: 400;
+  font-size: clamp(14px, 3.5vw, 16px);
+  color: #848a9c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Правая часть — цена и изменение */
+.bestNFT_cash {
+  font-size: clamp(14px, 3.5vw, 16px);
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 90px;
+}
+
+.bestNFT_cash p:first-child {
+  color: #24bd5e;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bestNFT_cash p:last-child {
+  color: #848a9c;
+  white-space: nowrap;
+}
+
+/* Дополнительная красота на больших экранах */
+@media (min-width: 768px) {
+  .bestNFT_block {
+    grid-template-columns: repeat(2, minmax(320px, 560px));
+    gap: 28px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .bestNFT_block {
+    grid-template-columns: repeat(3, minmax(320px, 560px));
+    gap: 30px;
+  }
+}
+
+/* На самых маленьких экранах — чуть компактнее */
+@media (max-width: 380px) {
+  .bestNFT_item {
+    padding: 14px;
+  }
+  
+  .bestNFT_item > span {
+    font-size: 26px;
+  }
+}

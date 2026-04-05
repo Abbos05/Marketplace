@@ -1,0 +1,1331 @@
+/* modal redprof */
+.profile-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(5, 11, 28, 0.92);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: profile-modal-fadeIn 0.3s ease-out;
+}
+
+.profile-modal-content {
+    position: relative;
+    background: #0e1424;
+    border: 2px solid #ffd438;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 40px 30px;
+    box-shadow: 0 20px 60px rgba(255, 212, 56, 0.15);
+    animation: profile-modal-slideUp 0.4s ease-out;
+}
+
+.profile-modal-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 212, 56, 0.15);
+    border: 1px solid #ffd438;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: #ffd438;
+}
+
+.profile-modal-close-btn:hover {
+    background: #ffd438;
+    color: #0e1424;
+    transform: rotate(90deg);
+}
+
+.profile-modal-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffd438;
+    margin-bottom: 30px;
+    text-shadow: 0 2px 10px rgba(255, 212, 56, 0.3);
+}
+
+.profile-modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.profile-modal-form-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.profile-modal-label {
+    font-weight: 600;
+    color: #ffd438;
+    font-size: 16px;
+}
+
+.profile-modal-input,
+.profile-modal-form-item textarea {
+    padding: 14px 16px;
+    background: #111826;
+    border: 1px solid #333;
+    border-radius: 10px;
+    color: white;
+    font-size: 16px;
+    transition: all 0.3s;
+    max-height: 500px;
+}
+
+.profile-modal-input:focus,
+.profile-modal-form-item textarea:focus {
+    outline: none;
+    border-color: #ffd438;
+    box-shadow: 0 0 0 3px RGBA(255, 212, 56, 0.2);
+}
+
+.profile-modal-form-item textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* АВАТАРКА */
+.profile-modal-avatar-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.profile-modal-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #ffd438;
+    box-shadow: 0 0 20px rgba(255, 212, 56, 0.3);
+}
+
+.profile-modal-avatar-upload {
+    width: 50px;
+    height: 50px;
+    background: #ffd438;
+    color: #0e1424;
+    font-size: 28px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s;
+    user-select: none;
+}
+
+.profile-modal-avatar-upload:hover {
+    background: #e6c030;
+    transform: scale(1.1);
+}
+
+/* ОШИБКИ */
+.profile-modal-error {
+    color: #ff6b6b;
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+/* КНОПКА СОХРАНИТЬ */
+.profile-modal-form-actions {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.profile-modal-form-actions button {
+    padding: 14px 40px;
+    background: #ffd438;
+    color: #0e1424;
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 180px;
+}
+
+.profile-modal-form-actions button:hover {
+    background: #e6c030;
+    transform: translateY(-2px);
+}
+
+.profile-modal-form-actions button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* АНИМАЦИИ */
+@keyframes profile-modal-fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes profile-modal-slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Скроллбар (только для модалки) */
+.profile-modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.profile-modal-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.profile-modal-content::-webkit-scrollbar-thumb {
+    background: #ffd43850;
+    border-radius: 4px;
+}
+
+.profile-modal-content::-webkit-scrollbar-thumb:hover {
+    background: #ffd43880;
+}
+
+
+.profile-modal-hint {
+    font-size: 12px;
+    color: #ffd43880;
+    font-weight: 500;
+}
+
+.profile-modal-submit-btn {
+    padding: 14px 40px;
+    background: #ffd438;
+    color: #0e1424;
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 200px;
+}
+
+.profile-modal-submit-btn:hover:not(:disabled) {
+    background: #e6c030;
+    transform: translateY(-2px);
+}
+
+.profile-modal-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+
+
+/* //modal */
+
+.HeaderUl {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 5px;
+}
+
+.HeaderLogoName {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    text-transform: none;
+}
+
+.HeaderLogoName p {
+    font-weight: 700;
+    font-size: 30px;
+    color: #fff;
+}
+
+.HeaderLogoName img {
+    width: 60px;
+    height: 60px;
+}
+
+.HeaderMenuStore {
+    border-radius: 8px;
+    width: 140px;
+    height: 50px;
+    background: #fdca12;
+    padding: 13px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    cursor: pointer;
+    transition: 0.2s background;
+}
+
+.HeaderMenuStore:hover {
+    background: #e2c457;
+
+}
+
+.HeaderMenuStore img {
+    width: 24px;
+    height: 24px;
+}
+
+.HeaderMenuStore p {
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.07em;
+    text-align: center;
+    color: #050b1c;
+}
+
+.HeaderSearch {
+    border: 1px solid #1c2533;
+    border-radius: 5px;
+    width: 935px;
+    height: 50px;
+    padding: 10px 25px;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.HeaderSearch input {
+    height: 100%;
+    width: 100%;
+    border: none;
+    background-color: transparent;
+    outline: none;
+    padding-right: 25px;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 18px;
+    color: #848a9c;
+}
+
+.HeaderSearch img {
+    width: 23px;
+    height: 23px;
+
+}
+
+.HeaderA {
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: 0.07em;
+    color: #9398a7;
+    transition: 0.3s opacity;
+}
+
+.HeaderA:hover {
+    opacity: 0.7;
+}
+
+.HeaderWalletBlock {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.HeaderWallet a {
+    color: white;
+}
+
+.HeaderWallet {
+    border: 1px solid #1c2533;
+    border-radius: 8px;
+    height: 50px;
+    background: #111927;
+    padding: 13px 17px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+    transition: 0.3s opacity;
+    cursor: pointer;
+
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: 0.07em;
+    text-align: center;
+    color: #fff;
+}
+
+.HeaderWallet:hover {
+    opacity: 0.7;
+}
+
+.HeaderMenu {
+    border-radius: 100%;
+    background-color: #111927;
+    border: 1px solid #1c2533;
+    ;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 14px;
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+}
+
+.HeaderMenu img {
+    transform: translate(0, 20%);
+}
+
+
+/* Slider */
+.sectionSlider {
+    margin-top: 40px;
+    padding-bottom: 25px;
+}
+
+
+/* profiles */
+.profiles {
+    border-radius: 20px;
+    width: 380px;
+    float: left;
+}
+
+.profiles_block__all {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    word-break: break-all;
+}
+
+.myVerify span {
+    color: #a8aec0;
+}
+
+.myVerify {
+    display: block;
+    color: white;
+    transition: 0.3s;
+    padding: 20px 25px;
+    text-align: center;
+    border: 1px solid #656f80;
+    border-radius: 20px;
+    margin-right: 30px;
+}
+
+
+.myVerify:hover {
+    background-color: #fdca12;
+    color: black !important;
+    cursor: pointer;
+}
+
+.myVerify:hover * {
+    color: black !important;
+}
+
+.profiles_block {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    overflow: hidden;
+    color: white;
+    padding: 20px 25px;
+
+    border: 1px solid #656f80;
+    border-radius: 20px;
+    margin-right: 30px;
+}
+
+.isBlockAcrive {
+    border: 1px solid red;
+}
+
+.profiles_avatar {
+    width: 120px;
+    height: 120px;
+    background-size: cover;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 25px;
+
+}
+
+.profiles_block h1 {
+    /* text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden; */
+    display: flex;
+    gap: 5px;
+    text-align: center;
+    align-items: first baseline;
+    font-size: 30px;
+    margin-bottom: 8px;
+}
+
+
+.profiles_description {
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 162%;
+    margin-bottom: 6px;
+    max-height: 160px;
+    overflow: hidden;
+}
+
+
+.profiles_red:hover {
+    background: #050B1C;
+}
+
+.profiles_red:active {
+    opacity: 0.6;
+}
+
+.profiles_list {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #1c2533;
+    font-size: 20px;
+    font-weight: 500;
+
+
+}
+
+.profiles_list a {
+    color: #848a9c;
+    transition: .3s color;
+}
+
+.profiles_list a:hover {
+    color: #fff;
+
+}
+
+.profiles_list a.list_active {
+    color: #fff;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ffd438;
+
+}
+
+.profiles_btn {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.Profile_cash span {
+    font-size: 20px;
+}
+
+/* // profiles */
+
+
+/* TopNFT */
+.top_nfts {
+    margin-top: 50px;
+    padding-bottom: 25px;
+}
+
+.nfts_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    color: #fff;
+
+}
+
+.nfts_header h2 {
+    font-weight: 600;
+    font-size: 54px;
+    line-height: 119%;
+    text-shadow: 0 2px 10px 0 rgba(245, 247, 82, 0.4);
+}
+
+
+
+.top_nfts_controls button:active {
+    opacity: 0.7;
+}
+
+.top_nfts_block {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    gap: 15px;
+    flex-wrap: nowrap;
+    overflow: auto;
+}
+
+
+::-webkit-scrollbar {
+    width: 0px;
+}
+
+.top_nft_item {
+    border: 1px solid #1c2533;
+    border-radius: 20px;
+    width: 333px;
+    height: 438px;
+    backdrop-filter: blur(50px);
+    background: rgba(17, 25, 39, 0.1);
+    padding: 15px;
+    cursor: pointer;
+    transition: 0.3s background;
+    overflow: hidden;
+}
+
+.top_nft_item:hover {
+    background: transparent;
+}
+
+.top_nft_item>img {
+    border-radius: 20px;
+    width: 303px;
+    height: 245px;
+
+}
+
+.top_nft_collection {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 175%;
+    text-transform: capitalize;
+    color: #848a9c;
+}
+
+.top_nft_title {
+    margin-top: 5px;
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 144%;
+    color: #fff;
+}
+
+.top_nft_details {
+    margin-top: 15px;
+    border-radius: 8px;
+    width: 303px;
+    background: #0e1424;
+    overflow: hidden;
+    display: flex;
+    padding: 10px 20px;
+    color: white;
+    gap: 16px !important;
+}
+
+.top_nft_details {
+    color: #fff;
+    font-size: 16px;
+    text-transform: capitalize;
+}
+
+.top_nft_owner p:first-child,
+.top_nft_price p:first-child {
+    font-weight: 400;
+    line-height: 165%;
+    color: #848a9c;
+}
+
+/* // TopNFT */
+
+
+/* Истрия продаж */
+.history-table-container {
+    overflow-x: auto;
+    margin-top: 20px;
+    max-height: 100vh;
+    min-width: 100vh;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 16px !important;
+}
+
+.history-table th {
+    background: #ffd43820;
+    color: #ffd438;
+    padding: 16px;
+    text-align: left;
+}
+
+.history-table td {
+    padding: 16px;
+    border-bottom: 1px solid #333;
+    color: #ffd438;
+}
+
+.download-pdf-btn {
+    background: #ffd438;
+    color: #0a0e1a;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.download-pdf-btn:hover {
+    background: #ffed4e;
+    transform: translateY(-1px);
+}
+
+.nft-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nft-info img,
+.user-info img {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.price {
+    font-weight: 700;
+    color: #ffd438;
+}
+
+.seller-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+.row-buy {
+    background: #00c86410;
+}
+
+.row-sell {
+    background: #ffd43810;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.history-table .font-bold {
+    font-weight: 600;
+    color: #fff;
+}
+
+/* // Истрия продаж */
+
+.nftNones {
+    font-size: 26px;
+    color: #848a9c;
+}
+
+
+/* Верификация */
+/* Модальное окно для телефона — уникальные классы */
+/* === ОБЩИЕ МОДАЛКИ === */
+
+.phone-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 14, 26, 0.85);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease-out;
+}
+
+
+.phone-modal-content {
+    background: rgba(17, 24, 38, 0.95);
+    border: 1px solid #ffd43840;
+    border-radius: 24px;
+    padding: 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 50px rgba(255, 212, 56, 0.15);
+    animation: slideUp 0.4s ease-out;
+    position: relative;
+}
+
+/* === КНОПКА ЗАКРЫТИЯ === */
+.modal-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 212, 56, 0.1);
+    border: 1px solid #ffd43840;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.modal-close-btn:hover {
+    background: #ffd438;
+    transform: rotate(90deg);
+}
+
+.modal-close-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: #ffd438;
+}
+
+/* === ЗАГОЛОВКИ === */
+.phone-modal-content h3 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffd438;
+    text-align: center;
+    margin: 0 0 16px;
+    text-shadow: 0 0 20px #ffd43830;
+
+    padding-top: 35px;
+}
+
+.phone-modal-content p {
+    color: #ccc;
+    text-align: center;
+    margin-bottom: 24px;
+    font-size: 15px;
+}
+
+/* === ИНПУТЫ === */
+.phone-modal-input {
+    width: 100%;
+    padding: 16px;
+    background: rgba(15, 22, 41, 0.8);
+    border: 1px solid #ffd43840;
+    border-radius: 16px;
+    color: white;
+    font-size: 16px;
+    transition: all 0.3s;
+    margin-bottom: 16px;
+}
+
+.phone-modal-input:focus {
+    outline: none;
+    border-color: #ffd438;
+    box-shadow: 0 0 0 3px #ffd43820;
+}
+
+.phone-modal-input::placeholder {
+    color: #888;
+}
+
+/* === КНОПКИ === */
+.phone-modal-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.phone-modal-btn {
+    flex: 1;
+    padding: 14px;
+    font-weight: 700;
+    font-size: 16px;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.phone-modal-btn--cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffd438;
+    border: 1px solid #ffd43840;
+}
+
+.phone-modal-btn--cancel:hover {
+    background: #ffd43820;
+    transform: translateY(-2px);
+}
+
+.phone-modal-btn--submit {
+    background: linear-gradient(90deg, #ffd438, #ff9d00);
+    color: #0a0e1a;
+    box-shadow: 0 8px 20px rgba(255, 212, 56, 0.3);
+}
+
+.phone-modal-btn--submit:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(255, 212, 56, 0.5);
+}
+
+.phone-modal-btn--submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* === ОШИБКИ === */
+.modal-error {
+    color: #ff6b6b;
+    font-size: 14px;
+    margin-top: 8px;
+    text-align: center;
+}
+
+/* === УДАЛЕНИЕ АККАУНТА === */
+.delete-modal {
+    background: rgba(17, 24, 38, 0.95);
+    border: 1px solid #ff6b6b40;
+    border-radius: 24px;
+    padding: 32px;
+    max-width: 400px;
+    text-align: center;
+}
+
+.delete-modal h5 {
+    color: #ffd438;
+    font-size: 22px;
+    margin-bottom: 12px;
+}
+
+.delete-modal p {
+    color: #ccc;
+    margin-bottom: 20px;
+    font-size: 15px;
+}
+
+.delete-modal .flex {
+    justify-content: center;
+    gap: 16px;
+}
+
+.delete-modal button {
+    padding: 12px 24px;
+    border-radius: 16px;
+    font-weight: 700;
+    transition: all 0.3s;
+}
+
+.delete-modal .btn-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffd438;
+    border: 1px solid #ffd43840;
+    cursor: pointer;
+}
+
+.delete-modal .btn-cancel:hover {
+    background: #ffd43820;
+}
+
+.delete-modal .btn-delete {
+    margin-left: 10px;
+    background: red;
+    color: white;
+    cursor: pointer;
+}
+
+
+.delete-modal .btn-delete:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* === АНИМАЦИИ === */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+
+
+
+/* На маленьких экранах — всё в колонку */
+@media (max-width: 720px) {
+
+
+    /* ==== ВЕСЬ «ТРУДНЫЙ» CSS — ТЕПЕРЬ 100% АДАПТИВНЫЙ И БЕЗ СКРОЛЛА НА МОБИЛКАХ ==== */
+
+    /* ========== МОДАЛКА РЕДАКТИРОВАНИЯ ПРОФИЛЯ ========== */
+    .profile-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(5, 11, 28, 0.92);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 10px;
+        animation: profile-modal-fadeIn 0.3s ease-out;
+    }
+
+    .profile-modal-content {
+        position: relative;
+        background: #0e1424;
+        border: 2px solid #ffd438;
+        border-radius: 20px;
+        width: 100%;
+        max-width: 560px;
+        max-height: 90dvh;
+        overflow-y: auto;
+        padding: 40px 20px;
+        box-shadow: 0 20px 60px rgba(255, 212, 56, 0.15);
+        animation: profile-modal-slideUp 0.4s ease-out;
+    }
+
+    /* Убираем скроллбар на мобильных, но оставляем прокрутку */
+    .profile-modal-content::-webkit-scrollbar {
+        width: 0;
+        background: transparent;
+    }
+
+    .profile-modal-content {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .profile-modal-close-btn {
+        top: 12px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+        background: rgba(255, 212, 56, 0.15);
+        border: 1px solid #ffd438;
+        border-radius: 50%;
+        color: #ffd438;
+        font-size: 18px;
+    }
+
+    .profile-modal-close-btn:hover {
+        background: #ffd438;
+        color: #0e1424;
+        transform: rotate(90deg);
+    }
+
+    .profile-modal-title {
+        font-size: clamp(24px, 7vw, 28px);
+        text-align: center;
+        margin-bottom: 24px;
+    }
+
+    /* Аватар */
+    .profile-modal-avatar-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .profile-modal-avatar {
+        width: clamp(80px, 25vw, 100px);
+        height: clamp(80px, 25vw, 100px);
+    }
+
+    .profile-modal-avatar-upload {
+        width: 48px;
+        height: 48px;
+        font-size: 24px;
+    }
+
+    /* Инпуты */
+    .profile-modal-input,
+    .profile-modal-form-item textarea {
+        padding: 14px;
+        font-size: 16px;
+        /* важно для iOS */
+    }
+
+    .profile-modal-form-actions button,
+    .profile-modal-submit-btn {
+        width: 100%;
+        max-width: 300px;
+        padding: 16px;
+        font-size: 18px;
+    }
+
+    /* ========== ШАПКА (ещё раз, но теперь безопасно) ========== */
+    .HeaderUl {
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 8px;
+        justify-content: center;
+    }
+
+    .HeaderSearch {
+        width: 100%;
+        max-width: 935px;
+        order: -1;
+        margin: 8px 0;
+    }
+
+    .HeaderUl {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .HeaderWalletBlock {
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .HeaderMenuStore,
+    .HeaderWallet,
+    .HeaderMenu {
+        width: 100%;
+        max-width: 300px;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+
+    /* ========== ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ ========== */
+    .profiles,
+    .profiles_block,
+    .myVerify {
+        width: 100% !important;
+        max-width: 420px;
+        margin: 0 auto 20px;
+        float: none !important;
+    }
+
+    /* Убираем float и фиксированные ширины */
+    .profiles_block__all {
+        gap: 20px;
+    }
+
+    /* ========== TOP NFT (ещё раз — делаем безопасно) ========== */
+    .top_nfts_block {
+        overflow-x: auto;
+        padding-bottom: 10px;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+    }
+
+    .top_nft_item {
+        flex: 0 0 auto;
+        width: clamp(280px, 85vw, 333px);
+        scroll-snap-align: center;
+    }
+
+    .top_nft_item>img,
+    .top_nft_details {
+        width: 100% !important;
+    }
+
+    /* ========== ТАБЛИЦА ИСТОРИИ ПРОДАЖ — САМЫЙ ГЛАВНЫЙ УБИЙЦА МОБИЛОК ========== */
+    .history-table-container {
+        overflow-x: auto;
+        margin-top: 20px;
+        border-radius: 12px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .history-table-container::-webkit-scrollbar,
+    .top_nfts_block::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .history-table-container::-webkit-scrollbar-thumb,
+    .top_nfts_block::-webkit-scrollbar-thumb {
+        background: #ffd43840;
+        border-radius: 3px;
+    }
+
+    /* Убираем убийственную строку! */
+    .history-table-container {
+        min-width: 0 !important;
+    }
+
+    /* Таблица адаптивная */
+    .history-table {
+        min-width: 800px;
+        /* но теперь можно скроллить пальцем */
+        font-size: 14px;
+    }
+
+    .history-table {
+        font-size: 13px;
+    }
+
+    .history-table th,
+    .history-table td {
+        padding: 10px 8px;
+    }
+
+    .nft-info img,
+    .user-info img {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+
+/* ========== ОБЩИЕ МОБИЛЬНЫЕ ФИКСЫ ========== */
+@media (max-width: 480px) {
+
+    /* ========== МОДАЛКИ ВЕРИФИКАЦИИ И УДАЛЕНИЯ ========== */
+    .phone-modal-overlay,
+    .delete-modal {
+        padding: 10px;
+    }
+
+    .phone-modal-content,
+    .delete-modal {
+        width: 100%;
+        max-width: 420px;
+        padding: 32px 20px;
+    }
+
+    .phone-modal-input {
+        font-size: 16px;
+        /* против зума на iOS */
+    }
+
+    .profile-modal-content {
+        padding: 30px 16px;
+    }
+
+    .profiles_block,
+    .myVerify {
+        padding: 16px;
+        margin: 0 10px 20px;
+    }
+
+    .top_nft_item {
+        width: calc(100vw - 40px);
+    }
+
+    .HeaderSearch {
+        height: 48px;
+        padding: 8px 16px;
+    }
+
+    .nfts_header {
+        flex-direction: column;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .profiles_list {
+        flex-direction: column;
+        flex-wrap: wrap;
+    }
+}
+
+/* Анимации оставляем как были */
+@keyframes profile-modal-fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes profile-modal-slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.alert {
+    margin: 10px 0;
+    color: red;
+    padding: 5px;
+  }
+  

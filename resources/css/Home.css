@@ -1,0 +1,74 @@
+
+
+/* SectionInfo */
+.SectionInfo {
+    margin-top: 50px;
+    padding-bottom: 25px;
+    overflow: hidden;
+    color: #fff;
+    text-align: center;
+}
+
+.SectionInfoTitle {
+    font-weight: 600;
+    font-size: 54px;
+    line-height: 119%;
+    text-shadow: 0 2px 10px 0 rgba(245, 247, 82, 0.4);
+    margin-bottom: 30px;
+}
+
+.SectionInfoTitle span {
+    color: #fc0;
+}
+
+.SectionInfoDescription {
+    font-weight: 300;
+    font-size: 28px;
+    line-height: 150%;
+    color: #848a9c;
+    margin-bottom: 30px;
+}
+
+.SectionInfoBtn {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.SectionInfoBtn button {
+    border-radius: 8px;
+    padding: 19px 28px;
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #404040;
+    background: linear-gradient(270deg, #ffda55 0%, #ffcd18 100%);
+    cursor: pointer;
+    transition: 0.3s all;
+    border: 2px solid #ffd438;
+
+}
+
+.SectionInfoBtn button:last-child {
+    background: transparent;
+    color: white;
+}
+
+.SectionInfoBtn button:last-child:hover {
+    background: linear-gradient(270deg, #ffda55 0%, #ffcd18 100%);
+    color: #404040;
+}
+
+.SectionInfoBtn button:first-child:hover {
+    background: transparent;
+    color: white;
+    margin: 0;
+    
+}
+
+.SectionInfoBtn button:active {
+    opacity: 0.7;
+}
+
+

@@ -1,0 +1,218 @@
+/* === Управление пользователями (админка) === */
+.showUser__Block{
+  min-height: 80vh;
+}
+.user__block {
+    padding: 40px 20px;
+    color: white;
+  }
+  
+  .user__title {
+    font-size: 36px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 30px;
+    color: #fff;
+  }
+  
+  /* Таблица */
+  .user__table {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .user__table__header {
+    display: grid;
+    grid-template-columns: 1.5fr 1.5fr 1fr 1fr;
+    padding: 16px 20px;
+    background: #0e1424;
+    border-radius: 8px;
+    font-weight: 600;
+    color: #ffd438;
+    align-items: center;
+  }
+  
+  .user__table__row {
+    display: grid;
+    grid-template-columns: 1.5fr 1.5fr 1fr 1fr;
+    padding: 20px;
+    background: #0e1424;
+    border-radius: 8px;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.2s;
+
+    word-break: break-all;
+  }
+  .user__table__row:not(.user__table__row--block):hover{
+    background-color: #050B1C;
+  }
+
+  .user__table__row--admin {
+    border-left: 4px solid green;
+  }
+  .user__table__row--moderation {
+    border-left: 4px solid #ffd438 !important;
+  }
+  .user__table__row--block {
+    border-left: 4px solid #e20000;
+    border-right: 4px solid #e20000;
+    background-color: #0a0f18;
+  }
+  .user__table__row--block:hover {
+    background-color:  #260000;
+  }
+  .user__table__phone{
+    border-right: 4px solid #09c6ff;
+}
+  .user__cell {
+    display: flex;
+    gap: 8px;
+  }
+  
+  /* Аватар */
+  .user__avatar {
+    width: 50px;
+    height: 50px;
+    margin-right: 12px;
+    vertical-align: middle;
+    object-fit: cover;
+   
+    border-radius: 50%;
+    box-sizing: content-box;
+  }
+  .imgOnline{
+    border: 3px solid #00ff00;
+  }
+  
+  .user__cell:first-child {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .user__cell:first-child span {
+    font-weight: 500;
+  }
+  
+  /* Сессии */
+  .sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 6px;
+    max-height: 130px;
+    overflow: auto;
+  }
+  
+  .session-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+    color: #a0a7bb;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+
+  }
+  
+  .session-item span {
+    display: block;
+  }
+  
+  .kick-button {
+    margin-top: 6px;
+    padding: 4px 10px;
+    background: #3a3f51;
+    color: #ffd438;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .kick-button:hover {
+    background: #4a4f61;
+  }
+  
+  /* Кнопки действий */
+  .user__actions {
+    display: flex;
+    align-items: flex-start;
+  }
+  
+  .block__button,
+  .delete__button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, opacity 0.2s;
+  }
+  
+  .block__button {
+    background: #3a3f51;
+    color: #ffd438;
+  }
+  
+  .block__button.unblock {
+    background: #2e7d32;
+    color: white;
+  }
+  
+  .block__button:hover {
+    opacity: 0.9;
+  }
+  
+  .delete__button {
+    background: #d32f2f;
+    color: white;
+  }
+  
+  .delete__button:hover {
+    opacity: 0.9;
+  }
+  
+  /* Сообщение об отсутствии пользователей */
+  .nouser {
+    text-align: center;
+    color: #848a9c;
+    font-size: 24px;
+    margin-top: 40px;
+  }
+  
+  /* Адаптив (опционально для мобильных) */
+  @media (max-width: 768px) {
+    .user__table__header,
+    .user__table__row {
+      grid-template-columns: 1fr;
+    }
+  
+    .user__table__header {
+      display: none; /* Скрыть заголовки на мобилке, если неудобно */
+    }
+  
+    .user__table__row {
+      padding: 16px;
+    }
+  
+    .user__cell {
+      padding: 8px 0;
+    }
+  
+    .user__actions {
+      flex-direction: row;
+      gap: 8px;
+    }
+  
+    .block__button,
+    .delete__button {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+  }

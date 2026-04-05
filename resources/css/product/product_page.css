@@ -1,0 +1,1175 @@
+/* product */
+.product-page button:active {
+  opacity: 0.8;
+}
+
+.product-page__specs table {
+  border-collapse: collapse;
+  /* Убирает двойные рамки */
+  width: 100%;
+}
+
+.product-page__specs th,
+.product-page__specs td {
+  padding: 8px 8px 8px 0;
+  /* Отступы */
+  text-align: left;
+  /* Выравнивание текста */
+}
+
+.product-page__specs th {
+  color: #00000070;
+}
+
+.product-page__specs tr:not(:last-child) {
+  border-bottom: 1px solid #00000070;
+  /* Рамка ячеек */
+}
+
+/* Основной контейнер страницы товара */
+.product-page__content {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* Левая колонка */
+.product-page__main {
+  max-width: 1090px;
+  width: 100%;
+  border: 1px solid #808d9a7b;
+  border-radius: 20px;
+  background-color: white;
+  box-sizing: border-box;
+  display: flex;
+  overflow: hidden;
+  justify-content: space-around;
+  gap: 20px;
+  flex-direction: row;
+}
+
+
+.product-page__main-image {
+  width: 560px;
+  height: 700px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #f8f8f8;
+}
+
+.product-page__main-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-page__thumbnails {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  gap: 10px;
+  max-width: 100%;
+  width: 98%;
+}
+
+.product-page__thumbnails img {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 1px solid #e0e0e0;
+  transition: opacity 0.2s;
+}
+
+.product-page__thumbnails img:hover {
+  opacity: 0.8;
+}
+
+.product-page__info {
+  margin-top: 30px;
+  margin-bottom: 30px;
+  max-width: 510px;
+  width: 100%;
+}
+
+.product-page__title {
+  font-size: 32px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: black;
+}
+
+.product-page__rating {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.product-page__stars {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-page__stars img {
+  width: 24px;
+  height: 24px;
+}
+
+.product-page__stars span {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.product-page__reviews-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-page__reviews-count img {
+  width: 24px;
+  height: 24px;
+}
+
+.product-page__reviews-count span {
+  font-size: 18px;
+  color: #666;
+}
+
+.product-page__section-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: black;
+}
+
+/* Таблица характеристик */
+.product-page__specs table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.product-page__specs th {
+  padding: 12px 12px 12px 0;
+  text-align: left;
+  font-weight: 500;
+  color: #00000070;
+  width: 40%;
+}
+
+.product-page__specs td {
+  padding: 12px 12px 12px 0;
+  text-align: left;
+  font-weight: 500;
+  color: black;
+}
+
+.product-page__specs tr:not(:last-child) {
+  border-bottom: 1px solid #00000070;
+}
+
+/* Правая колонка */
+.product-page__sidebar {
+  max-width: 100%;
+  flex: 1;
+
+}
+
+.product-page__card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: start;
+  justify-content: center;
+}
+
+/* Блок оплаты */
+.product-page__payment {
+  background-color: white;
+  border: 1px solid #808d9a7b;
+  border-radius: 20px;
+  width: 330px;
+  box-sizing: border-box;
+  overflow: hidden;
+
+}
+
+.product-page__payment-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: black;
+  padding: 15px 0px;
+  background-color: #F5F7FA;
+  text-align: center;
+  border-bottom: 1px solid #808d9a7b;
+  width: 100%;
+
+}
+
+.product-page__price-block {
+  padding: 15px;
+}
+
+.product-page__current-price {
+  margin-bottom: 15px;
+}
+
+.product-page__current-price>div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+
+}
+
+.product-page__price {
+  font-weight: 500;
+  font-size: 22px;
+  color: #fff;
+  width: max-content;
+  border-radius: 10px;
+  padding: 7px 15px;
+  background-color: var(--background);
+}
+
+.product-page__current-price .product-page__discount-info {
+  font-family: var(--font-family);
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--text-gray);
+
+}
+
+.product-page__current-price del {
+  color: var(--text-gray) !important;
+  text-decoration: line-through;
+
+}
+
+
+.product-page__discount-info del {
+  color: #999;
+  margin: 0 8px;
+}
+
+.product-page__credit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+  padding: 8px;
+  background-color: #F5F7FA;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+}
+
+.product-page__credit-btn {
+  background: none;
+  cursor: pointer;
+  background-color: var(--background);
+  border-radius: 5px;
+  font-weight: var(--fw-500);
+  font-family: var(--font-family);
+
+  padding: 6px 8px;
+  border: none;
+  font-size: 14px;
+  color: #fff;
+  transition: 0.3s
+}
+
+.product-page__credit-btn:hover {
+  background-color: var(--backgroundBlack);
+}
+
+.product-page__credit-hint {
+  font-weight: 500;
+  font-size: 14px;
+  color: #000;
+}
+
+.product-page__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px 5px;
+  font-size: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.product-page__cart-btn,
+.product-page__seller-profile {
+  padding: 9px 16px;
+  flex: 1;
+  background: #005bff;
+  border: 1px solid #808d9a7b;
+  border-radius: 10px;
+  font-weight: var(--fw-600);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.5s;
+  font-size: 18px;
+}
+
+.product-page__cart-btn:hover,
+.product-page__seller-profile:hover {
+  background: #003ba9;
+}
+
+
+.product-page__wishlist-btn,
+.product-page__seller-rating,
+.product-page__seller-sales {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 8px;
+  background-color: transparent;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-weight: var(--fw-500);
+  font-size: 17px;
+  color: #000;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.product-page__wishlist-btn:hover,
+.product-page__seller-rating:hover,
+.product-page__seller-sales:hover {
+  background-color: #adafb355;
+}
+
+
+.product-page__wishlist-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+.product-page__buy-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #10c44c;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.2s;
+  font-size: 18px;
+}
+
+.product-page__buy-btn:hover {
+  background: #019031;
+}
+
+
+.product-page__delivery {
+  font-weight: 400;
+  font-size: 16px;
+  color: #000;
+  text-align: center;
+  margin: 0;
+}
+
+/* Блок продавца */
+.product-page__seller {
+  width: 330px;
+  background-color: white;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.product-page__seller-header {
+  font-size: 24px;
+  font-weight: var(--fw-600);
+  color: white;
+  padding: 17px 0px;
+  background-color: var(--background);
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}
+
+.product-page__seller-header img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: #bfbfbf;
+}
+
+.product-page__seller-name {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.product-page__seller-verified {
+  font-size: 24px;
+}
+
+.product-page__seller-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 15px;
+}
+
+.product-page__seller-chat {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 7px;
+  background: #10c44c;
+  border-radius: 12px;
+  font-weight: var(--fw-500);
+  text-align: center;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  flex: 1;
+  border: none;
+  font-size: 17px !important;
+}
+
+.product-page__seller-chat img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+
+}
+
+.product-page__seller-chat:hover {
+  background-color: #019031;
+}
+
+.product-page__seller-rating {
+  /* 313 строка */
+}
+
+.product-page__seller-rating img {
+  width: 18px;
+  height: 18px;
+}
+
+.product-page__seller-sales {
+  /* 313 строка, там код*/
+  font-weight: 500;
+  text-align: center;
+  color: #000;
+}
+
+.product-page__seller-sales svg {
+  width: 18px;
+  height: 18px;
+}
+
+.product-page__seller-profile {
+  /* 295 строка, там код */
+}
+
+
+/* Адаптивность */
+@media (max-width: 1440px) {
+  .product-page__main {
+    /*  width: calc(100% - 341px); */
+  }
+}
+
+@media (max-width: 1024px) {
+  .product-page__content {
+    flex-direction: column;
+  }
+
+  .product-page__main {
+    width: 100%;
+    height: auto;
+  }
+
+
+
+
+  .product-page__gallery {
+    flex-direction: column;
+  }
+
+  .product-page__main-image {
+    width: 100%;
+  }
+
+  .product-page__thumbnails {
+    flex-direction: row;
+    width: 100%;
+  }
+}
+
+.NFTBuy {
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  gap: 50px;
+  border: 1px solid #1c2533;
+  border-radius: 20px;
+  width: 1344px;
+  overflow: hidden;
+  backdrop-filter: blur(50px);
+  background: rgba(17, 25, 39, 0.1);
+  margin: 25px auto 25px auto;
+  word-break: break-all;
+  padding-right: 5px;
+  position: relative;
+}
+
+/* Стили бейджей — только если нужен текст */
+.NFT-badge--moderation,
+.NFT-badge--relevant,
+.NFT-badge--sold {
+  background-color: #ffd438;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 18px;
+  display: inline-block;
+}
+
+.NFT-badge--sold {
+  background-color: red;
+  color: white;
+}
+
+.NFT-status--rejection {
+  border: 1px solid red !important;
+}
+
+/* Для "relevant" — скрываем бейдж */
+.NFT-badge--relevant {
+  background-color: green;
+  color: white;
+}
+
+.favorites-NFT {
+  position: absolute;
+  top: 20px;
+  right: 25px;
+  display: flex;
+  align-items: start;
+  gap: 10px;
+
+}
+
+.favorites-NFT img.active {
+  filter: brightness(0.5) saturate(2);
+  opacity: 0.8;
+}
+
+.favorites-NFT img {
+  transition: filter 0.3s, opacity 0.3s;
+  cursor: pointer;
+  filter: grayscale(1110.4) blur(1115px);
+}
+
+
+.NFTBuy>img {
+  width: 700px;
+  height: 600px;
+  object-fit: cover;
+
+}
+
+.NFT__item>h1 {
+  font-weight: 500;
+  font-size: 30px;
+  line-height: 129%;
+  color: #fff;
+  text-shadow: 0 2px 10px 0 rgba(255, 255, 255, 0.4);
+  margin-bottom: 20px;
+}
+
+.NFT__cash {
+  font-weight: 400;
+  font-size: 36px;
+  color: #fff;
+
+}
+
+.NFT__cash__block {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.none {
+  display: none;
+}
+
+.NFT__percentage {
+  padding: 5px 10px;
+  border: 1px solid #1c2533;
+  border-radius: 5px;
+}
+
+.NFT__title {
+  margin-bottom: 20px;
+}
+
+.NFT__title p:first-child {
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 150%;
+  color: #fff;
+  text-shadow: 0 2px 10px 0 rgba(255, 255, 255, 0.4);
+  margin-bottom: 10px;
+}
+
+.NFT__title p:last-child {
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 162%;
+  padding-right: 20px;
+
+  text-transform: capitalize;
+  color: #848a9c;
+}
+
+.NFT__owner {
+  margin-bottom: 20px;
+}
+
+.NFT__owner>p {
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 150%;
+  color: #fff;
+  text-shadow: 0 2px 10px 0 rgba(255, 255, 255, 0.4);
+  margin-bottom: 10px;
+}
+
+.NFT__owner__item {
+  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 8px;
+  border: 1px solid #1c2533;
+  font-weight: 500;
+  font-size: 20px;
+  color: #fff;
+}
+
+.NFT__owner__item img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.NFT__btn__block,
+.btn_buyNft {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.NFT__btn {
+  padding: 12px 60px;
+  border: none;
+  outline: none;
+  border-radius: 8px;
+  background: #ffd84b;
+
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 130%;
+  color: #070d1e;
+  box-sizing: border-box;
+  border: 2px solid #1c2533;
+
+  transition: 0.2s all;
+}
+
+.NFT__btn:last-child {
+  background-color: #111927;
+  color: #ffd84b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.NFT__btn:hover {
+  background-color: transparent;
+  color: white;
+  cursor: pointer;
+}
+
+.NFT__btn:active {
+  opacity: 0.5;
+}
+
+/* // NFT */
+
+
+
+/* NftCreate.css */
+.nft-create-container {
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.nft-create-title {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+  text-align: center;
+}
+
+.nft-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.nft-create-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.nft-create-label {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #74787e;
+}
+
+.nft-create-input,
+.nft-create-textarea,
+.nft-create-select {
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background-color: #050B1C;
+  color: white;
+}
+
+.nft-create-textarea {
+  resize: vertical;
+}
+
+.nft-create-file-input {
+  padding: 0.5rem 0;
+}
+
+.nft-create-error {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.nft-create-actions {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.nft-create-button {
+  padding: 0.75rem 2rem;
+  background-color: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.nft-create-button:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.nft-create-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.successNft {
+  font-size: 24px;
+  color: green;
+  margin-top: 20px;
+}
+
+.errorNft {
+  font-size: 24px;
+  color: red;
+  margin-top: 20px;
+}
+
+
+
+
+
+
+
+
+/* ==== ОТДЕЛЬНЫЙ NFT + СОЗДАНИЕ NFT — 100% АДАПТИВНО ==== */
+
+/* ========== СТРАНИЦА ОТДЕЛЬНОГО NFT ========== */
+/* ========== ДЕСКТОП — возвращаем горизонтальное расположение ========== */
+@media (max-width: 992px) {
+  .NFTBuy {
+    flex-direction: row;
+    padding: 0;
+    gap: 50px;
+  }
+
+  .NFTBuy>img {
+    width: 700px;
+    height: 600px;
+    object-fit: cover;
+    border-radius: 20px 0 0 20px;
+  }
+
+  .NFT__item {
+    padding: 40px;
+    flex: 1;
+  }
+}
+
+/* ========== ФОРМА СОЗДАНИЯ NFT (была на Tailwind-подобных классах) ========== */
+.nft-create-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 16px;
+}
+
+.nft-create-title {
+  font-size: clamp(28px, 7vw, 36px);
+  margin-bottom: 2rem;
+  text-align: center;
+  color: #ffd438;
+  font-weight: 700;
+}
+
+.nft-create-form {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.nft-create-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nft-create-label {
+  color: #ffd438;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.nft-create-input,
+.nft-create-textarea,
+.nft-create-select {
+  padding: 14px;
+  border: 1px solid #1c2533;
+  border-radius: 12px;
+  background: #111927;
+  color: white;
+  font-size: 16px;
+}
+
+.nft-create-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.nft-create-file-input {
+  padding: 10px 0;
+  color: #ffd438;
+}
+
+.nft-create-error {
+  color: #ff6b6b;
+  font-size: 14px;
+}
+
+.nft-create-actions {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.nft-create-button {
+  padding: 16px 40px;
+  background: #ffd438;
+  color: #000;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  min-width: 200px;
+}
+
+.nft-create-button:hover:not(:disabled) {
+  background: #fff;
+  transform: translateY(-3px);
+}
+
+.nft-create-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.successNft {
+  color: #24bd5e;
+  font-size: 20px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.errorNft {
+  color: #ff6b6b;
+  font-size: 20px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+/* На совсем маленьких экранах */
+@media (max-width: 720px) {
+
+  .NFTBuy {
+    display: flex;
+    flex-direction: column;
+    /* на мобильных — колонкой */
+    align-items: stretch;
+    gap: 20px;
+    border: 1px solid #1c2533;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 1344px;
+    /* на десктопе — твоя оригинальная ширина */
+    overflow: hidden;
+    backdrop-filter: blur(50px);
+    background: rgba(17, 25, 39, 0.1);
+    margin: 25px auto;
+    padding: 20px;
+    position: relative;
+    box-sizing: border-box;
+  }
+
+  /* Картинка NFT */
+  .NFTBuy>img {
+    width: 100%;
+    height: auto;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 16px;
+    background: #000;
+  }
+
+  /* Фавориты в правом верхнем углу */
+  .favorites-NFT {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+  }
+
+  .favorites-NFT img {
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    transition: filter 0.3s, opacity 0.3s;
+    filter: grayscale(100%);
+  }
+
+  .favorites-NFT img.active {
+    filter: none;
+    opacity: 1;
+  }
+
+  /* Бейджи */
+  .NFT-badge--moderation,
+  .NFT-badge--relevant,
+  .NFT-badge--sold {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    z-index: 10;
+  }
+
+  .NFT-badge--sold {
+    background-color: red;
+    color: white;
+  }
+
+  .NFT-badge--moderation {
+    background-color: #ffd438;
+    color: #000;
+  }
+
+  .NFT-badge--relevant {
+    background-color: green;
+    color: white;
+  }
+
+  /* Текстовая часть */
+  .NFT__item>h1 {
+    font-weight: 500;
+    font-size: clamp(24px, 7vw, 30px);
+    line-height: 129%;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.4);
+    margin-bottom: 16px;
+  }
+
+  .NFT__cash {
+    font-weight: 700;
+    font-size: clamp(28px, 8vw, 36px);
+    color: #fff;
+    margin-bottom: 10px;
+  }
+
+  .NFT__cash__block {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .NFT__percentage {
+    padding: 6px 12px;
+    border: 1px solid #1c2533;
+    border-radius: 8px;
+    font-size: 14px;
+    background: rgba(255, 212, 56, 0.1);
+  }
+
+  /* Блоки с информацией */
+  .NFT__title,
+  .NFT__owner {
+    margin-bottom: 24px;
+  }
+
+  .NFT__title p:first-child,
+  .NFT__owner>p {
+    font-weight: 600;
+    font-size: clamp(20px, 5.5vw, 24px);
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.4);
+    margin-bottom: 10px;
+  }
+
+  .NFT__title p:last-child {
+    font-size: 16px;
+    color: #848a9c;
+    line-height: 162%;
+  }
+
+  /* Владелец */
+  .NFT__owner__item {
+    padding: 10px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: 12px;
+    border: 1px solid #1c2533;
+    background: #111927;
+    font-size: 18px;
+  }
+
+  .NFT__owner__item img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  /* Кнопки */
+  .NFT__btn__block,
+  .btn_buyNft {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+
+  .NFT__btn {
+    padding: 14px 30px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: clamp(16px, 4.5vw, 22px);
+    transition: all 0.3s;
+    flex: 1;
+    min-width: 140px;
+    text-align: center;
+  }
+
+  .NFT__btn:first-child {
+    background: #ffd84b;
+    color: #070d1e;
+    border: 2px solid #1c2533;
+  }
+
+  .NFT__btn:last-child {
+    background: #111927;
+    color: #ffd84b;
+    border: 2px solid #ffd84b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .NFT__btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(255, 212, 56, 0.2);
+  }
+
+  .NFT__btn:active {
+    opacity: 0.7;
+  }
+
+  .NFTBuy {
+    padding: 16px;
+  }
+
+  .favorites-NFT {
+    top: 12px;
+    right: 12px;
+  }
+
+  .NFT__btn {
+    padding: 12px 20px;
+    font-size: 16px;
+  }
+}

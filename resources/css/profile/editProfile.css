@@ -1,0 +1,168 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.profileEdit{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.profileEdit h1 {
+    margin-bottom: 34px;
+    font-weight: 500;
+    font-size: 32px;
+    color: #000;
+}
+
+.profile__edit {
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+    width: 600px;
+    height: auto;
+}
+
+.profile__edit__header {
+    margin-bottom: 10px;
+    border-bottom: 1px solid #000;
+}
+
+.profile__edit__header ul {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-items: center;
+    list-style-type: none;
+}
+
+.profile__edit__header ul li {
+    padding: 12px;
+    width: 100%;
+    text-align: center;
+    transition: 0.3s;
+    cursor: pointer;
+}
+.profile__edit__header ul:hover li {
+    border-radius: 0px !important;
+
+}
+
+.profile__edit__header ul li:hover,
+.profile__edit__header ul li.active {
+    background-color: #c2c2c2;
+    color: white;
+}
+.bg-green-900{
+    background-color: #04b70a;
+    color: white;
+    font-weight: 500;
+
+}
+#description{
+    min-height: 200px;
+}
+.lef{
+    border-end-end-radius: 10px;
+    border-start-end-radius: 10px;
+
+}
+.rig{
+    border-start-start-radius: 10px;
+    border-end-start-radius: 10px;
+
+}
+.none {
+    display: none !important;
+}
+
+.profile__edit__data {
+    padding: 20px;
+}
+
+.profile__edit__data__item {
+    display: flex;
+    align-items: start;
+    justify-content: center;
+    gap: 15px;
+    flex-direction: column;
+}
+
+.profile__edit__data__itemImg {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin-top: 10px;
+}
+
+.profile__edit__data__itemImg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+.profile__edit__data__itemImg label {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: #007bff;
+    color: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.profile__edit__data__item>div:not(.btn, .avatar) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.profile__edit__data__item form div label {
+    font-weight: 400;
+    font-size: 18px;
+    color: #000;
+}
+
+.profile__edit__data__item div input {
+    width: 100%;
+    font-weight: 400;
+    font-size: 16px;
+    color: rgb(0, 0, 0);
+    padding: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+}
+
+.profile__edit__data__item .btn button {
+    padding: 10px 30px;
+    background: #ff0202;
+    color: white;
+    border: 1px solid #00000099;
+    border-radius: 10px;
+    cursor: pointer;
+
+}
+
+.profile__edit__data__item .btn button:last-child {
+    background: #04b70a;
+    color: white;
+    border: 1px solid #00000099;
+    border-radius: 10px;
+    cursor: pointer;
+
+}
+
+.profile__edit__data__item .btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: end;
+    gap: 13px;
+}

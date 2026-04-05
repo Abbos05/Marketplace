@@ -1,0 +1,306 @@
+/* src/components/Slider.module.css */
+.sectionSlider {
+    margin-top: 25px;
+    margin-bottom: 3px;
+  }
+  
+  .slider {
+    position: relative;
+    margin: 0;
+    background-color: #0e1424;
+    border: 1px solid #1c2533;
+    border-radius: 30px;
+    width: 1440px;
+    height: 300px;
+    margin: 0 auto;
+    overflow: hidden;
+    
+  }
+  
+  .slider-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    transition: transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform;
+  }
+  
+  .slider-image {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: none;
+    -webkit-user-drag: none;
+  }
+  
+  .slide {
+    min-width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding-left: 90px;
+    position: relative;
+    background-color: transparent;
+  }
+  
+  .sliderTitle {
+    max-width: 630px;
+    color: white;
+    z-index: 2;
+  }
+  
+  .sliderTitle h1 {
+    font-weight: 600;
+    font-size: 30px;
+    line-height: 114%;
+    color: #fff;
+    text-shadow: 0 2px 10px 0 rgba(255, 255, 255, 0.4);
+    margin-bottom: 10px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.8s 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  .sliderTitle p {
+    font-weight: 300;
+    font-size: 20px;
+    line-height: 150%;
+    color: #848a9c;
+    margin-bottom: 40px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.8s 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  .sliderTitle button {
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    text-align: center;
+    color: #fff;
+    border: 2px solid #ffd438;
+    border-radius: 8px;
+    background-color: transparent;
+    padding: 15px 24px;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.8s 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    user-select: none;
+  }
+  .sliderTitle button:hover {
+    background-color: rgba(0, 0, 255, 0.155);
+  }
+  .slide.active h1,
+  .slide.active p,
+  .slide.active button {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  .slider-image {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+  
+  .slide.active .slider-image {
+    opacity: 1;
+  }
+  
+  .slider__line {
+    display: flex;
+    gap: 7px;
+    justify-content: center;
+    margin-top: 20px;
+    position: relative;
+    z-index: 10;
+  }
+  
+  .slider__line img {
+    cursor: pointer;
+    border-radius: 2px;
+    width: 9px;
+    height: 9px;
+    transition: all 0.3s ease;
+  }
+  
+  .slider__line img:hover {
+    opacity: 0.8;
+  }
+
+
+
+/* ==== ДОПОЛНИТЕЛЬНО: чуть лучше на самых маленьких экранах ==== */
+@media (max-width: 720px) {
+  
+  /* src/components/Slider.module.css — полностью адаптивный вариант */
+.sectionSlider {
+  margin-top: 40px;
+  padding-bottom: 25px;
+}
+
+/* Главный контейнер слайдера — теперь всегда 100% ширины */
+.slider {
+  position: relative;
+  margin: 0 auto;
+  background-color: #0e1424;
+  border: 1px solid #1c2533;
+  border-radius: 30px;
+  width: 100%;           /* вместо 1788px */
+  max-width: 1788px;     /* на больших экранах будет твоя оригинальная ширина */
+  height: auto;          /* высота будет подстраиваться под соотношение */
+  aspect-ratio: 1788 / 511; /* сохраняем твоё точное соотношение сторон */
+  overflow: hidden;
+}
+
+/* Контейнер слайдов */
+.slider-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+}
+
+/* Каждый слайд */
+.slide {
+  min-width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 20px 15px 20px 20px;   /* на мобильных меньше отступов */
+  box-sizing: border-box;
+}
+
+/* Тексты и кнопка */
+.sliderTitle {
+  max-width: 90%;
+  color: white;
+  z-index: 2;
+}
+
+/* ==== АДАПТИВ ТЕКСТОВ ==== */
+.sliderTitle h1 {
+  font-weight: 600;
+  font-size: clamp(32px, 8vw, 58px);   /* от 32px до 58px */
+  line-height: 114%;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.4);
+  margin-bottom: 2px;
+  opacity: 0;
+  font-size: 15px;
+  transform: translateY(20px);
+  transition: all 0.8s 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.sliderTitle p {
+  font-weight: 300;
+  font-size: clamp(16px, 4.5vw, 24px);
+  line-height: 150%;
+  color: #848a9c;
+  margin-bottom: 3px;
+  font-size: 10px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.8s 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.sliderTitle button {
+  font-weight: 500;
+  font-size: clamp(13px, 3.5vw, 14px);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #fff;
+  border: 2px solid #ffd438;
+  border-radius: 8px;
+  background-color: transparent;
+  padding: 4px 5px;
+  cursor: pointer;
+  opacity: 0;
+  font-size: 7px;
+  transform: translateY(20px);
+  transition: all 0.8s 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.sliderTitle button:hover {
+  background-color: rgba(255, 212, 56, 0.15);
+}
+
+/* Анимация появления */
+.slide.active h1,
+.slide.active p,
+.slide.active button {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Картинка на фоне */
+.slider-image {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;   /* на мобильных может чуть обрезаться, но красиво */
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 1s ease;
+  user-select: none;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.slide.active .slider-image {
+  opacity: 1;
+}
+
+/* Точки снизу */
+.slider__line {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+  position: relative;
+  z-index: 10;
+  padding: 0 10px;
+  flex-wrap: wrap;
+}
+
+.slider__line img {
+  cursor: pointer;
+  border-radius: 2px;
+  width: 10px;
+  height: 10px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.slider__line img:hover {
+  opacity: 0.8;
+  transform: scale(1.3);
+}
+  .slide {
+    padding: 15px 10px 15px 15px;
+    flex-direction: column;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .sliderTitle {
+    max-width: 100%;
+  }
+
+  .slider-image {
+    object-position: top center;   /* на мобильных показываем верх картинки */
+  }
+}

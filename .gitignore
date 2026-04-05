@@ -1,0 +1,57 @@
+# PHP & Laravel
+/.phpunit.cache
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail/
+/storage/logs/*.log
+/vendor
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+# composer.lock  # если работаете в один а не компанннн
+
+# IDE и редакторы
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
+Homestead.json
+Homestead.yaml
+
+# Логи и кэш
+*.log
+npm-debug.log
+yarn-error.log
+/auth.json
+/.phpunit.cache
+
+# Файлы проекта ALVORA
+/public/uploads/
+/public/images/temp/
+/storage/app/public/
+/storage/app/temp/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+
+# Базы данных (если храните локально)
+*.sqlite
+*.sqlite-journal
+*.sql
+backup.sql
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Архивы
+*.zip
+*.rar
+*.tar.gz
