@@ -8,6 +8,7 @@ use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\NftController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\SellerController;
 use App\Http\Middleware\CheckRole;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
@@ -78,6 +79,8 @@ Route::middleware(['auth', CheckRole::class . ':admin'])->group(function () {
     Route::post('/admin/nft/sold', [AdminController::class, 'nftsold'])->name('admin.nft.sold');
 });
 
+// Страница продавца
+Route::get('/sellerProfile/{id}', [SellerController::class, 'index'])->name('seller.index');
 
 // routes/web.php
 

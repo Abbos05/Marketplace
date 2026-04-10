@@ -242,6 +242,34 @@
 .shop-products__reset-btn:hover {
     background: #e85f5f;
 }
+
+
+.showMore__btn{
+    max-width: 100%;
+    width: max-content;
+    padding: 10px 40px;
+    display: grid;
+    place-items: center; 
+    margin: 0 auto; 
+    
+    border-radius: 10px;
+    background: var(--background);
+    font-family: var(--font-family);
+    font-weight: 500;
+    font-size: 18px;
+    color: #fff;
+    text-align: center;
+    transition: var(--trans-3);
+    border: none;
+    outline: none;
+    cursor: pointer;
+}
+.showMore__btn:active{
+    opacity: 0.7;
+}
+.showMore__btn:hover {
+    background: #003cac;
+}
 /* ========== АДАПТИВ ========== */
 @media (max-width: 1024px) {
     .shop-sidebar {

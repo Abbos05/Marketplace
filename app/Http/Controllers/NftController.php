@@ -7,6 +7,7 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Nft;
+use App\Models\User;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +21,7 @@ class NftController extends Controller
     public function show(Nft $nft, Request $request)
     {
         $nft->load('user');
-        $user = Auth::user();
+        $user = User::find(Auth::user()->id);
         if (!$user) {
             return redirect()->route('login');
         }
@@ -30,13 +31,14 @@ class NftController extends Controller
         $nft->in_cart = $cart;
 
         // ... весь твой код с оплатой ...
-
+        $seller = User::find($nft->user_id);
         return Inertia::render('Nft/Show', [
             'nftUser' => [
                 'owner_name' => $nft->user->name ?? 'Аноним',
                 'owner_avatar' => $nft->user->avatar ?? null,
             ],
             'nft' => $nft,  // ← ВСЁ В ОДНОМ ОБЪЕКТЕ!
+            'seller' => $seller,  // ← ВСЁ В ОДНОМ ОБЪЕКТЕ!
             'canPayWithWallet' => $user->balance >= $nft->price,
             'walletBalance' => $user->balance,
             'auth' => ['user' => $user],
@@ -64,23 +66,25 @@ class NftController extends Controller
         if ($user->is_blocked === 1 || !$user->phone) {
             return redirect()->back();
         } else {
-            $request->validate([
-                'title' => 'required|string|max:255',
-                'description' => 'nullable|string',
-                'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-                'price' => 'required|numeric|min:0',
-                'tags' => 'nullable|string',
-                'category_id' => 'required|exists:categories,id',
-            ],
-            [
-                'title.required' => 'Название обязательно',
-                'title.max' => 'Название не должно превышать 100 символов',
-                'image.required' => 'Изображение обязательно',
-                'image.image' => 'Файл должен быть изображением',
-                'price.required' => 'Цена обязательна',
-                'price.min' => 'Цена не может быть отрицательной',
-                'category_id.exists' => 'Выбрана несуществующая категория',
-            ]);
+            $request->validate(
+                [
+                    'title' => 'required|string|max:255',
+                    'description' => 'nullable|string',
+                    'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+                    'price' => 'required|numeric|min:0',
+                    'tags' => 'nullable|string',
+                    'category_id' => 'required|exists:categories,id',
+                ],
+                [
+                    'title.required' => 'Название обязательно',
+                    'title.max' => 'Название не должно превышать 100 символов',
+                    'image.required' => 'Изображение обязательно',
+                    'image.image' => 'Файл должен быть изображением',
+                    'price.required' => 'Цена обязательна',
+                    'price.min' => 'Цена не может быть отрицательной',
+                    'category_id.exists' => 'Выбрана несуществующая категория',
+                ]
+            );
             $userId = auth()->id();
             $uploadDir = public_path("img/{$userId}");
 
@@ -186,17 +190,19 @@ class NftController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        $nft->update([
-            'price' => $request->price,
-            'description' => $request->description,
-            'previous_price' => $nft->price,
-            'status' => 'moderation',
-        ],
-        [
-            'price.required' => 'Цена обязательна',
-            'price.min' => 'Цена не может быть отрицательной',
-            'category_id.exists' => 'Выбрана несуществующая категория',
-        ]);
+        $nft->update(
+            [
+                'price' => $request->price,
+                'description' => $request->description,
+                'previous_price' => $nft->price,
+                'status' => 'moderation',
+            ],
+            [
+                'price.required' => 'Цена обязательна',
+                'price.min' => 'Цена не может быть отрицательной',
+                'category_id.exists' => 'Выбрана несуществующая категория',
+            ]
+        );
 
         return redirect()->route('nft.show', $nft)->with('success', 'NFT выставлен на продажу!');
     }
@@ -206,7 +212,7 @@ class NftController extends Controller
         $userId = Nft::where('id', $id)->value('user_id');
         Nft::where('id', $id)
             ->delete();
-            return redirect('/users/' . $userId)
+        return redirect('/users/' . $userId)
             ->with('success', 'NFT удалён');
     }
 }

@@ -5,12 +5,11 @@ import '../../../css/product/product_page.css';
 import '../../../css/product/PaymentModal.css';
 
 
-export default function NftShow({ auth, nft, cart, nftUser, flash }) {
+export default function NftShow({ auth, nft, cart, nftUser, flash, seller}) {
   const [inCart, setInCart] = useState(cart);
   const [modalOpen, setModalOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('');
   const [loading, setLoading] = useState(false);
-
   const price = parseFloat(nft.price) || 0;
   const balance = parseFloat(auth.user?.balance) || 0;
   const hasEnough = balance >= price;
@@ -105,6 +104,29 @@ export default function NftShow({ auth, nft, cart, nftUser, flash }) {
       onSuccess: () => router.reload({ only: ['nfts'] })
     });
   };
+  const ShowSeller = () => {
+    if (!seller?.id) {
+      console.warn('Не удалось получить ID продавца');
+      return;
+    }
+  
+    router.get(
+      route('seller.index', seller.id),
+      {}, // Данные формы
+      {
+        preserveState: true,
+        replace: true,
+        preserveScroll: true,
+      }
+    );
+  };
+  
+  // ...
+  
+  <button className="product-page__seller-profile" onClick={ShowSeller}>
+      Посмотреть
+  </button>
+  
 
   return (
     <MainLayout auth={auth}>
@@ -244,7 +266,7 @@ export default function NftShow({ auth, nft, cart, nftUser, flash }) {
                       <img src="/img/products/star-icon.png" alt="Рейтинг" />
                       <span>5.0</span>
                     </div>
-                    <button className="product-page__seller-profile">Посмотреть</button>
+                    <button className="product-page__seller-profile" onClick={ShowSeller}>Посмотреть</button>
                   </div>
                 </div>
               </div>

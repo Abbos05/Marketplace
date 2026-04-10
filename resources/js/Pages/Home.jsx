@@ -45,7 +45,7 @@ export default function Home({ auth, categoryData, showModal }) {
                 dataProduct={mysqlNftsData}
                 category={{ name: 'Результаты поиска', id: null }}
                 filters={{ ...filters, search: search, sort: sortBy }}
-                isHomePage={true} // ✅ Передаём флаг
+                isHomePage={true} 
               />
               {LikeProductsCom &&
                     (

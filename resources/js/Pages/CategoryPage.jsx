@@ -1,15 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import '../../css/product/CategoryPage.css';
 import ProductsCatalog from '@/Components/Product/ProductsCatalog';
 import LikeProductsCom from '@/components/Product/TopNFTs';
-import Slider from '@/Components/Slider/Slider';
 
 export default function CategoryPage({ auth }) {
-    // Достаём props от Laravel
     const { category, products, filters, LikeProducts } = usePage().props;
+
+    // Используем хук состояния для хранения количества отображаемых элементов
+    const [displayCount, setDisplayCount] = useState(5);
+
+    // Функция для увеличения количества отображаемых элементов
+    const showMore = () => {
+        // Увеличиваем количество на 10, но не больше, чем длина массива LikeProducts
+        setDisplayCount(prevCount => Math.min(prevCount + 10, LikeProducts.length));
+    };
 
     return (
         <MainLayout auth={auth}>
@@ -36,16 +43,22 @@ export default function CategoryPage({ auth }) {
                     category={category}
                     filters={filters || {}}
                 />
-                {LikeProductsCom &&
-                    (
-                        <>
-                            <section className="category-header">
-                                <h2>Возможно, вам понравится</h2>
-                            </section>
-                            <LikeProductsCom key={LikeProducts.id} nftsData={LikeProducts} />
-                        </>
-                    )
-                }
+                {LikeProducts && LikeProducts.length > 0 && (
+                    <>
+                        <section className="category-header">
+                            <h2>Возможно, вам понравится</h2>
+                        </section>
+                        {/* Передаём только первые `displayCount` элементов */}
+                        <LikeProductsCom
+                            key={LikeProducts.id}
+                            nftsData={LikeProducts.slice(0, displayCount)}
+                        />
+                        {/* Кнопка показывается только если есть еще элементы для отображения */}
+                        {displayCount < LikeProducts.length && (
+                            <button className="showMore__btn" onClick={showMore}>Показать еще</button>
+                        )}
+                    </>
+                )}
             </div>
         </MainLayout>
     );

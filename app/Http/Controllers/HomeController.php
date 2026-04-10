@@ -50,7 +50,6 @@ class HomeController extends Controller
         }
     
         $products = $query->take(50)->get();
-        
         $bestNfts = Nft::with('user')
             ->where('status', 'relevant')
             ->orderBy('created_at', 'desc')
