@@ -36,11 +36,11 @@ class SellerController extends Controller
                 $query->where('price', '<=', (float)$request->price_to);
             }
     
-            $saller = Nft::where('user_id', $id)->get();
-
+            $seller = Nft::where('user_id', $id)->get();
+            
             $products = $query->get();
             return Inertia::render('SellerProfile/Seller', [
-                'saller' => $saller,
+                'seller' => $seller,
                 'products'     => $products,
                 'filters'  => [
                     'search'      => $request->query('search'),

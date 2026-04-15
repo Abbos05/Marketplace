@@ -6,13 +6,17 @@ import '../../../css/product/CategoryPage.css';
 export default function ProductsCatalog({
     dataProduct,
     category,
+    seller,
     filters = {},
-    isHomePage = false 
+    isHomePage = false,
+    isCategoryPage = false,
+    isSellerProfile = false 
 }) {
     const initialProducts = dataProduct || [];
     const categoryName = category?.name || 'категории';
     const categoryId = category?.id;
-    
+    const sellerId =  seller[1].user_id;
+    console.log(1111 + seller);
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const [sort, setSort] = useState(filters?.sort || 'new');
     const [priceFrom, setPriceFrom] = useState(filters?.price_from || '');
@@ -38,7 +42,11 @@ export default function ProductsCatalog({
         if (priceTo && priceTo !== '') params.price_to = priceTo;
 
         //  Определяем маршрут в зависимости от страницы
-        if (isHomePage || !categoryId) {
+        console.log("главная:" + isHomePage);
+        console.log("isCategoryPage:" + isCategoryPage);
+        console.log("isSellerProfile:" + isSellerProfile);
+        if (isHomePage ) {
+            console.log("катайди: " + categoryId);
             // Главная страница
             router.get(
                 '/',
@@ -50,10 +58,24 @@ export default function ProductsCatalog({
                     only: ['mysqlNftsData', 'search', 'sort', 'filters']
                 }
             );
-        } else {
+        } else if (isCategoryPage) {
             // Страница категории
             router.get(
                 route('category.show', categoryId),
+                params,
+                {
+                    preserveState: true,
+                    replace: true,
+                    preserveScroll: true,
+                    only: ['products', 'filters'],
+                }
+            );
+        }
+        else if (isSellerProfile) {
+             // Страница Продавца
+             console.log(1112121212);
+             router.get(
+                route('seller.index', sellerId),
                 params,
                 {
                     preserveState: true,
@@ -86,7 +108,7 @@ export default function ProductsCatalog({
         setPriceTo('');
         setSearchTerm('');
         
-        if (isHomePage || !categoryId) {
+        if (isHomePage) {
             router.get(
                 '/',
                 {},
@@ -96,7 +118,7 @@ export default function ProductsCatalog({
                     preserveScroll: true,
                 }
             );
-        } else {
+        } else if (isCategoryPage && !categoryId) {
             router.get(
                 route('category.show', categoryId),
                 {},
@@ -107,6 +129,18 @@ export default function ProductsCatalog({
                 }
             );
         }
+        else if (isSellerProfile && !sellerId) {
+            // Страница Продавца
+            router.get(
+               route('sellerProfile', sellerId),
+               params,
+               {
+                preserveState: true,
+                replace: true,
+                preserveScroll: true,
+               }
+           );
+       }
     };
 
     return (

@@ -5,7 +5,9 @@ import '../../../css/product/CategoryPage.css';
 import ProductsCatalog from '@/Components/Product/ProductsCatalog';
 
 export default function Seller({ auth }) {
-    const { saller, products, filters } = usePage().props;
+    
+    const { seller, products, filters } = usePage().props;
+ 
     // Используем хук состояния для хранения количества отображаемых элементов
     const [displayCount, setDisplayCount] = useState(5);
     // Функция для увеличения количества отображаемых элементов
@@ -16,12 +18,13 @@ export default function Seller({ auth }) {
 
     return (
         <MainLayout auth={auth}>
-            <Head title={`${saller?.name || 'Страница Продавца'} - Маркетплейс`} />
-            <div className='container'>
+            <Head title={`${seller?.name || 'Страница Продавца'} - Маркетплейс`} />
+            <div className=''>
 
                 <ProductsCatalog
                     dataProduct={products.slice(0, displayCount) || []}
-                    seller={saller}
+                    seller={seller}
+                    isSellerProfile={true}
                     filters={filters || {}}
                 />
                 {displayCount < products.length && (

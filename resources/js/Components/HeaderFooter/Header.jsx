@@ -44,6 +44,15 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
           });
           return;
         }
+     else if (currentPath.startsWith('/sellerProfile')) {
+          targetPath = currentPath;
+          router.visit(targetPath, {
+            data: { search: searchQuery.trim(), price_from: filters?.price_from, price_to: filters?.price_to },
+            preserveState: true,
+            preserveScroll: true,
+          });
+          return;
+        }
 
     router.visit(targetPath, { data: { search: searchQuery.trim() }, preserveState: true });
   };

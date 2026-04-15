@@ -42,6 +42,8 @@ export default function CategoryPage({ auth }) {
                     dataProduct={products || []}
                     category={category}
                     filters={filters || {}}
+                    isCategoryPage={true} 
+
                 />
                 {LikeProducts && LikeProducts.length > 0 && (
                     <>
