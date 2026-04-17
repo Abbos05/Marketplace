@@ -7,9 +7,10 @@
 
 
 /* ========== ВЕРХНЯЯ СЕКЦИЯ КАТЕГОРИИ ========== */
-.category-header{
+.category-header {
     margin-bottom: 20px;
 }
+
 .category-header__nav-btn {
     cursor: pointer;
     transition: all 0.3s ease;
@@ -17,11 +18,13 @@
     font-size: 24px;
     color: #000;
 }
+
 .gd6_11 {
     color: black;
     display: inline-block;
     margin: 0 5px 0 5px;
 }
+
 .category-header__nav-btn:hover,
 .category-header__share-btn:hover {
     color: #565656;
@@ -228,7 +231,7 @@
 }
 
 
-.shop-products__reset-btn{
+.shop-products__reset-btn {
     border-radius: 8px;
     background: var(--background);
     padding: 13px 20px;
@@ -236,22 +239,23 @@
     font-weight: var(--fw-500);
     font-size: 16px;
     transition: background 0.2s;
-    color:white;
+    color: white;
     border: none;
 }
+
 .shop-products__reset-btn:hover {
     background: #e85f5f;
 }
 
 
-.showMore__btn{
+.showMore__btn {
     max-width: 100%;
     width: max-content;
     padding: 10px 40px;
     display: grid;
-    place-items: center; 
-    margin: 0 auto; 
-    
+    place-items: center;
+    margin: 0 auto;
+
     border-radius: 10px;
     background: var(--background);
     font-family: var(--font-family);
@@ -263,13 +267,17 @@
     border: none;
     outline: none;
     cursor: pointer;
+    transform: translate(141px);
 }
-.showMore__btn:active{
+
+.showMore__btn:active {
     opacity: 0.7;
 }
+
 .showMore__btn:hover {
     background: #003cac;
 }
+
 /* ========== АДАПТИВ ========== */
 @media (max-width: 1024px) {
     .shop-sidebar {
@@ -332,6 +340,136 @@
     .category-header__share-btn svg {
         transform: scale(0.8);
     }
+}
+
+
+/* seller */
+.seller__inner {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 25px 30px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.seller__main {
+    display: flex;
+    align-items: center;
+    justify-self: center;
+    gap: 20px;
+}
+
+.seller__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 100px;
+    height: 100px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #e7ebf0;
+    font-size: 38px;
+    font-weight: var(--fw-600);
+}
+
+.seller__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.seller__info {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 18px;
+}
+
+.seller__name {
+    font-weight: var(--fw-600);
+    font-size: 34px;
+    text-align: center;
+    color: #000;
+}
+
+.seller__details {
+    display: flex;
+    gap: 15px;
+}
+
+
+.seller__stat,
+.seller__shop {
+    background: #e7ebf0;
+    border-radius: 5px;
+    padding: 4px 10px;
+    transition: 0.3s all;
+    user-select: none;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+}
+
+.seller__stat:hover,
+.seller__shop:hover {
+    background: #dddfe3;
+}
+
+.seller__actions {
+    display: flex;
+    gap: 15px;
+}
+
+.seller__button,
+.seller__likes {
+    background: #e7ebf0;
+    border-radius: 8px;
+    padding: 8px 18px;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    transition: 0.3s all;
+    user-select: none;
+
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.seller__button:active,
+.seller__likes:active {
+    opacity: 0.7;
+}
+
+.seller__button:hover,
+.seller__likes:hover {
+    background: #dddfe3;
+}
+
+.seller__button--message,
+.seller__likes-count {
+    font-size: 20px;
+    text-align: center;
+    color: #000;
+    font-weight: var(--fw-500);
+}
+
+
+.seller__message-icon img {
+    width: 20px;
+    height: 20px;
+    margin-bottom: -3px;
 }
 
 /* Анимация для карточек товаров */

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import ProductCard from '@/Components/Product/ProductCard';
-import '../../../css/product/CategoryPage.css';
+import '../../../css/product/ShopPage.css';
 
 export default function ProductsCatalog({
     dataProduct,
@@ -10,18 +10,17 @@ export default function ProductsCatalog({
     filters = {},
     isHomePage = false,
     isCategoryPage = false,
-    isSellerProfile = false 
+    isSellerProfile = false
 }) {
     const initialProducts = dataProduct || [];
     const categoryName = category?.name || 'категории';
     const categoryId = category?.id;
-    const sellerId =  seller[1].user_id;
-    console.log(1111 + seller);
+    const sellerId = seller[0]?.user_id;
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const [sort, setSort] = useState(filters?.sort || 'new');
     const [priceFrom, setPriceFrom] = useState(filters?.price_from || '');
     const [priceTo, setPriceTo] = useState(filters?.price_to || '');
-    
+
     const timeoutRef = useRef(null);
 
     // Синхронизация с пропсами
@@ -45,7 +44,7 @@ export default function ProductsCatalog({
         console.log("главная:" + isHomePage);
         console.log("isCategoryPage:" + isCategoryPage);
         console.log("isSellerProfile:" + isSellerProfile);
-        if (isHomePage ) {
+        if (isHomePage) {
             console.log("катайди: " + categoryId);
             // Главная страница
             router.get(
@@ -72,15 +71,16 @@ export default function ProductsCatalog({
             );
         }
         else if (isSellerProfile) {
-             // Страница Продавца
-             console.log(1112121212);
-             router.get(
+            // Страница Продавца
+            console.log(1112121212);
+            router.get(
                 route('seller.index', sellerId),
                 params,
                 {
                     preserveState: true,
                     replace: true,
                     preserveScroll: true,
+
                     only: ['products', 'filters'],
                 }
             );
@@ -107,7 +107,7 @@ export default function ProductsCatalog({
         setPriceFrom('');
         setPriceTo('');
         setSearchTerm('');
-        
+
         if (isHomePage) {
             router.get(
                 '/',
@@ -132,15 +132,15 @@ export default function ProductsCatalog({
         else if (isSellerProfile && !sellerId) {
             // Страница Продавца
             router.get(
-               route('sellerProfile', sellerId),
-               params,
-               {
-                preserveState: true,
-                replace: true,
-                preserveScroll: true,
-               }
-           );
-       }
+                route('sellerProfile', sellerId),
+                params,
+                {
+                    preserveState: true,
+                    replace: true,
+                    preserveScroll: true,
+                }
+            );
+        }
     };
 
     return (
@@ -216,7 +216,7 @@ export default function ProductsCatalog({
                         ) : (
                             <div className="shop-products__empty">
                                 <p>
-                                    {searchTerm 
+                                    {searchTerm
                                         ? `Товаров по запросу "${searchTerm}" не найдено`
                                         : `Пока нет товаров в категории ${categoryName}`
                                     }

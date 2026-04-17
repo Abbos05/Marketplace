@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, usePage, router, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
-import '../../css/product/CategoryPage.css';
+import '../../css/product/ShopPage.css';
 import ProductCard from '@/Components/Product/ProductCard'; // Переименовал в ProductCard
 import Slider from '@/Components/Slider/Slider';
 import LikeProductsCom from '@/components/Product/TopNFTs';

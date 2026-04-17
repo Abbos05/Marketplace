@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
-import '../../css/product/CategoryPage.css';
+import '../../css/product/ShopPage.css';
 import ProductsCatalog from '@/Components/Product/ProductsCatalog';
 import LikeProductsCom from '@/components/Product/TopNFTs';
 
@@ -42,7 +42,7 @@ export default function CategoryPage({ auth }) {
                     dataProduct={products || []}
                     category={category}
                     filters={filters || {}}
-                    isCategoryPage={true} 
+                    isCategoryPage={true}
 
                 />
                 {LikeProducts && LikeProducts.length > 0 && (

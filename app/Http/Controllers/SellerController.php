@@ -10,7 +10,7 @@ class SellerController extends Controller
 {
         public function index($id, Request $request)
         {
-            $query = Nft::with('user', 'category')->where('category_id', $id)->where('status', 'relevant');
+            $query = Nft::with('user')->where('user_id', $id)->where('status', 'relevant');
             $search = request('search');
             if ($search) {
                 $query->where(function ($q) use ($search) {
@@ -37,7 +37,7 @@ class SellerController extends Controller
             }
     
             $seller = Nft::where('user_id', $id)->get();
-            
+
             $products = $query->get();
             return Inertia::render('SellerProfile/Seller', [
                 'seller' => $seller,
