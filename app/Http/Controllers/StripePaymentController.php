@@ -6,137 +6,154 @@ use Illuminate\Http\Request;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class StripePaymentController extends Controller
 {
+    // Оплата товара со страницы продукта
     public function createCheckoutSession(Request $request)
     {
-        Stripe::setApiKey(env('STRIPE_SECRET'));
-
-        $session = Session::create([
-            'payment_method_types' => ['card'],
-            'line_items' => [[
-                'price_data' => [
-                    'currency' => 'rub',
-                    'product_data' => ['name' => $request->title],
-                    'unit_amount' => $request->price * 100,
+        try {
+            Stripe::setApiKey(env('STRIPE_SECRET'));
+            
+            // Логируем входящий запрос
+            \Log::info('Stripe checkout request:', $request->all());
+            
+            $productId = $request->product_id;
+            $variantId = $request->variant_id;
+            $title = $request->title;
+            $price = $request->price;
+            
+            // Если price не пришёл, получаем из базы
+            if (!$price && $variantId) {
+                $variant = ProductVariant::find($variantId);
+                $price = $variant->price ?? 0;
+            }
+            
+            if (!$price && $productId) {
+                $product = Product::find($productId);
+                $price = $product->min_price ?? 0;
+            }
+            
+            $session = Session::create([
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => 'rub',
+                        'product_data' => [
+                            'name' => $title ?? 'Товар',
+                        ],
+                        'unit_amount' => (int)($price * 100),
+                    ],
+                    'quantity' => 1,
+                ]],
+                'mode' => 'payment',
+                'success_url' => route('stripe.success') . '?session_id={CHECKOUT_SESSION_ID}&type=product&product_id=' . $productId,
+                'cancel_url' => route('product.show', $productId),
+                'metadata' => [
+                    'product_id' => $productId,
+                    'variant_id' => $variantId,
+                    'type' => 'product'
                 ],
-                'quantity' => 1,
-            ]],
-            'mode' => 'payment',
-
-            // StripePaymentController.php
-            'success_url' => route('nft.show', ['nft' => $request->product_id]) . '?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url' => route('nft.show', ['nft' => $request->product_id]),
-            'metadata' => [
-                'product_id' => $request->product_id,
-            ],
-        ]);
-
-        return response()->json(['url' => $session->url]);
-    }
-
-    public function wallet(Request $request)
-    {
-        $product = Product::findOrFail($request->product_id);
-        $user = auth()->user();
-        $seller = $product->user;
-        if ($user->balance < $product->price) {
-            return back()->with('error', 'Недостаточно средств');
-        }
-
-        // Списываем
-
-        $user->decrement('balance', $product->price);
-        $seller->increment('balance', $product->price);
-        \App\Models\Transaction::create([
-            'product_id'    => $product->id,
-            'amount'    => $product->price,
-            'buyer_id'  => auth()->id(),           // ← КТО КУПИЛ
-            'seller_id' => $product->user_id,          // ← КТО ПРОДАЛ
-            'status'    => 'completed',
-
-        ]);
-
-        $product->update([
-            'status' => 'sold',
-            'user_id' => $user->id,
-        ]);
-
-        return back()->with('success', 'Куплено с кошелька!');
-    }
-
-    public function topup(Request $request)
-    {
-        Stripe::setApiKey(env('STRIPE_SECRET'));
-        $session = Session::create([
-            'payment_method_types' => ['card'],
-            'line_items' => [[
-                'price_data' => [
-                    'currency' => 'rub',
-                    'product_data' => ['name' => 'Пополнение кошелька'],
-                    'unit_amount' => $request->amount * 100,
-                ],
-                'quantity' => 1,
-            ]],
-            'mode' => 'payment',
-            'success_url' => route('topup.success') . '?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url' => route('profile'),
-            'metadata' => ['user_id' => auth()->id(), 'amount' => $request->amount],
-        ]);
-
-        return response()->json(['url' => $session->url]);
-    }
-    // PaymentController.php
-    public function topupImitatin(Request $request)
-    {
-        $request->validate([
-            'amount' => 'required|numeric|min:50'
-        ]);
-    
-        $user = auth()->user();
-        $amount = $request->input('amount');
-    
-        // Логика имитации пополнения - просто добавляем сумму к балансу пользователя
-        $user->balance += $amount;
-        $user->save();
-    
-        return response()->json(['success' => true]);
-    }
-    public function topupSuccess(Request $request)
-    {
-        $session = Session::retrieve($request->session_id);
-        if ($session->payment_status === 'paid') {
-            $user = User::find($session->metadata->user_id);
-            $amount = $session->metadata->amount;
-            $user->increment('balance', $amount);
-
-            return redirect()->intended('/')
-                ->with('topup_success', "Кошелёк пополнен на +{$amount} ₽!");
+            ]);
+            
+            return response()->json(['url' => $session->url]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Stripe error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
-    // Вывод
-public function withdraw(Request $request)
-{
-    $request->validate([
-        'amount' => 'required|numeric|min:100',
-        'card_number' => 'required|size:16|regex:/^\d+$/',
-    ]);
-
-    $user = auth()->user();
-
-    if ($user->balance < $request->amount) {
-        return back()->withErrors(['message' => 'Недостаточно средств']);
+    // Оплата заказа
+    public function createOrderCheckoutSession(Request $request)
+    {
+        try {
+            Stripe::setApiKey(env('STRIPE_SECRET'));
+            
+            \Log::info('Stripe order checkout request:', $request->all());
+            
+            $orderId = $request->order_id;
+            $order = Order::with('items.variant.product')->findOrFail($orderId);
+            
+            $lineItems = [];
+            foreach ($order->items as $item) {
+                $lineItems[] = [
+                    'price_data' => [
+                        'currency' => 'rub',
+                        'product_data' => [
+                            'name' => $item->variant->product->title,
+                        ],
+                        'unit_amount' => (int)($item->price_at_purchase * 100),
+                    ],
+                    'quantity' => $item->quantity,
+                ];
+            }
+            
+            $session = Session::create([
+                'payment_method_types' => ['card'],
+                'line_items' => $lineItems,
+                'mode' => 'payment',
+                'success_url' => route('stripe.success') . '?session_id={CHECKOUT_SESSION_ID}&type=order&order_id=' . $order->id,
+                'cancel_url' => route('profile.orders'),
+                'metadata' => [
+                    'order_id' => $order->id,
+                    'type' => 'order'
+                ],
+            ]);
+            
+            return response()->json(['url' => $session->url]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Stripe order error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
-    $user->decrement('balance', $request->amount);
-
-    // Создай заявку на вывод (опционально)
-    // Withdrawal::create([...]);
-
-    return back();
-}
+    // Успешная оплата
+    public function success(Request $request)
+    {
+        try {
+            Stripe::setApiKey(env('STRIPE_SECRET'));
+            
+            $sessionId = $request->session_id;
+            $session = Session::retrieve($sessionId);
+            
+            \Log::info('Stripe success callback:', [
+                'session_id' => $sessionId,
+                'payment_status' => $session->payment_status,
+                'metadata' => $session->metadata
+            ]);
+            
+            if ($session->payment_status === 'paid') {
+                $type = $session->metadata->type ?? $request->type;
+                
+                if ($type === 'product') {
+                    $productId = $session->metadata->product_id ?? $request->product_id;
+                    return redirect()->route('profile.orders')->with('success', 'Товар успешно оплачен!');
+                }
+                
+                if ($type === 'order') {
+                    $orderId = $session->metadata->order_id ?? $request->order_id;
+                    $order = Order::find($orderId);
+                    if ($order) {
+                        $order->update([
+                            'payment_status' => 'paid',
+                            'status' => 'paid'
+                        ]);
+                    }
+                    return redirect()->route('profile.orders')->with('success', 'Заказ успешно оплачен!');
+                }
+            }
+            
+            return redirect()->route('profile.orders')->with('error', 'Ошибка оплаты');
+            
+        } catch (\Exception $e) {
+            \Log::error('Stripe success error: ' . $e->getMessage());
+            return redirect()->route('profile.orders')->with('error', 'Ошибка при обработке оплаты');
+        }
+    }
 }

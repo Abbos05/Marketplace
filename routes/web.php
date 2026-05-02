@@ -46,17 +46,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return redirect()->back();
     })->middleware(['throttle:60,1']);
 
-  
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-    Route::post('/cart/update/{id}', [CartController::class, 'update'])->name('cart.update');
-    Route::delete('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
-    Route::post('/order/create', [CartController::class, 'create'])->name('order.create');
-     Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.destroy');
-});
+
     // Корзина
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+        Route::post('/cart/update/{id}', [CartController::class, 'update'])->name('cart.update');
+        Route::delete('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
+        Route::post('/order/create', [CartController::class, 'create'])->name('order.create');
+        Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+        Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.destroy');
+    });
+    // -- Корзина
 
     // Избранное
     Route::post('/favorites/{product}', [HomeController::class, 'favorites'])
@@ -64,18 +65,30 @@ Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.dest
     Route::get('/favorites', [ProfileController::class, 'favorites'])
         ->name('favorites.index');
 
+        // routes/web.php
+
+    Route::get('/orders', [OrderController::class, 'index'])->name('profile.orders');
+    Route::get('/order/{order}', [OrderController::class, 'show'])->name('order.show');
+    Route::post('/order/create', [OrderController::class, 'create']);
+    
+    // Создание заказов
+    Route::post('/order/create-from-product', [OrderController::class, 'createFromProduct'])->name('order.create.from.product');
+    Route::post('/order/create-from-cart', [OrderController::class, 'createFromCart'])->name('order.create.from.cart');
+    
+    // Действия с заказом
+    Route::post('/order/{order}/cancel', [OrderController::class, 'cancel'])->name('order.cancel');
+    Route::post('/order/{order}/repeat', [OrderController::class, 'repeat'])->name('order.repeat');
+    
+    // Оплата
+    Route::post('/payment/order-wallet', [StripePaymentController::class, 'orderWallet'])->name('payment.order.wallet');
     Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
     Route::get('/checkout/cancel', function () {
         return view('checkout.cancel');
     })->name('checkout.cancel');
 
-    Route::post('/stripe/checkout', [StripePaymentController::class, 'createCheckoutSession'])
-        ->name('stripe.checkout');
-    Route::post('/payment/wallet', [StripePaymentController::class, 'wallet'])->name('payment.wallet');
-    Route::post('/stripe/topup', [StripePaymentController::class, 'topup'])->name('stripe.topup');
-    Route::post('/stripe/topupImitatin', [StripePaymentController::class, 'topupImitatin'])->name('stripe.topupImitatin');
-    Route::get('/topup/success', [StripePaymentController::class, 'topupSuccess'])->name('topup.success');
-    Route::post('/wallet/withdraw', [StripePaymentController::class, 'withdraw'])->middleware('auth');
+    Route::post('/stripe/checkout', [StripePaymentController::class, 'createCheckoutSession']);
+Route::post('/stripe/order-checkout', [StripePaymentController::class, 'createOrderCheckoutSession']);
+Route::get('/stripe/success', [StripePaymentController::class, 'success'])->name('stripe.success');
 });
 
 Route::middleware(['auth', CheckRole::class . ':admin'])->group(function () {

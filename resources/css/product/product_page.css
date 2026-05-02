@@ -382,7 +382,9 @@
 .product-page__buy-btn:hover {
   background: #019031;
 }
-
+.product-page__payment .active  {
+  background-color: var(--background);
+}
 
 .product-page__delivery {
   font-weight: 400;

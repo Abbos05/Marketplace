@@ -1,210 +1,125 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
+// resources/js/Components/PaymentModal.jsx
+import { useState } from 'react';
 import '../../css/product/PaymentModal.css';
 
-export default function PaymentModal({ isOpen, onClose, nft, user }) {
-    const [step, setStep] = useState('method');
-    const [method, setMethod] = useState('');
-    const [selectedBank, setSelectedBank] = useState('');
-    const [cardNumber, setCardNumber] = useState('');
-    const [topupAmount, setTopupAmount] = useState('');
-    const [message, setMessage] = useState('');
-    const [isProcessing, setIsProcessing] = useState(false);
+export default function PaymentModal({ 
+    isOpen, 
+    onClose, 
+    item,      // для товара
+    order,     // для заказа
+    type = 'product' // 'product' или 'order'
+}) {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const banks = [
-        { id: 'sber', name: 'Сбер', icon: 'sber' },
-        { id: 'alfa', name: 'Альфа-Банк', icon: 'alfa' },
-        { id: 'tinkoff', name: 'Т-Банк', icon: 'tinkoff' },
-        { id: 'vtb', name: 'ВТБ', icon: 'vtb' },
-    ];
+    // Определяем что оплачиваем
+    const isOrder = type === 'order';
+    const target = isOrder ? order : item;
+    
+    // Получаем сумму
+    const amount = isOrder 
+        ? parseFloat(target?.total) || 0 
+        : parseFloat(target?.price) || 0;
 
-    useEffect(() => {
-        if (!isOpen) {
-            setStep('method');
-            setMethod('');
-            setSelectedBank('');
-            setCardNumber('');
-            setMessage('');
-        }
-    }, [isOpen]);
+    console.log('PaymentModal data:', { isOrder, target, amount, type });
 
-    const handleWalletPay = async () => {
-        if (user.balance < nft.price) {
-            setStep('topup');
-            setMessage('Недостаточно средств. Пополните кошелёк.');
-            return;
-        }
+    if (!isOpen || !target) return null;
 
-        setIsProcessing(true);
-        setMessage('Оплата с кошелька...');
-
-        try {
-            const res = await axios.post('/api/payment/wallet', {
-                product_id: nft.id,
-            });
-            setMessage('Оплата прошла успешно!');
-            setStep('success');
-        } catch (err) {
-            setMessage('Ошибка оплаты');
-            setStep('fail');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
+    // Оплата картой через Stripe
     const handleCardPay = async () => {
-        if (!cardNumber || cardNumber.length < 16) {
-            setMessage('Введите корректный номер карты');
-            return;
+        setLoading(true);
+        setError('');
+        
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+        
+        const endpoint = isOrder 
+            ? '/stripe/order-checkout' 
+            : '/stripe/checkout';
+        
+        const data = isOrder 
+            ? { order_id: target.id } 
+            : { 
+                product_id: target.id, 
+                variant_id: target.variant_id,
+                title: target.title, 
+                price: amount
+              };
+        
+        console.log('Sending request to:', endpoint, data);
+        
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'X-CSRF-TOKEN': csrf 
+                },
+                body: JSON.stringify(data),
+            });
+            
+            const result = await response.json();
+            console.log('Response:', result);
+            
+            if (result.url) {
+                window.location.href = result.url;
+            } else if (result.error) {
+                setError(result.error);
+            } else {
+                setError('Ошибка при создании платежа');
+            }
+        } catch (err) {
+            console.error('Fetch error:', err);
+            setError('Ошибка подключения к платежному шлюзу. Попробуйте позже.');
+        } finally {
+            setLoading(false);
         }
-
-        setIsProcessing(true);
-        setMessage('Оплата картой...');
-
-        setTimeout(() => {
-            setMessage('Оплата прошла успешно!');
-            setStep('success');
-            setIsProcessing(false);
-        }, 2500);
     };
 
-    const handleTopup = async () => {
-        if (!topupAmount || topupAmount <= 0) return;
-
-        setIsProcessing(true);
-        setMessage('Пополнение...');
-
-        setTimeout(() => {
-            setMessage(`Кошелёк пополнен на ${topupAmount} ₽`);
-            setStep('success');
-            setIsProcessing(false);
-        }, 2000);
-    };
-
-    useEffect(() => {
-        console.log('PaymentModal: isOpen changed to', isOpen);
-    }, [isOpen]);
-    if (!isOpen || !nft || !user) return null;
     return (
-        <div
-            className="modal-overlay"
-            onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                    onClose();
-                }
-            }}
-        >
-            <div className="modal-content">
-                <div className="modal-header">
-                    <div className="bank-logo">
-                        <div className="logo-circle"></div>
+        <div className="payment-overlay" onClick={onClose}>
+            <div className="payment-modal" onClick={e => e.stopPropagation()}>
+                <button className="payment-close-top" onClick={onClose}>✕</button>
+                
+                <h2 className="payment-title">
+                    {isOrder ? 'Оплата заказа' : 'Оплата товара'}
+                </h2>
+                
+                <div className="payment-amount">
+                    Сумма: <span>{amount.toLocaleString()} ₽</span>
+                </div>
+                
+                {isOrder && target?.number && (
+                    <div className="payment-order-number">
+                        Заказ #{target.number}
                     </div>
-                    <button className="close-btn" onClick={onClose}>×</button>
+                )}
+
+                {error && (
+                    <div className="payment-error">{error}</div>
+                )}
+
+                {/* Только карта */}
+                <div className="payment-option" onClick={handleCardPay}>
+                    <div className="payment-option-icon">💳</div>
+                    <div className="payment-option-content">
+                        <div className="payment-option-title">Банковская карта</div>
+                        <div className="payment-option-desc">
+                            Visa, Mastercard, МИР
+                        </div>
+                    </div>
+                    <div className="payment-option-arrow">→</div>
                 </div>
 
-                {step === 'method' && (
-                    <div className="payment-method">
-                        <h3>Сумма к оплате</h3>
-                        <div className="amount">{nft.price} ₽</div>
-
-                        <div className="methods">
-                            <button
-                                className={`method-btn ${method === 'wallet' ? 'selected' : ''}`}
-                                onClick={() => setMethod('wallet')}
-                            >
-                                <span className="icon wallet-icon"></span>
-                                <div>
-                                    <div>Кошелёк</div>
-                                    <small>{user.balance} ₽</small>
-                                </div>
-                            </button>
-
-                            <button
-                                className={`method-btn ${method === 'card' ? 'selected' : ''}`}
-                                onClick={() => setMethod('card')}
-                            >
-                                <span className="icon card-icon"></span>
-                                <div>
-                                    <div>Банковская карта</div>
-                                    <small>Visa, Мир, Mastercard</small>
-                                </div>
-                            </button>
-                        </div>
-
-                        <button
-                            className="pay-btn"
-                            disabled={!method || isProcessing}
-                            onClick={() => method === 'wallet' ? handleWalletPay() : setStep('bank')}
-                        >
-                            {isProcessing ? 'Обработка...' : 'Оплатить'}
-                        </button>
+                {loading && (
+                    <div className="payment-loading">
+                        <div className="spinner"></div>
+                        <p>Перенаправление на оплату...</p>
                     </div>
                 )}
 
-                {step === 'bank' && (
-                    <div className="bank-select">
-                        <h3>Выберите банк</h3>
-                        <div className="banks-grid">
-                            {banks.map(bank => (
-                                <button
-                                    key={bank.id}
-                                    className={`bank-btn ${selectedBank === bank.id ? 'selected' : ''}`}
-                                    onClick={() => setSelectedBank(bank.id)}
-                                >
-                                    <span className={`bank-icon ${bank.icon}`}></span>
-                                    <span>{bank.name}</span>
-                                </button>
-                            ))}
-                        </div>
-
-                        {selectedBank && (
-                            <div className="card-input">
-                                <input
-                                    type="text"
-                                    placeholder="Номер карты"
-                                    value={cardNumber}
-                                    onChange={e => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16))}
-                                    maxLength="16"
-                                />
-                            </div>
-                        )}
-
-                        <button
-                            className="pay-btn"
-                            disabled={!selectedBank || !cardNumber || isProcessing}
-                            onClick={handleCardPay}
-                        >
-                            {isProcessing ? 'Оплата...' : 'Оплатить картой'}
-                        </button>
-                    </div>
-                )}
-
-                {step === 'topup' && (
-                    <div className="topup">
-                        <h3>Пополнение кошелька</h3>
-                        <input
-                            type="number"
-                            placeholder="Сумма"
-                            value={topupAmount}
-                            onChange={e => setTopupAmount(e.target.value)}
-                        />
-                        <button className="pay-btn" onClick={handleTopup} disabled={isProcessing}>
-                            {isProcessing ? 'Пополнение...' : 'Пополнить'}
-                        </button>
-                    </div>
-                )}
-
-                {(step === 'success' || step === 'fail') && (
-                    <div className="result">
-                        <div className={`status ${step}`}>
-                            <span className="icon"></span>
-                            <p>{message}</p>
-                        </div>
-                        <button className="done-btn" onClick={onClose}>
-                            Готово
-                        </button>
-                    </div>
-                )}
+                <button onClick={onClose} className="payment-cancel">
+                    Отмена
+                </button>
             </div>
         </div>
     );
