@@ -5,31 +5,31 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-
 class Cart extends Model
 {
-     use HasFactory;
+    use HasFactory;
 
-    /**
-     * Массив заполняемых полей
-     * @var array
-     */
-    protected $fillable = [
-        'user_id',
-        'nft_id',
+    protected $table = 'cart_items';
+
+    protected $fillable = ['user_id', 'variant_id', 'quantity'];
+
+    protected $casts = [
+        'quantity' => 'integer',
     ];
-      public function user()
+
+    public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    /**
-     * Отношение к NFT
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function nft()
+    public function variant()
     {
-        return $this->belongsTo(Nft::class, 'nft_id');
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
     }
 
+    // Сумма по позиции
+    public function getSubtotalAttribute()
+    {
+        return $this->quantity * $this->variant->current_price;
+    }
 }

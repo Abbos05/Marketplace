@@ -35,24 +35,24 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
     let targetPath = '/';
 
     if (currentPath.startsWith('/admins')) targetPath = '/admins';
-     else if (currentPath.startsWith('/category')) {
-          targetPath = currentPath;
-          router.visit(targetPath, {
-            data: { search: searchQuery.trim(), price_from: filters?.price_from, price_to: filters?.price_to },
-            preserveState: true,
-            preserveScroll: true,
-          });
-          return;
-        }
-     else if (currentPath.startsWith('/sellerProfile')) {
-          targetPath = currentPath;
-          router.visit(targetPath, {
-            data: { search: searchQuery.trim(), price_from: filters?.price_from, price_to: filters?.price_to },
-            preserveState: true,
-            preserveScroll: true,
-          });
-          return;
-        }
+    else if (currentPath.startsWith('/category')) {
+      targetPath = currentPath;
+      router.visit(targetPath, {
+        data: { search: searchQuery.trim(), price_from: filters?.price_from, price_to: filters?.price_to },
+        preserveState: true,
+        preserveScroll: true,
+      });
+      return;
+    }
+    else if (currentPath.startsWith('/sellerProfile')) {
+      targetPath = currentPath;
+      router.visit(targetPath, {
+        data: { search: searchQuery.trim(), price_from: filters?.price_from, price_to: filters?.price_to },
+        preserveState: true,
+        preserveScroll: true,
+      });
+      return;
+    }
 
     router.visit(targetPath, { data: { search: searchQuery.trim() }, preserveState: true });
   };
@@ -158,16 +158,16 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
 
   return (
     <header className="header">
-      <div className="container">
+      <div>
         <ul className="header-ul">
           <li>
             <Link href="/" className="header-logo-name">
-<svg class="logo" viewBox="0 0 400 100" width="100%" height="100%">
-  <text x="50%" y="62%" text-anchor="middle" dominant-baseline="middle" 
-        fill="currentColor">
-   Alvora
-  </text>
-</svg>
+              <svg class="logo" viewBox="0 0 400 100" width="100%" height="100%">
+                <text x="50%" y="62%" text-anchor="middle" dominant-baseline="middle"
+                  fill="currentColor">
+                  Alvora
+                </text>
+              </svg>
             </Link>
           </li>
 
@@ -211,23 +211,26 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
           <div className="header-wallet-block">
             <li>
               <Link href="/profiles?filter=myCart" className="header-wallet">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="26" viewBox="0 0 24 24" class="products__basket">
-              <path fill="currentColor" d="M14.692 5.694c.368-.205.365-.469-.009-.664C13.367 4.343 12.708 4 12 4s-1.367.343-2.683 1.03l-2 1.044c-1.614.842-2.42 1.263-2.869 2.02C4 8.85 4 9.79 4 11.673v1.652c0 1.883 0 2.824.448 3.58s1.255 1.178 2.869 2.02l2 1.044C10.633 20.657 11.292 21 12 21s1.367-.343 2.683-1.03l2-1.044c1.614-.842 2.42-1.263 2.869-2.02.448-.756.448-1.697.448-3.58v-1.652c0-1.883 0-2.824-.448-3.58-.329-.556-.851-.93-1.744-1.423-.367-.203-.389-.204-.763.004L11 10c-.344.19-.739.394-.91.77-.09.197-.09.375-.09.73V14a1 1 0 0 1-2 0v-4a1 1 0 0 1 .514-.874z"></path>
-              </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="26" viewBox="0 0 24 24" class="products__basket">
+                  <path fill="currentColor" d="M14.692 5.694c.368-.205.365-.469-.009-.664C13.367 4.343 12.708 4 12 4s-1.367.343-2.683 1.03l-2 1.044c-1.614.842-2.42 1.263-2.869 2.02C4 8.85 4 9.79 4 11.673v1.652c0 1.883 0 2.824.448 3.58s1.255 1.178 2.869 2.02l2 1.044C10.633 20.657 11.292 21 12 21s1.367-.343 2.683-1.03l2-1.044c1.614-.842 2.42-1.263 2.869-2.02.448-.756.448-1.697.448-3.58v-1.652c0-1.883 0-2.824-.448-3.58-.329-.556-.851-.93-1.744-1.423-.367-.203-.389-.204-.763.004L11 10c-.344.19-.739.394-.91.77-.09.197-.09.375-.09.73V14a1 1 0 0 1-2 0v-4a1 1 0 0 1 .514-.874z"></path>
+                </svg>
                 <p>Заказы</p>
-              </Link>
+              </Link> 
             </li>
             <li>
-              <Link href="/profiles?filter=myCart" className="header-wallet">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="products__basket"><path fill="currentColor" d="M9.925 5.371a1 1 0 1 0-1.858-.742L6.317 9h-1.2c-1.076 0-1.614 0-1.913.346-.3.346-.222.878-.067 1.942l.271 1.864c.475 3.265.902 4.898 2.03 5.873s2.778.975 6.08.975h.96c3.302 0 4.953 0 6.08-.975 1.128-.975 1.559-2.608 2.034-5.873l.271-1.864c.155-1.064.233-1.596-.067-1.942S19.96 9 18.883 9h-1.205l-1.75-4.371a1 1 0 0 0-1.857.742L15.523 9h-7.05zM10.997 14v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 2 0M14 13a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1"></path></svg>
-                <p>Профиль</p>
+              <Link href="/cart" className="header-wallet">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="products__basket"><path fill="currentColor" d="M9.925 5.371a1 1 0 1 0-1.858-.742L6.317 9h-1.2c-1.076 0-1.614 0-1.913.346-.3.346-.222.878-.067 1.942l.271 1.864c.475 3.265.902 4.898 2.03 5.873s2.778.975 6.08.975h.96c3.302 0 4.953 0 6.08-.975 1.128-.975 1.559-2.608 2.034-5.873l.271-1.864c.155-1.064.233-1.596-.067-1.942S19.96 9 18.883 9h-1.205l-1.75-4.371a1 1 0 0 0-1.857.742L15.523 9h-7.05zM10.997 14v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 2 0M14 13a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1"></path></svg>
+                <p>Корзина</p>
               </Link>
             </li>
 
             <li className="wallet-btnRelative">
               <div className="wallet-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M3 10.163C3 7.262 5.13 5 8 5c1.929 0 3.244 1.102 4 2.066C12.756 6.102 14.071 5 16 5c2.87 0 5 2.264 5 5.163 0 4.561-4.568 7.856-8.243 9.66a1.71 1.71 0 0 1-1.514 0C7.568 18.02 3 14.724 3 10.163"></path></svg>
-                <p>Избранное</p>
+                <Link href="/favorites" className="header-wallet">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M3 10.163C3 7.262 5.13 5 8 5c1.929 0 3.244 1.102 4 2.066C12.756 6.102 14.071 5 16 5c2.87 0 5 2.264 5 5.163 0 4.561-4.568 7.856-8.243 9.66a1.71 1.71 0 0 1-1.514 0C7.568 18.02 3 14.724 3 10.163"></path></svg>
+                  <p>Избранное</p>
+                </Link>
+
               </div>
 
 

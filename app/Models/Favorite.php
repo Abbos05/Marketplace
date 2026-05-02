@@ -1,37 +1,26 @@
 <?php
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Favorite extends Model
 {
     use HasFactory;
 
-    /**
-     * Массив заполняемых полей
-     * @var array
-     */
-    protected $fillable = [
-        'user_id',
-        'nft_id'
-    ];
-        /**
-     * Отношение к пользователю
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
+    protected $table = 'favorites';
+
+    protected $fillable = ['user_id', 'product_id', 'created_at', 'updated_at'];
+    public $timestamps = false; // потому что created_at только с useCurrent, updated_at нет
+
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    /**
-     * Отношение к NFT
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function nft()
+    public function product()
     {
-        return $this->belongsTo(Nft::class);
+        return $this->belongsTo(Product::class, 'product_id');
     }
 }

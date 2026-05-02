@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
-use App\Models\Nft;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -28,10 +28,10 @@ class StripePaymentController extends Controller
             'mode' => 'payment',
 
             // StripePaymentController.php
-            'success_url' => route('nft.show', ['nft' => $request->nft_id]) . '?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url' => route('nft.show', ['nft' => $request->nft_id]),
+            'success_url' => route('nft.show', ['nft' => $request->product_id]) . '?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => route('nft.show', ['nft' => $request->product_id]),
             'metadata' => [
-                'nft_id' => $request->nft_id,
+                'product_id' => $request->product_id,
             ],
         ]);
 
@@ -40,27 +40,27 @@ class StripePaymentController extends Controller
 
     public function wallet(Request $request)
     {
-        $nft = Nft::findOrFail($request->nft_id);
+        $product = Product::findOrFail($request->product_id);
         $user = auth()->user();
-        $seller = $nft->user;
-        if ($user->balance < $nft->price) {
+        $seller = $product->user;
+        if ($user->balance < $product->price) {
             return back()->with('error', 'Недостаточно средств');
         }
 
         // Списываем
 
-        $user->decrement('balance', $nft->price);
-        $seller->increment('balance', $nft->price);
+        $user->decrement('balance', $product->price);
+        $seller->increment('balance', $product->price);
         \App\Models\Transaction::create([
-            'nft_id'    => $nft->id,
-            'amount'    => $nft->price,
+            'product_id'    => $product->id,
+            'amount'    => $product->price,
             'buyer_id'  => auth()->id(),           // ← КТО КУПИЛ
-            'seller_id' => $nft->user_id,          // ← КТО ПРОДАЛ
+            'seller_id' => $product->user_id,          // ← КТО ПРОДАЛ
             'status'    => 'completed',
 
         ]);
 
-        $nft->update([
+        $product->update([
             'status' => 'sold',
             'user_id' => $user->id,
         ]);

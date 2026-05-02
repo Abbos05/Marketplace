@@ -40,7 +40,7 @@ export default function PaymentModal({ isOpen, onClose, nft, user }) {
 
         try {
             const res = await axios.post('/api/payment/wallet', {
-                nft_id: nft.id,
+                product_id: nft.id,
             });
             setMessage('Оплата прошла успешно!');
             setStep('success');

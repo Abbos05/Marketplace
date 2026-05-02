@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import '../../../css/product/ShopPage.css';
-import ProductsCatalog from '@/Components/Product/ProductsCatalog';
+import ProductsCatalog from '@/Components/Product/FilterProducts';
 
 export default function Seller({ auth }) {
 
@@ -25,7 +25,7 @@ export default function Seller({ auth }) {
                         {/* Блок с аватаром */}
                         <div className="seller__avatar">
                             {seller?.img ? (
-                                <img src={products?.img || "/img/nft/default.jpg"} onClick={() => { window.open(products?.img || "/img/nft/default.jpg", "_blank"); }} alt={`${seller.name}'s avatar`} className="seller__avatar-img" />
+                                <img src={products?.img || "/img/products/default.jpg"} onClick={() => { window.open(products?.img || "/img/products/default.jpg", "_blank"); }} alt={`${seller.name}'s avatar`} className="seller__avatar-img" />
                             ) : (
                                 <div className="seller__avatar-placeholder">
                                     <span>{seller?.name?.charAt(0) || 'A'}</span>
@@ -89,7 +89,7 @@ export default function Seller({ auth }) {
                     filters={filters || {}}
                 />
                 {displayCount < products.length && (
-                    <button className="showMore__btn" onClick={showMore}>Показать еще</button>
+                    <button className="showMore__btn showMore__btn--active" onClick={showMore}>Показать еще</button>
                 )}
             </div>
         </MainLayout >

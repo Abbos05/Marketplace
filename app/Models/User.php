@@ -14,7 +14,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes; 
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -22,16 +22,15 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
         'email',
+        'phone',
         'password',
+        'name',
         'role',
         'avatar',
-        'description',
-        'phone',
+        'is_active',
         'newPassw',
-        'is_blocked',
-        'balance',
+        'email_verified_at',
     ];
 
     /**
@@ -62,6 +61,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
+            'newPassw' => 'boolean',
         ];
     }
     public function getRememberTokenName()
@@ -69,17 +70,102 @@ class User extends Authenticatable
         return 'remember_token';
     }
 
-    public function cart()
+   public function sellerProfile()
     {
-        return $this->hasMany(Cart::class);
+        return $this->hasOne(SellerProfile::class, 'user_id');
     }
 
-    public function nfts()
+    public function products()
     {
-        return $this->belongsToMany(Nft::class, 'cart', 'user_id', 'nft_id');
+        return $this->hasMany(Product::class, 'seller_id');
     }
+
     public function favorites()
-{
-    return $this->belongsToMany(Nft::class, 'favorites', 'user_id', 'nft_id');
-}
+    {
+        return $this->belongsToMany(Product::class, 'favorites', 'user_id', 'product_id')
+                    ->withTimestamps();
+    }
+
+    public function cartItems()
+    {
+        return $this->hasMany(Cart::class, 'user_id');
+    }
+
+    // Заказы, где пользователь – покупатель
+    public function ordersAsBuyer()
+    {
+        return $this->hasMany(Order::class, 'buyer_id');
+    }
+
+    // Позиции заказов, где пользователь – продавец
+    public function orderItemsAsSeller()
+    {
+        return $this->hasMany(OrderItem::class, 'seller_id');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'user_id');
+    }
+
+    public function sellerReviewsGiven()
+    {
+        return $this->hasMany(SellerReview::class, 'user_id');
+    }
+
+    public function sellerReviewsReceived()
+    {
+        return $this->hasMany(SellerReview::class, 'seller_id');
+    }
+
+    public function conversationsAsBuyer()
+    {
+        return $this->hasMany(Conversation::class, 'buyer_id');
+    }
+
+    public function conversationsAsSeller()
+    {
+        return $this->hasMany(Conversation::class, 'seller_id');
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function promocodeUsages()
+    {
+        return $this->hasMany(PromocodeUsage::class, 'user_id');
+    }
+
+    public function transactionsAsBuyer()
+    {
+        return $this->hasMany(Transaction::class, 'buyer_id');
+    }
+
+    public function transactionsAsSeller()
+    {
+        return $this->hasMany(Transaction::class, 'seller_id');
+    }
+
+    // Хелперы ролей
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isModerator()
+    {
+        return $this->role === 'moderator';
+    }
+
+    public function isSeller()
+    {
+        return $this->role === 'seller';
+    }
+
+    public function isUser()
+    {
+        return $this->role === 'user';
+    }
 }

@@ -8,7 +8,7 @@ use Inertia\Inertia;
 use App\Models\UserSession;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use App\Models\Nft;
+use App\Models\Product;
 
 class AdminController extends Controller
 {
@@ -37,7 +37,7 @@ class AdminController extends Controller
             ) DESC')
             ->orderBy('is_blocked', 'asc');
         $usersData = $query->get()->map(function ($user) {
-            $userNfts = Nft::where('user_id', $user->id)->get();
+            $userNfts = Product::where('user_id', $user->id)->get();
             return [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -82,7 +82,7 @@ class AdminController extends Controller
 
     public function showUser(User $user)
     {
-        $myNfts = Nft::where('user_id', $user->id)
+        $myNfts = Product::where('user_id', $user->id)
             ->with(['category', 'user'])
             ->get();
         return Inertia::render('Admin/Show', [
@@ -94,27 +94,27 @@ class AdminController extends Controller
 
     public function nftbuy(Request $request)
     {
-        $nftId = $request->nft['id'];
-        $nft = Nft::where('id', $nftId)->first();
-        $nft->update([
+        $productId = $request->nft['id'];
+        $product = Product::where('id', $productId)->first();
+        $product->update([
             'status' => 'relevant',
         ]);
         return redirect()->back();
     }
     public function nftstop(Request $request)
     {
-        $nftId = $request->nft['id'];
-        $nft = Nft::where('id', $nftId)->first();
-        $nft->update([
+        $productId = $request->nft['id'];
+        $product = Product::where('id', $productId)->first();
+        $product->update([
             'status' => 'rejection',
         ]);
         return redirect()->back();
     }
     public function nftsold(Request $request)
     {
-        $nftId = $request->nft['id'];
-        $nft = Nft::where('id', $nftId)->first();
-        $nft->update([
+        $productId = $request->nft['id'];
+        $product = Product::where('id', $productId)->first();
+        $product->update([
             'status' => 'sold',
         ]);
         return redirect()->back();

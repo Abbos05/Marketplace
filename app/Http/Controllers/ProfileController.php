@@ -11,10 +11,11 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Models\User;
-use App\Models\Nft;
+use App\Models\Product;
 use App\Models\Category;
 use App\Models\Favorite;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class ProfileController extends Controller
@@ -22,7 +23,7 @@ class ProfileController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $myNfts = Nft::where('user_id', $user->id)->where('status', 'relevant')
+        $myNfts = Product::where('user_id', $user->id)->where('is_on_action', 1)
             ->with(['category', 'user'])
             ->get();
         return Inertia::render('Profile/Index', [
@@ -38,13 +39,13 @@ class ProfileController extends Controller
 
         $myNfts = collect(); // по умолчанию — пустая коллекция
         $user = Auth::user();
-        $myNfts = Nft::where('user_id', $user->id)->where('status', 'relevant')
+        $myNfts = Product::where('user_id', $user->id)->where('is_on_action', 1)
             ->with(['category', 'user']) // добавляем загрузку пользователя
             ->get();
 
         // Правильно проверяем параметр запроса
         if ($request->filter == "myNfts") {
-            $myNfts = Nft::where('user_id', $user->id)
+            $myNfts = Product::where('user_id', $user->id)
                 ->with(['category', 'user'])
                 ->orderByRaw("FIELD(status, 'sold', 'relevant', 'moderation', 'rejection')")
                 ->orderBy('created_at', 'desc')
@@ -61,17 +62,17 @@ class ProfileController extends Controller
                     $isBuyer = $tx->buyer_id == $user->id;
                     $counterparty = $isBuyer ? $tx->seller : $tx->buyer;
                     return [
-                        'id'         => $tx->id,
-                        'type'       => $tx->buyer_id == $user->id ? 'buy' : 'sell',
-                        'nft'        => $tx->nft,
+                        'id' => $tx->id,
+                        'type' => $tx->buyer_id == $user->id ? 'buy' : 'sell',
+                        'nft' => $tx->nft,
                         'status' => $tx->status == 'failed' ? 'Неуспешно' : ($tx->status == 'completed' ? 'Успешно' : 'в процессе'),
-                        'price'      => $tx->amount,
+                        'price' => $tx->amount,
                         'created_at' => $tx->created_at,
                         'counterparty' => [
-                            'id'       => $counterparty?->id,
-                            'name'     => $counterparty?->name,
-                            'avatar'   => $counterparty?->avatar,
-                            'trashed'  => $counterparty?->trashed(), // <-- Добавляем флаг
+                            'id' => $counterparty?->id,
+                            'name' => $counterparty?->name,
+                            'avatar' => $counterparty?->avatar,
+                            'trashed' => $counterparty?->trashed(), // <-- Добавляем флаг
                         ],
                     ];
                 });
@@ -79,20 +80,20 @@ class ProfileController extends Controller
             $myNfts = $transactions; // ← Передаём как nfts
         }
         if ($request->filter == "myCheck") {
-            $myNfts = Nft::where('user_id', $user->id)->where('status', 'moderation')
+            $myNfts = Product::where('user_id', $user->id)->where('status', 'moderation')
                 ->with(['category', 'user'])
                 ->get();
         }
         if ($request->filter == "myFavorites") {
 
-            $myNfts = Nft::whereHas('favoritedBy', function ($query) use ($user) {
+            $myNfts = Product::whereHas('favorites', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })
                 ->with(['category', 'user'])
                 ->get();
         }
         if ($request->filter == "myCart") {
-            $myNfts = Nft::whereHas('carts', function ($query) use ($user) {
+            $myNfts = Product::whereHas('carts', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })
                 ->with(['category', 'user'])
@@ -101,12 +102,61 @@ class ProfileController extends Controller
 
         // dd($myNfts);
         return Inertia::render('Profile/Index', [
-            'auth'       => ['user' => $user],
+            'auth' => ['user' => $user],
             'categories' => Category::all(),
-            'nfts'       => $myNfts->toArray(),   // ← массив, а не коллекция
+            'nfts' => $myNfts->toArray(),   // ← массив, а не коллекция
             'activeFilter' => $request->filter ?? null,
         ]);
     }
+
+
+    public function favorites()
+    {
+        $user = Auth::user();
+
+        $myFavorites = Product::select('products.*')
+            ->join('favorites', 'products.id', '=', 'favorites.product_id')
+            ->where('favorites.user_id', $user->id)
+            ->with(['category', 'seller'])
+            ->orderBy('favorites.created_at', 'desc')
+            ->get();
+
+        $myFavorites->each(fn($p) => $p->is_favorite = true);
+
+
+        $products = Product::all();
+        $LikeProducts = Product::with('user')
+            ->get();
+        if (auth()->check()) {
+            $userId = auth()->id();
+            $favoriteProductIds = DB::table('favorites')
+                ->where('user_id', $userId)
+                ->whereNotNull('product_id')
+                ->pluck('product_id')
+                ->toArray();
+
+            // Добавляем is_favorite для основных товаров
+            $products->each(function ($product) use ($favoriteProductIds) {
+                $product->is_favorite = in_array($product->id, $favoriteProductIds);
+            });
+
+            // Добавляем is_favorite для рекомендуемых товаров
+            $LikeProducts->each(function ($product) use ($favoriteProductIds) {
+                $product->is_favorite = in_array($product->id, $favoriteProductIds);
+            });
+        } else {
+            // Если пользователь не авторизован, то все товары не в избранном
+            $products->each(fn($product) => $product->is_favorite = false);
+            $LikeProducts->each(fn($product) => $product->is_favorite = false);
+        }
+        return Inertia::render('Profile/Favorite', [
+            'auth' => ['user' => $user],
+            'product' => $myFavorites,
+            'LikeProducts' => $LikeProducts,
+        ]);
+    }
+
+
 
     public function edit(Request $request)
     {
@@ -156,20 +206,20 @@ class ProfileController extends Controller
             'name.required' => 'Имя обязательно для заполнения.',
             'name.string' => 'Имя должно быть текстом.',
             'name.max' => 'Имя не должно превышать 50 символов.',
-        
+
             'email.required' => 'Email обязателен для заполнения.',
             'email.email' => 'Введите корректный адрес электронной почты.',
             'email.max' => 'Email не должен превышать 255 символов.',
             'email.unique' => 'Пользователь с таким email уже существует.',
-        
+
             'description.string' => 'Описание должно быть текстом.',
             'description.max' => 'Описание не должно превышать 500 символов.',
-        
+
             'avatar.image' => 'Аватар должен быть изображением.',
             'avatar.max' => 'Размер аватара не должен превышать 2 МБ.',
-        
+
             'current_password.string' => 'Текущий пароль должен быть текстом.',
-        
+
             'password.string' => 'Новый пароль должен быть текстом.',
             'password.min' => 'Новый пароль должен содержать минимум 4 символа.',
             'password.confirmed' => 'Подтверждение нового пароля не совпадает.',

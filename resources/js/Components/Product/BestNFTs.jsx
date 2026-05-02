@@ -3,9 +3,9 @@ import React from 'react';
 import '../../../css/product/BestNFTs.css';
 import { router } from '@inertiajs/react';
 
-const BestNFTs = ({ nftsData = [] }) => {
+const BestNFTs = ({ product = [] }) => {
   // Если данных нет
-  if (nftsData.length === 0) {
+  if (product.length === 0) {
     return (
       <section className="bestNFT" id='bestNFT'>
         <div className="container">Нет данных о NFT</div>
@@ -20,12 +20,12 @@ const BestNFTs = ({ nftsData = [] }) => {
           Лучшие подборки <span>за 24 часа</span>
         </h2>
         <div className="bestNFT_block">
-          {nftsData.map((nft, index) => (
+          {product.map((nft, index) => (
             <div key={nft.id} className="bestNFT_item" onClick={() => router.visit(`/nft/${nft.id}`)}>
               <div className="bestNFT_item_left">
                 <span>{index + 1}</span>
                 <div className="bestNFT_img_block">
-                  <img src={nft.image ?? '/img/nft/default.jpg'} alt={nft.title} />
+                  <img src={nft.image ?? '/img/products/default.jpg'} alt={nft.title} />
                   <img src="/img/profiles/check.png" alt="check" />
                 </div>
                 <div className="bestNFT_title">

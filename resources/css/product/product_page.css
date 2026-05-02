@@ -1,4 +1,7 @@
 /* product */
+.product-page{
+  margin-top: 10px;
+}
 .product-page button:active {
   opacity: 0.8;
 }
@@ -303,6 +306,12 @@
   margin-bottom: 12px;
 }
 
+.product-page__cart-btn{
+  display: flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: center;
+}
 .product-page__cart-btn,
 .product-page__seller-profile {
   padding: 9px 16px;
@@ -321,6 +330,7 @@
 .product-page__seller-profile:hover {
   background: #003ba9;
 }
+
 
 
 .product-page__wishlist-btn,

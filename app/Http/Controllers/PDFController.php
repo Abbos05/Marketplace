@@ -21,7 +21,7 @@ class PDFController extends Controller
         $data = [
             'type' => $status,
             'nft_title' => $tx->nft->title ?? 'Неизвестно',
-            'nft_id' => $tx->nft->id,
+            'product_id' => $tx->nft->id,
             'buyer' => $buyerName, // <-- Используем обработанное имя
             'seller' => $sellerName, // <-- Используем обработанное имя
             'price' => $tx->nft->price ?? 'Не указано',

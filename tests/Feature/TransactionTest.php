@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use App\Models\User;
-use App\Models\Nft;
+use App\Models\Product;
 use App\Models\Transaction;
 
 class TransactionTest extends TestCase
@@ -17,7 +17,7 @@ class TransactionTest extends TestCase
         $buyer = User::factory()->create(['role' => 'user', 'balance' => 1000]);
         $seller = User::factory()->create(['role' => 'user', 'balance' => 500]);
         
-        $nft = Nft::factory()->create([
+        $product = Product::factory()->create([
             'status' => 'relevant',
             'price' => 100,
             'user_id' => $seller->id
@@ -25,7 +25,7 @@ class TransactionTest extends TestCase
 
         $response = $this->actingAs($buyer)
             ->post('/payment/wallet', [
-                'nft_id' => $nft->id
+                'product_id' => $product->id
             ]);
 
         $response->assertStatus(302);
@@ -33,8 +33,8 @@ class TransactionTest extends TestCase
         $this->assertDatabaseHas('transactions', [
             'buyer_id' => $buyer->id,
             'seller_id' => $seller->id,
-            'nft_id' => $nft->id,
-            'amount' => $nft->price,
+            'product_id' => $product->id,
+            'amount' => $product->price,
             'status' => 'completed'
         ]);
 
@@ -49,7 +49,7 @@ class TransactionTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('nfts', [
-            'id' => $nft->id,
+            'id' => $product->id,
             'status' => 'sold'
         ]);
     }
@@ -59,7 +59,7 @@ class TransactionTest extends TestCase
         $buyer = User::factory()->create(['role' => 'user', 'balance' => 50]);
         $seller = User::factory()->create(['role' => 'user']);
         
-        $nft = Nft::factory()->create([
+        $product = Product::factory()->create([
             'status' => 'relevant',
             'price' => 100,
             'user_id' => $seller->id
@@ -67,14 +67,14 @@ class TransactionTest extends TestCase
 
         $response = $this->actingAs($buyer)
             ->post('/payment/wallet', [
-                'nft_id' => $nft->id
+                'product_id' => $product->id
             ]);
 
         $response->assertStatus(302);
 
         $this->assertDatabaseMissing('transactions', [
             'buyer_id' => $buyer->id,
-            'nft_id' => $nft->id
+            'product_id' => $product->id
         ]);
     }
 }

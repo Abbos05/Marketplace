@@ -1,14 +1,15 @@
 /* ========== ОСНОВНЫЕ СТИЛИ ========== */
 .category-page {
     width: 100%;
-    min-height: 60vh;
+    min-height: 20vh;
 }
-
+ 
 
 
 /* ========== ВЕРХНЯЯ СЕКЦИЯ КАТЕГОРИИ ========== */
 .category-header {
-    margin-bottom: 20px;
+    margin: 10px 0;
+    justify-content: space-between;
 }
 
 .category-header__nav-btn {
@@ -248,6 +249,7 @@
 }
 
 
+/* 
 .showMore__btn {
     max-width: 100%;
     width: max-content;
@@ -267,16 +269,18 @@
     border: none;
     outline: none;
     cursor: pointer;
+    transform:none;
+}
+.showMore__btn--active {
     transform: translate(141px);
 }
-
 .showMore__btn:active {
     opacity: 0.7;
 }
 
 .showMore__btn:hover {
     background: #003cac;
-}
+} */
 
 /* ========== АДАПТИВ ========== */
 @media (max-width: 1024px) {

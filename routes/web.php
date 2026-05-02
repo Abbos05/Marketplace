@@ -3,10 +3,11 @@
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\NftController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\SellerController;
 use App\Http\Middleware\CheckRole;
@@ -21,11 +22,11 @@ Route::get('/category', [HomeController::class, 'category'])->name('category');
 Route::get('/logout', [HomeController::class, 'index'])->name('home');
 Route::get('/category/{id}', [CategoryController::class, 'show'])->name('category.show');
 Route::middleware('auth')->group(function () {
-    Route::post('/nft/{nft}/stop', [NftController::class, 'stopSelling'])->name('nft.stop');
-    Route::resource('nft', NftController::class);
+    Route::post('/product/{product}/stop', [ProductController::class, 'stopSelling'])->name('product.stop');
+    Route::resource('product', ProductController::class);
 });
-Route::get('/nft/{nft}', [NftController::class, 'show'])->name('nft.show');
-Route::get('/product/{nft}', [NftController::class, 'show'])->name('nft.show');
+Route::get('/product/{product}', [ProductController::class, 'show'])->name('product.show');
+Route::get('/product/{product}', [ProductController::class, 'show'])->name('product.show');
 
 // о нас
 Route::get('/about', function () {
@@ -45,12 +46,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return redirect()->back();
     })->middleware(['throttle:60,1']);
 
-    Route::post('/carts', [NftController::class, 'Cartstore'])->name('cart.store');
-    Route::delete('/carts', [NftController::class, 'CartDestroy'])->name('cart.destroy');
-    Route::delete('/nft/{id}', [NftController::class, 'destroy'])->name('nft.destroy');
+  
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/update/{id}', [CartController::class, 'update'])->name('cart.update');
+    Route::delete('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
+    Route::post('/order/create', [CartController::class, 'create'])->name('order.create');
+     Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.destroy');
+});
+    // Корзина
+
     // Избранное
-    Route::post('/favorites/{nft}', [HomeController::class, 'favorites'])
+    Route::post('/favorites/{product}', [HomeController::class, 'favorites'])
         ->name('favorites.toggle');
+    Route::get('/favorites', [ProfileController::class, 'favorites'])
+        ->name('favorites.index');
 
     Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
     Route::get('/checkout/cancel', function () {

@@ -1,6 +1,7 @@
 /* resources/css/MainLayout.css */
 
 /* Общие стили для layout */
+
 .main-layout {
   display: flex;
   flex-direction: column;
@@ -610,7 +611,7 @@ padding: 2px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: center;
-  color: #fff;
+  color: #000;
 }
 
 .footer-link-category a {

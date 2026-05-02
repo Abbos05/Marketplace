@@ -1,4 +1,5 @@
 /* TopNFT */
+
 .products {
   margin: 0 auto;
   width: 100%;
@@ -66,10 +67,50 @@
 }
 
 .products__image-wrapper svg:hover {
-
-  filter: brightness(0%);
+cursor: pointer;
 }
 
+.noActive {
+  cursor: pointer;
+}
+
+.noActive svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.noActive path {
+  fill: transparent;
+  stroke: red;
+  stroke-width: 2px;
+}
+
+/* Навешиваемся на контейнер, а не на path */
+.noActive:hover path {
+  fill: red;
+}
+.active {
+  cursor: pointer;
+}
+
+.active svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.active path {
+  fill: red;
+  stroke: red;
+  stroke-width: 2px;
+}
+
+/* Навешиваемся на контейнер, а не на path */
+.active:hover path {
+  fill: rgb(183, 0, 0);
+  stroke: rgb(183, 0, 0);
+}
 .product__img-stock {
   position: absolute;
   bottom: 5%;
@@ -543,8 +584,41 @@
   color: #848a9c;
 }
 
-/* ==== TOP NFT + ОБЫЧНЫЕ NFT — ПОЛНОСТЬЮ АДАПТИВНО И БЕЗ СКРОЛЛА НА МОБИЛКАХ ==== */
 
+
+
+
+.showMore__btn {
+    max-width: 100%;
+    width: max-content;
+    padding: 10px 40px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto;
+
+    border-radius: 10px;
+    background: var(--background);
+    font-family: var(--font-family);
+    font-weight: 500;
+    font-size: 18px;
+    color: #fff;
+    text-align: center;
+    transition: var(--trans-3);
+    border: none;
+    outline: none;
+    cursor: pointer;
+    transform:none;
+}
+.showMore__btn--active {
+    transform: translate(141px);
+}
+.showMore__btn:active {
+    opacity: 0.7;
+}
+
+.showMore__btn:hover {
+    background: #003cac;
+}
 /* ==== АДАПТИВНОСТЬ ==== */
 @media (max-width: 480px) {
 

@@ -2,9 +2,9 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -15,21 +15,21 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 25);
-            $table->string('email', 255)->unique();
+            $table->string('email', 100)->unique();
+            $table->string('phone', 20)->unique()->nullable();
             $table->string('password', 255);
-            $table->enum('role', ['user', 'admin'])->default('user');
-            $table->text('description')->nullable(); // 175 символов
+            $table->string('name', 80);
+            // Исправлено: default значение теперь есть в списке ENUM
+            $table->enum('role', ['user', 'seller', 'admin', 'moderator'])->default('user');
             $table->string('avatar', 255)->nullable();
-            $table->decimal('balance', 12, 2)->default(0);
-            $table->string('phone', 15)->nullable(); 
+            $table->boolean('is_active')->default(true);
             $table->boolean('newPassw')->default(false);
-            $table->boolean('is_blocked')->default(false);
-            $table->timestamp('created_at')->useCurrent();
-            $table->timestamp('updated_at')->nullable();
-            $table->timestamp('deleted_at')->nullable();
             $table->timestamp('email_verified_at')->nullable();
-            $table->rememberToken(); 
+            $table->softDeletes();
+            $table->timestamps();
+
+            $table->index('role');
+            $table->index('deleted_at');
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
@@ -46,39 +46,46 @@ return new class extends Migration
             $table->longText('payload');
             $table->integer('last_activity')->index();
         });
+
+        // Исправлены поля и данные для вставки
         DB::table('users')->insert([
-            'id' => '1',
-            'name' => 'Администратор',
+            'id' => 1,
             'email' => 'admin@gmail.com',
             'password' => Hash::make('admin'),
+            'name' => 'Администратор',
             'role' => 'admin',
-            'balance' => 0,
-            'phone' => 79959460905,
-            'description' => 'Taken Lorem Ipsum to the next level with our HTML-Ipsum tool. As you can see, this Lorem Ipsum is tailor-made for websites and other online projects that are based in HTML. Most web design projects use Lorem Ipsum excerpts to begin with, but you always have to spend an annoying extra minute or two formatting it properly for the web',
+            'phone' => '79959460905',
+            'avatar' => null,
+            'is_active' => true,
+            'newPassw' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
         DB::table('users')->insert([
-            'id' => '2',
-            'name' => 'Пользователь',
+            'id' => 2,
             'email' => 'user@gmail.com',
             'password' => Hash::make('user'),
-            'role' => 'user',
-            'balance' => 100000,
-            'phone' => 79648111105,
-            'description' => 'Taken Lorem Ipsum to the next level with our HTML-Ipsum tool. As you can see, this Lorem Ipsum is tailor-made for websites and other online projects that are based in HTML. Most web design projects use Lorem Ipsum excerpts to begin with, but you always have to spend an annoying extra minute or two formatting it properly for the web',
+            'name' => 'Пользователь',
+            'role' => 'seller',
+            'phone' => '79648111105',
+            'avatar' => null,
+            'is_active' => true,
+            'newPassw' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
         DB::table('users')->insert([
-            'id' => '3',
-            'name' => 'Пользователь Два',
+            'id' => 3,
             'email' => 'user2@gmail.com',
             'password' => Hash::make('user'),
-            'role' => 'user',
-            'balance' => 100000,
-            'phone' => 79999999999,
-            'description' => 'Taken Lorem Ipsum to the next level with our HTML-Ipsum tool. As you can see, this Lorem Ipsum is tailor-made for websites and other online projects that are based in HTML. Most web design projects use Lorem Ipsum excerpts to begin with, but you always have to spend an annoying extra minute or two formatting it properly for the web',
+            'name' => 'Пользователь Два',
+            'role' => 'seller',
+            'phone' => '79999999999',
+            'avatar' => null,
+            'is_active' => true,
+            'newPassw' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -93,5 +100,4 @@ return new class extends Migration
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
     }
-    
 };

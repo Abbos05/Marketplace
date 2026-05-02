@@ -18,7 +18,7 @@
 //   doc.setFont('helvetica', 'normal');
 //   doc.setFontSize(12);
 //   doc.setTextColor(200, 200, 200);
-//   doc.text('AltChain — Official NFT Marketplace', width / 2, 45, { align: 'center' });
+//   doc.text('ALVORA — Official NFT Marketplace', width / 2, 45, { align: 'center' });
 
 //   // === ДАННЫЕ (ЛАТИНИЦА + ЦИФРЫ) ===
 //   const startY = 70;
@@ -59,7 +59,7 @@
 //   doc.line(20, 257, width - 20, 257);
 //   doc.setFontSize(10);
 //   doc.setTextColor(150, 150, 150);
-//   doc.text('© 2025 AltChain', width / 2, 272, { align: 'center' });
+//   doc.text('© 2025 ALVORA', width / 2, 272, { align: 'center' });
 
 //   // === СКАЧАТЬ ===
 //   doc.save(`TX_${tx.id}.pdf`);

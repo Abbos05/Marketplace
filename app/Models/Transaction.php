@@ -9,34 +9,28 @@ class Transaction extends Model
 {
     use HasFactory;
 
+    protected $table = 'transactions';
+
     protected $fillable = [
-        'nft_id',
-        'order_id',
-        'amount',
-        'buyer_id',
-        'seller_id',
-        'status',
+        'buyer_id', 'seller_id', 'product_id', 'amount', 'status',
     ];
 
-
-    public function nft()
-    {
-        return $this->belongsTo(Nft::class);
-    }
+    protected $casts = [
+        'amount' => 'decimal:2',
+    ];
 
     public function buyer()
     {
-        return $this->belongsTo(User::class, 'buyer_id')->withTrashed();
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id')->withTrashed();
+        return $this->belongsTo(User::class, 'buyer_id');
     }
 
     public function seller()
     {
-        return $this->belongsTo(User::class, 'seller_id')->withTrashed();
+        return $this->belongsTo(User::class, 'seller_id');
     }
-    
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id');
+    }
 }

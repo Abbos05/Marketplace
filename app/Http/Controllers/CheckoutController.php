@@ -32,7 +32,7 @@ class CheckoutController extends Controller
             'cancel_url' => route('checkout.cancel', [], true),
             'metadata' => [
                 'user_id' => auth()->id(),
-                'nft_id' => $request->nft_id,
+                'product_id' => $request->product_id,
             ],
         ]);
 

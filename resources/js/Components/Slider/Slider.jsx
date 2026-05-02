@@ -59,7 +59,6 @@ const Slider = () => {
   }
   return (
     <section className="sectionSlider">
-      <div className="container">
         <div className="slider">
           <div className="slider-container" ref={sliderContainerRef}>
             {slidesData.map((slide, index) => (
@@ -95,7 +94,6 @@ const Slider = () => {
             />
           ))}
         </div>
-      </div>
     </section>
   );
 };

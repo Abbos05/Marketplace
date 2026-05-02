@@ -1,5 +1,5 @@
 import React from 'react';
-
+import {Link} from '@inertiajs/react';
 const Footer = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -11,15 +11,22 @@ const Footer = () => {
       <div className="container">
         <div className="footer-block">
           <div className="footer-info">
+            <br />
             <div className="footer-logo">
-              <img src="/img/footer/LogoFooter.png" alt="footer_logo" />
-              <p>AltChain</p>
+              <Link href="/" className="header-logo-name">
+                <svg class="logo" viewBox="0 0 400 100" width="100%" height="100%">
+                  <text x="50%" y="62%" text-anchor="middle" dominant-baseline="middle"
+                    fill="currentColor">
+                    Alvora
+                  </text>
+                </svg>
+              </Link>
             </div>
             <div className="footer-info-item">
               <p className="footer-info-course">Оставайтесь в курсе</p>
               <p className="footer-info-course-info">
-                Подпишитесь на нашу рассылку, чтобы быть в курсе наших новейших выпусков функций, обновлений NFT, а также
-                советов и рекомендаций по навигации в AltChain.
+                Подпишитесь на нашу рассылку, чтобы быть в курсе наших новейших выпусков функций, обновлений товара, а также
+                советов и рекомендаций по навигации в ALVORA.
               </p>
               <form onSubmit={handleSubmit}>
                 <div className="footer-form-course">
@@ -49,7 +56,7 @@ const Footer = () => {
               <div className="footer-link-category-item">
                 <p>Категория</p>
                 <a href={`/category/1`}>NFT Art</a>
-                <a href={`/category/2`}>Sports Memorabilia</a> 
+                <a href={`/category/2`}>Sports Memorabilia</a>
                 <a href={`/category/3`}>Collectibles</a>
                 <a href={`/category/4`}>Digital Photography</a>
                 <a href={`/category/5`}>Domain Names</a>
@@ -82,7 +89,7 @@ const Footer = () => {
         </div>
         <div className="footer-security">
           <div className="footer-security-info">
-            <p>©2025 AltChain Inc</p>
+            <p>©2025 ALVORA Inc</p>
           </div>
           <div className="footer-security-link">
             <a href="#">Политика безопасности</a>

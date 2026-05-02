@@ -60,9 +60,9 @@ const HeaderMenu = ({ setIsModalOpen, setIsLogin }) => {
       <li className="header-menu" ref={menuRef}>
         <div className="header-menu-icon" onClick={() => setIsOpen(!isOpen)}>
           <div className={`wallet-plus ${isOpen ? 'openMenu' : ''} wallet-btn`}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M7.5 14c1.5.005 1.5 1 4.5 1s3-1 4.5-1c1 0 3.5 2.5 3.5 3.5S17.483 21 11.991 21C6.5 21 4 18.5 4 17.5s2.5-3.503 3.5-3.5M12 3C9 3 7 5 7 8s2 5 5 5 5-2 5-5-2-5-5-5"></path></svg>
-                <p>Профиль</p>
-              </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M7.5 14c1.5.005 1.5 1 4.5 1s3-1 4.5-1c1 0 3.5 2.5 3.5 3.5S17.483 21 11.991 21C6.5 21 4 18.5 4 17.5s2.5-3.503 3.5-3.5M12 3C9 3 7 5 7 8s2 5 5 5 5-2 5-5-2-5-5-5"></path></svg>
+            <p>Профиль</p>
+          </div>
 
         </div>
 
@@ -198,9 +198,9 @@ const HeaderMenu = ({ setIsModalOpen, setIsLogin }) => {
       {showTermsModal && (
         <div className="alt-modal-overlay" onClick={() => setShowTermsModal(false)}>
           <div className="alt-modal-terms" onClick={(e) => e.stopPropagation()}>
-           
 
-            <h2 className="alt-modal-title">Правила платформы AltChain</h2>
+
+            <h2 className="alt-modal-title">Правила платформы ALVORA</h2>
 
             <div className="alt-modal-content">
               <p><strong>1.</strong> Запрещается продажа контента, нарушающего авторские права.</p>
@@ -210,7 +210,7 @@ const HeaderMenu = ({ setIsModalOpen, setIsLogin }) => {
               <p><strong>5.</strong> Запрещены любые виды мошенничества и манипуляций ценами.</p>
               <p><strong>6.</strong> Администрация оставляет за собой право блокировки аккаунта при нарушении правил.</p>
               <p className="mt-8 text-yellow-400 font-semibold">
-                Используя AltChain, вы соглашаетесь с данными правилами.
+                Используя ALVORA, вы соглашаетесь с данными правилами.
               </p>
             </div>
 

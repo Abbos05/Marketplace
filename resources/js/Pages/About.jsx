@@ -20,7 +20,7 @@ export default function About() {
           {/* Заголовок */}
           <div className="text-center mb-20">
             <h1 className="text-6xl md:text-8xl font-bold golden-text glow-title">
-              AltChain
+              ALVORA
             </h1>
             <p className="text-2xl md:text-4xl text-yellow-100 mt-6 opacity-90">
               NFT-маркетплейс нового поколения
@@ -33,7 +33,7 @@ export default function About() {
               Мы создаём будущее цифрового искусства
             </h2>
             <p className="text-xl md:text-2xl text-gray-200 leading-relaxed max-w-4xl mx-auto">
-              AltChain — это не просто маркетплейс. Это экосистема, где художники, коллекционеры и инвесторы встречаются в мире премиальных NFT.
+              ALVORA — это не просто маркетплейс. Это экосистема, где художники, коллекционеры и инвесторы встречаются в мире премиальных NFT.
               Низкие комиссии, мгновенные транзакции, полная прозрачность и стиль, от которого невозможно отвести взгляд.
             </p>
           </div>
