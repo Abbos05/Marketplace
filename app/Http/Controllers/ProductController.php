@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cart;
 use App\Models\Category;
+use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Product;
@@ -18,60 +19,75 @@ class ProductController extends Controller
 {
 
     // ProductController.php
-   public function show(Product $product, Request $request)
-{
-    $product->load('user');
-    $user = User::find(Auth::user()->id);
-    
-    if (!$user) {
-        return redirect()->route('login');
-    }
-    
-    // Получаем первый активный вариант товара
-    $variant = $product->variants()
-        ->where('is_active', true)
-        ->first();
-    
-    // Если вариантов нет - создаем базовый вариант
-    if (!$variant) {
-        $variant = $product->variants()->create([
-            'sku' => 'default-' . $product->id,
-            'options' => json_encode(['default' => 'standard']),
-            'price' => $product->min_price,
-            'stock' => 999,
-            'is_active' => true
+    public function show(Product $product, Request $request)
+    {
+        $product->load('user');
+        $user = User::find(Auth::user()->id);
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        // Получаем первый активный вариант товара
+        $variant = $product->variants()
+            ->where('is_active', true)
+            ->first();
+
+        // Если вариантов нет - создаем базовый вариант
+        if (!$variant) {
+            $variant = $product->variants()->create([
+                'sku' => 'default-' . $product->id,
+                'options' => json_encode(['default' => 'standard']),
+                'price' => $product->min_price,
+                'stock' => 999,
+                'is_active' => true
+            ]);
+        }
+
+        // Проверяем в корзине ли этот вариант
+        $inCart = Cart::where('user_id', $user->id)
+            ->where('variant_id', $variant->id)
+            ->exists();
+
+        // Добавляем данные варианта в объект продукта
+        $product->variant_id = $variant->id;
+        $product->variant_price = $variant->price;
+        $product->in_cart = $inCart;
+        $product->is_favorite = $user->favorites()->where('product_id', $product->id)->exists();
+
+        $seller = User::find($product->seller_id);
+
+        // Проверяем, заказывал ли пользователь этот товар
+        $hasOrdered = OrderItem::where('variant_id', $variant->id)
+            ->whereHas('order', function ($query) use ($user) {
+                $query->where('buyer_id', $user->id);
+            })
+            ->exists();
+
+        $existingOrderId = OrderItem::where('variant_id', $variant->id)
+            ->whereHas('order', function ($query) use ($user) {
+                $query->where('buyer_id', $user->id);
+            })
+            ->value('order_id');
+
+        return Inertia::render('Product/Show', [
+            'nftUser' => [
+                'owner_name' => $product->user->name ?? 'Аноним',
+                'owner_avatar' => $product->user->avatar ?? null,
+            ],
+            'product' => $product,
+            'seller' => $seller,
+            'canPayWithWallet' => $user->balance >= $variant->price,
+            'walletBalance' => $user->balance,
+            'auth' => ['user' => $user],
+            'hasOrdered' => $hasOrdered,
+            'existingOrderId' => $existingOrderId,
+            'flash' => [
+                'success' => session('success'),
+                'error' => session('error'),
+            ],
         ]);
     }
-    
-    // Проверяем в корзине ли этот вариант
-    $inCart = \App\Models\Cart::where('user_id', $user->id)
-        ->where('variant_id', $variant->id)
-        ->exists();
-    
-    // Добавляем данные варианта в объект продукта
-    $product->variant_id = $variant->id;
-    $product->variant_price = $variant->price;
-    $product->in_cart = $inCart;
-    $product->is_favorite = $user->favorites()->where('product_id', $product->id)->exists();
-    
-    $seller = User::find($product->seller_id);
-    
-    return Inertia::render('Product/Show', [
-        'nftUser' => [
-            'owner_name' => $product->user->name ?? 'Аноним',
-            'owner_avatar' => $product->user->avatar ?? null,
-        ],
-        'product' => $product,
-        'seller' => $seller,
-        'canPayWithWallet' => $user->balance >= $variant->price, // Используем цену варианта
-        'walletBalance' => $user->balance,
-        'auth' => ['user' => $user],
-        'flash' => [
-            'success' => session('success'),
-            'error' => session('error'),
-        ],
-    ]);
-}
     public function create()
     {
         $user = Auth()->user();
