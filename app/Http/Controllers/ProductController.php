@@ -60,13 +60,15 @@ class ProductController extends Controller
         // Проверяем, заказывал ли пользователь этот товар
         $hasOrdered = OrderItem::where('variant_id', $variant->id)
             ->whereHas('order', function ($query) use ($user) {
-                $query->where('buyer_id', $user->id);
+                $query->where('buyer_id', $user->id)
+                    ->whereIn('status', ['new', 'processing']); // Только активные статусы
             })
             ->exists();
 
         $existingOrderId = OrderItem::where('variant_id', $variant->id)
             ->whereHas('order', function ($query) use ($user) {
-                $query->where('buyer_id', $user->id);
+                $query->where('buyer_id', $user->id)
+                    ->whereIn('status', ['new', 'processing']);
             })
             ->value('order_id');
 

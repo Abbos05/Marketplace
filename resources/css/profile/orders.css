@@ -1,287 +1,161 @@
-/* orders.css */
-
-
-.orders-header h1 {
-    font-size: 32px;
-    margin-bottom: 8px;
+.orders-page {
 }
 
-.orders-header p {
+/* КОД */
+.pickup-code-block {
+    background: #fff;
+    padding: 30px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.pickup-code-title {
+    font-size: 14px;
     color: #666;
-    margin-bottom: 30px;
 }
 
-/* Табы */
+.pickup-code-number {
+    font-size: 36px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.pickup-code-desc {
+    font-size: 13px;
+    color: #999;
+}
+
+/* ТАБЫ */
 .orders-tabs {
     display: flex;
-    gap: 8px;
-    border-bottom: 1px solid #e0e0e0;
-    margin-bottom: 24px;
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
-.orders-tab {
-    padding: 12px 24px;
-    background: none;
+.orders-tabs button {
+    padding: 10px 20px;
     border: none;
-    font-size: 16px;
+    background: #eee;
+    border-radius: 8px;
     cursor: pointer;
-    color: #666;
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
-.orders-tab.active {
-    color: var(--background);
-    font-weight: 600;
+.orders-tabs .active {
+    background: black;
+    color: white;
 }
 
-.orders-tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--background);
-}
-
-.tab-count {
-    background: #f0f0f0;
-    padding: 2px 6px;
-    border-radius: 12px;
-    font-size: 12px;
-    color: #666;
-}
-
-/* Пустое состояние */
+/* ПУСТО */
 .orders-empty {
     text-align: center;
-    padding: 60px 20px;
-    background: #fff;
-    border-radius: 16px;
 }
 
-.orders-empty img {
-    width: 200px;
-    margin-bottom: 24px;
-}
-
-.orders-empty h3 {
-    font-size: 24px;
-    margin-bottom: 8px;
-}
-
-.orders-empty p {
-    color: #666;
-    margin-bottom: 24px;
-}
-
-.orders-empty-btn {
-    background: var(--background);
-    color: white;
-    padding: 12px 32px;
-    border-radius: 8px;
-    text-decoration: none;
-    display: inline-block;
-}
-
-/* Карточка заказа */
+/* КАРТОЧКА */
 .order-card {
     background: white;
     border-radius: 16px;
     margin-bottom: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    overflow: hidden;
+    padding: 16px;
 }
 
-.order-card-header {
+/* HEADER */
+.order-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    background: #fafafa;
-    border-bottom: 1px solid #eee;
+    margin-bottom: 10px;
+    cursor: pointer;
 }
 
 .order-number {
-    font-weight: 600;
-    font-size: 16px;
+    font-weight: bold;
 }
 
 .order-date {
-    font-size: 14px;
-    color: #666;
-    margin-top: 4px;
+    font-size: 12px;
+    color: #777;
 }
 
-.order-info-right {
+.status {
+    font-size: 12px;
+}
+
+/* BODY */
+.order-body {
     display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-/* Статусы */
-.order-status {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.status-new { background: #fff3e0; color: #ff9800; }
-.status-paid { background: #e8f5e9; color: #4caf50; }
-.status-processing { background: #e3f2fd; color: #2196f3; }
-.status-ready { background: #e8f5e9; color: #66bb6a; }
-.status-transit { background: #e3f2fd; color: #42a5f5; }
-.status-pvz { background: #fce4ec; color: #ec407a; }
-.status-issued { background: #e8f5e9; color: #4caf50; }
-.status-canceled { background: #ffebee; color: #f44336; }
-.status-returned { background: #fff3e0; color: #ff9800; }
-
-.order-expand-btn {
-    background: none;
-    border: none;
-    color: var(--background);
-    cursor: pointer;
-    font-size: 14px;
-}
-
-/* Контент карточки */
-.order-card-content {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 20px;
-    gap: 20px;
 }
 
-.order-items-preview {
+/* LEFT */
+.order-left {
     display: flex;
-    gap: 16px;
-    flex: 2;
+    gap: 10px;
 }
 
-.preview-image img {
-    width: 80px;
-    height: 80px;
-    object-fit: cover;
+.order-left img {
+    width: 70px;
+    height: 70px;
     border-radius: 8px;
 }
 
-.preview-title {
-    font-weight: 500;
-    margin-bottom: 8px;
-}
-
-.preview-other {
-    color: #666;
-    font-size: 14px;
-}
-
-.order-total {
+/* RIGHT */
+.order-right {
     text-align: right;
-    min-width: 120px;
 }
 
-.total-label {
-    font-size: 14px;
-    color: #666;
+.price {
+    font-weight: bold;
 }
 
-.total-price {
-    font-size: 20px;
-    font-weight: 600;
-}
-
-.order-actions {
+/* ACTIONS */
+.actions {
     display: flex;
-    gap: 12px;
+    gap: 6px;
+    margin-top: 6px;
 }
 
-.btn-pay, .btn-repeat, .btn-confirm, .btn-cancel {
-    padding: 8px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    border: none;
-}
-
-.btn-pay {
-    background: var(--background);
+.pay {
+    background: black;
     color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
 }
 
-.btn-repeat, .btn-confirm {
-    background: none;
-    border: 1px solid var(--background);
-    color: var(--background);
-}
-
-.btn-cancel {
-    background: none;
+.cancel {
     border: 1px solid #ccc;
-    color: #666;
+    background: none;
+    padding: 6px 12px;
 }
 
-/* Развёрнутая информация */
+.details {
+    border: none;
+    background: none;
+    color: #555;
+}
+
+/* EXPANDED */
 .order-expanded {
-    padding: 20px;
-    background: #fafafa;
+    margin-top: 10px;
     border-top: 1px solid #eee;
-}
-
-.expanded-section {
-    margin-bottom: 20px;
-}
-
-.expanded-section h4 {
-    margin-bottom: 12px;
-    font-size: 16px;
-}
-
-.expanded-items {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    padding-top: 10px;
 }
 
 .expanded-item {
     display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 12px;
-    background: white;
-    border-radius: 8px;
+    justify-content: space-between;
+    margin-bottom: 8px;
 }
 
 .expanded-item img {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 8px;
+    width: 50px;
 }
 
-.expanded-item-info {
-    flex: 2;
-}
-
-.item-title {
-    font-weight: 500;
-    margin-bottom: 4px;
-}
-
-.item-price {
-    font-size: 14px;
-    color: #666;
-}
-
-.item-total {
-    font-weight: 600;
-    min-width: 100px;
-    text-align: right;
+/* TOGGLE */
+.expand-toggle {
+    text-align: center;
+    margin-top: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #555;
 }
