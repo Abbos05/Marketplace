@@ -979,6 +979,7 @@
     cursor: not-allowed;
 }
 
+
 /* === АНИМАЦИИ === */
 @keyframes fadeIn {
     from {
@@ -1004,6 +1005,1026 @@
 
 
 
+
+.profile-page {
+    display: flex;
+    justify-content: space-between;
+    gap: 25px;
+    align-items: flex-start;
+    position: relative;
+}
+
+/* SIDEBAR */
+.profile-sidebar {
+    width: 260px;
+    background-color: rgba(255, 255, 255, 0.772);
+    border-radius: 20px;
+    padding-bottom: 10px;
+    border: 1px solid var(--border);
+    position: sticky;
+top: 120px;
+}
+
+.profile-user {
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    
+}
+
+.profile-user .avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+}
+
+.profile-user .name {
+    margin-top: 10px;
+    font-weight: 600;
+}
+
+.profile-user .edit {
+    margin-top: 10px;
+    color: #FF2E63;
+    cursor: pointer;
+}
+
+.profile-menu {
+    display: flex;
+    flex-direction: column;
+    
+}
+
+.profile-menu div {
+    padding: 15px 20px;
+    cursor: pointer;
+    transition: .4s;
+}
+
+
+.profile-menu div:hover {
+    background: #ff2e6280;
+    color: black;
+
+}
+
+.profile-menu .active {
+        background: #ff2e62d8;
+    color: white;
+}
+
+.profile-menu .danger {
+    color: red;
+}
+
+
+/* CONTENT */
+.profile-content {
+    flex: 1;
+}
+
+.Profile__recommendated{
+    width: max-content !important;
+
+}
+/* PRODUCTS */
+.Profile__recommendated .products__grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 10px;
+}
+
+.product-card {
+    border: 1px solid #eee;
+    padding: 10px;
+    border-radius: 12px;
+    background: white;
+}
+
+.product-card img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+
+/* COMPANY */
+.company-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f6f8ff;
+    padding: 20px;
+    border-radius: 16px;
+}
+
+.company-banner img {
+    width: 120px;
+}
+
+.primary-btn {
+    margin-top: 10px;
+    background: #005bff;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+.company-benefits {
+    margin-top: 20px;
+    display: flex;
+    gap: 20px;
+}
+
+.benefit {
+    background: white;
+    border: 1px solid #eee;
+    padding: 15px;
+    border-radius: 12px;
+    flex: 1;
+    text-align: center;
+}
+
+
+
+.verify-icon {
+    width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.verify {
+    padding: 8px 16px;
+    background: transparent;
+    color: rgb(0, 0, 0);
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.verify:hover {
+       background: #d30135;
+
+}
+
+.alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #4CAF50;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 1000;
+    animation: fadeInOut 3s ease;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateX(100%); }
+    10% { opacity: 1; transform: translateX(0); }
+    90% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(100%); }
+}
+
+/* Баннер верификации */
+.verify-banner {
+    background: linear-gradient(135deg, rgba(255, 101, 0, 0.15) 0%, rgba(255, 46, 99, 0.15) 100%);
+    backdrop-filter: blur(2px);
+    border-radius: 20px;
+    padding: 0;
+    margin-bottom: 40px;
+    border: 1px solid rgba(255, 46, 99, 0.3);
+    box-shadow: 0 8px 20px rgba(255, 46, 99, 0.1);
+}
+
+.verify-banner-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 40px;
+    padding: 30px 40px;
+}
+
+.verify-banner-text {
+    flex: 2;
+}
+
+.verify-banner-text h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #FF2E63;
+    margin-bottom: 12px;
+}
+
+.verify-banner-text p {
+    font-size: 16px;
+    color: #FF2E63;
+    margin-bottom: 16px;
+    font-weight: 500;
+}
+
+.verify-banner-text ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.verify-banner-text ul li {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.verify-banner-text ul li::before {
+    content: "✓";
+    color: #FF2E63;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.verify-banner-button {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.verify-green-btn {
+    background:  #FF2E63;
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(255, 46, 99, 0.3);
+    white-space: nowrap;
+}
+
+.verify-green-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 46, 99, 0.4);
+    background: linear-gradient(135deg, #e65c00 0%, #e62e5c 100%);
+}
+
+.verify-green-btn:active {
+    transform: translateY(0);
+}
+
+/* Orders Section */
+
+
+.orders-section h2 {
+  margin-bottom: 24px;
+  font-size: 24px;
+  color: #333;
+}
+
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.orders-list .order-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid var(--border);
+}
+
+.orders-list .order-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.order-info {
+  display: flex;
+  gap: 16px;
+  flex: 2;
+}
+
+.order-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.order-details {
+  flex: 1;
+}
+
+.order-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.order-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: #FF2E63;
+  margin-bottom: 6px;
+}
+
+.order-status-text {
+  font-size: 14px;
+  color: #666;
+}
+
+.order-actions {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+.qr-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.qr-modal-content {
+  background: white;
+  border-radius: 24px;
+  padding: 24px;
+  max-width: max-content;
+  width: 90%;
+  text-align: center;
+}
+
+.qr-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.pickup-code-text {
+  font-size: 18px;
+  font-weight: bold;
+  color: #FF2E63;
+  margin-top: 16px;
+}
+
+.pickup-instruction {
+  font-size: 14px;
+  color: #666;
+  margin-top: 8px;
+}
+.shipping-status,
+.pending-status,
+.completed-status {
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 12px;
+}
+
+.shipping-status {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.pending-status {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.completed-status {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.all-orders-btn-container {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.all-orders-btn {
+  display: inline-block;
+  padding: 12px 24px;
+  background: #f5f5f5;
+  color: #FF2E63;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: 1px solid #FF2E63;
+}
+
+.all-orders-btn:hover {
+  background: #FF2E63;
+  color: white;
+}
+
+.empty-orders {
+  text-align: center;
+  padding: 60px 20px;
+  background: #fafafa;
+  border-radius: 16px;
+}
+
+.shop-now-btn {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 12px 24px;
+  background: #FF2E63;
+  color: white;
+  border-radius: 12px;
+  text-decoration: none;
+}
+
+.order-status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 8px;
+}
+
+.status-ready {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-shipping {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-pending {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.status-completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.order-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: #FF2E63;
+  margin: 5px 0;
+}
+
+/* Стили для компании */
+.company-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.company-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.company-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.company-modal-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.company-modal-body {
+  padding: 24px;
+}
+
+.form-step {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.inn-input-group label {
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.inn-input-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.inn-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 8px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.company-benefits-mini {
+  display: flex;
+  justify-content: space-around;
+  padding: 16px 24px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4b5563;
+}
+/* Страница компаний */
+.company-page {
+    margin: 0 auto;
+    padding: 20px 0;
+}
+
+/* Пустое состояние */
+.company-empty-state {
+    text-align: center;
+    padding: 60px 40px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.empty-state-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+}
+
+.company-empty-state h2 {
+    font-size: 24px;
+    margin-bottom: 12px;
+    color: #1a1a1a;
+}
+
+.company-empty-state p {
+    color: #666;
+    margin-bottom: 32px;
+}
+
+.add-company-btn {
+    background: #00a3e0;
+    color: white;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.add-company-btn:hover {
+    background: #0088b8;
+}
+
+/* Преимущества */
+.company-benefits {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 60px;
+    padding-top: 40px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.benefit-item {
+    text-align: center;
+    max-width: 200px;
+}
+
+.benefit-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+}
+
+.benefit-item h4 {
+    font-size: 16px;
+    margin-bottom: 8px;
+    color: #1a1a1a;
+}
+
+.benefit-item p {
+    font-size: 13px;
+    color: #666;
+}
+
+/* Форма компании */
+.company-form-container {
+    background: #fff;
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+}
+
+.form-header h2 {
+    font-size: 24px;
+    color: #1a1a1a;
+}
+
+.back-btn {
+    background: none;
+    border: none;
+    color: #00a3e0;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.company-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: #1a1a1a;
+}
+
+.required {
+    color: #e74c3c;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 15px;
+    transition: border 0.3s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #00a3e0;
+    box-shadow: 0 0 0 3px rgba(0,163,224,0.1);
+}
+
+.form-group input.error {
+    border-color: #e74c3c;
+}
+
+.error-text {
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 4px;
+    display: block;
+}
+
+.hint {
+    color: #888;
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+/* Часы работы */
+.working-hours-grid {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.working-hour-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.working-hour-row:last-child {
+    border-bottom: none;
+}
+
+.day-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.day-checkbox input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.day-checkbox span {
+    font-weight: 500;
+}
+
+.time-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.time-input {
+    width: 100px;
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.time-range span {
+    color: #888;
+}
+
+/* Кнопки формы */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.cancel-btn {
+    padding: 10px 24px;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.submit-btn {
+    padding: 10px 32px;
+    background: #00a3e0;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Карточка компании */
+.company-card {
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.company-card-header {
+    display: flex;
+    gap: 24px;
+    padding: 32px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.company-logo .logo-placeholder {
+    width: 80px;
+    height: 80px;
+    background: #e8f4f8;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+}
+
+.company-title h2 {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.company-inn {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.company-card-body {
+    padding: 32px;
+}
+
+.info-section {
+    margin-bottom: 32px;
+}
+
+.info-section h3 {
+    font-size: 18px;
+    margin-bottom: 16px;
+    color: #1a1a1a;
+}
+
+.info-row {
+    display: flex;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-label {
+    width: 140px;
+    color: #666;
+}
+
+.info-value {
+    flex: 1;
+    color: #1a1a1a;
+}
+
+/* Часы работы в карточке */
+.working-hours-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hours-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.hours-row .day {
+    font-weight: 500;
+}
+
+.hours-row .time {
+    color: #1a1a1a;
+}
+
+.hours-row .closed {
+    color: #e74c3c;
+}
+
+/* Статистика */
+.stats {
+    display: flex;
+    gap: 32px;
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 20px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 600;
+    color: #00a3e0;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #666;
+}
+
+.dashboard-link {
+    display: inline-block;
+    margin-top: 20px;
+    color: #00a3e0;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.dashboard-link:hover {
+    text-decoration: underline;
+}
+
+/* Для мобильной адаптации */
+@media (max-width: 768px) {
+    .verify-banner-content {
+        flex-direction: column;
+        text-align: center;
+        padding: 24px;
+    }
+    
+    .verify-banner-button {
+        justify-content: center;
+    }
+    
+    .verify-banner-text ul li {
+        justify-content: center;
+    }
+    
+    .verify-green-btn {
+        padding: 12px 24px;
+        font-size: 16px;
+    }
+}
 
 /* На маленьких экранах — всё в колонку */
 @media (max-width: 720px) {

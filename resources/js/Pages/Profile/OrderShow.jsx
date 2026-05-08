@@ -7,6 +7,18 @@ import '../../../css/profile/order-show.css';
 export default function OrderShow({ auth, order }) {
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
+
+    // время для написание отзыва
+    const canReview = (() => {
+        if (order.status !== 'issued') return false;
+
+        const issuedDate = new Date(order.updated_at);
+        const now = new Date();
+
+        const diff = (now - issuedDate) / (1000 * 60 * 60 * 24);
+
+        return diff <= 90; // 3 месяца
+    })();
     const total = parseFloat(order?.total || 0);
 
     const isUnpaid =
@@ -23,7 +35,7 @@ export default function OrderShow({ auth, order }) {
         returned: 'Возврат',
     };
 
-    const statusText = statusMap[order?.status] || 'Заказ';
+    const statusText = statusMap[order?.status] || 'Ожидает подстверждение';
 
     if (!order) {
         return (
@@ -38,14 +50,14 @@ export default function OrderShow({ auth, order }) {
     return (
         <MainLayout auth={auth}>
             <Head title={`Заказ ${order.number}`} />
-
+            
             <div className="order-page">
 
-                <a href="/profile/orders" className="order-back">
+                <a href="/orders" className="order-back">
                     ← К списку заказов
                 </a>
 
-                <div className="order-header">
+                <div className="order-headerShow">
                     <div>
                         <h1>
                             Заказ от {new Date(order.created_at).toLocaleDateString('ru-RU', {
@@ -53,11 +65,16 @@ export default function OrderShow({ auth, order }) {
                                 month: 'long',
                             })}
                         </h1>
-                        <div className="order-status">{statusText}</div>
                     </div>
 
-                    <div className="order-number">
+                    <div className="order-stroke">
+                        <div className="order-number">
                         № {order.number}
+                    </div>
+                    <div className="order-number">
+                                                <div className="order-storder-blockatus">{statusText}</div>
+
+                    </div>
                     </div>
                 </div>
 
@@ -92,35 +109,191 @@ export default function OrderShow({ auth, order }) {
 
                         {/* товары */}
                         <div className="order-block">
-                            {order.items?.map((item) => (
-                                <div key={item.id} className="order-item">
+                            <h3>Товары</h3>
 
-                                    <img
-                                        className="order-item-image"
-                                        src={item.variant?.product?.image || '/img/default.jpg'}
-                                        alt={item.variant?.product?.title}
-                                    />
+                            {order.items?.map((item) => {
+                                const existingReview = item.review;
 
-                                    <div className="order-item-info">
-                                        <div className="order-item-title">
-                                            {item.variant?.product?.title}
+                                const [open, setOpen] = useState(false);
+                                const [rating, setRating] = useState(existingReview?.rating || 0);
+                                const [comment, setComment] = useState(existingReview?.comment || '');
+                                const [hover, setHover] = useState(0);
+
+                                // Внутри map, где создается форма для каждого товара
+
+                                const handleSave = () => {
+                                    // Проверяем, есть ли уже отзыв
+                                    if (existingReview) {
+                                        // Обновление существующего отзыва
+                                        router.put(`/reviews/${existingReview.id}`, {
+                                            rating,
+                                            comment
+                                        }, {
+                                            preserveScroll: true,
+                                            onSuccess: () => {
+                                                setOpen(false); // Скрываем форму
+
+                                            }
+                                        });
+                                    } else {
+                                        // Создание нового отзыва
+                                        router.post('/reviews', {
+                                            product_id: item.variant.product.id,
+                                            variant_id: item.variant.id,
+                                            order_id: order.id,
+                                            rating,
+                                            comment
+                                        }, {
+                                            preserveScroll: true,
+                                            onSuccess: () => {
+                                                setOpen(false);
+                                            }
+                                        });
+                                    }
+                                };
+                                return (
+                                    <div key={item.id} className="order-item review-item" >
+
+                                        <div className="order-item--data"
+                                            onClick={() => {
+                                                router.get(`/product/${item.variant?.product.id}`);
+                                            }}>
+                                            <img
+                                                className="order-item-image"
+                                                src={item.variant?.product?.image || '/img/products/default.jpg'}
+                                            />
+
+                                            <div className="order-item-info">
+                                                <div className="order-item-title">
+                                                    {item.variant?.product?.title}
+                                                </div>
+
+                                                <div className="order-item-price">
+                                                    {Number(item.price_at_purchase).toLocaleString()} ₽
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div className="order-item-price">
-                                            {Number(item.price_at_purchase).toLocaleString()} ₽
-                                        </div>
+                                        {/* ЕСЛИ ЕСТЬ ОТЗЫВ */}
+                                        {existingReview && !open && (
+                                            <div className="review-view">
 
-                                        <div className="order-item-qty">
-                                            {item.quantity} шт.
-                                        </div>
+                                                {/* верх */}
+                                                <div className="review-top">
+
+                                                    <div className="review-left">
+                                                        <div className={`review-status ${existingReview.is_moderated ? 'ok' : 'pending'}`}>
+                                                            {existingReview.is_moderated ? 'Опубликован' : 'На модерации'}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="review-right">
+
+                                                        {/* звезды */}
+                                                        <div className="review-stars">
+                                                            {[1, 2, 3, 4, 5].map(star => (
+                                                                <span
+                                                                    key={star}
+                                                                    className={`star star-public ${existingReview.rating >= star ? 'active' : ''}`}
+                                                                >
+                                                                    ★
+                                                                </span> 
+                                                            ))}
+                                                        </div>
+
+                                                        <button
+                                                            className="review-open-btn"
+                                                            onClick={() => setOpen(true)}
+                                                        >
+                                                            Редактировать
+                                                        </button>
+
+                                                    </div>
+                                                </div>
+
+                                                {/* текст */}
+                                                <div className="review-text">
+                                                    {existingReview.comment}
+                                                </div>
+
+                                            </div>
+                                        )}
+
+                                        {/* КНОПКА ЕСЛИ НЕТ ОТЗЫВА */}
+                                        {!existingReview && (
+                                            <button
+                                                className="review-open-btn"
+                                                onClick={() => setOpen(true)}
+                                            >
+                                                Оставить отзыв
+                                            </button>
+                                        )}
+
+                                        {/* ФОРМА */}
+                                        {open && (
+                                            <div className="review-box">
+
+                                                <div className="review-stars">
+                                                    {[1, 2, 3, 4, 5].map(star => (
+                                                        <span
+                                                            key={star}
+                                                            className={`star ${(hover || rating) >= star ? 'active' : ''}`}
+                                                            onMouseEnter={() => setHover(star)}
+                                                            onMouseLeave={() => setHover(0)}
+                                                            onClick={() => setRating(star)}
+                                                        >
+                                                            ★
+                                                        </span>
+                                                    ))}
+                                                </div>
+
+                                                <textarea
+                                                    className="review-textarea"
+                                                    value={comment}
+                                                    onChange={(e) => {
+                                                        setComment(e.target.value);
+
+                                                        // авто-рост
+                                                        e.target.style.height = 'auto';
+                                                        e.target.style.height = e.target.scrollHeight + 'px';
+                                                    }}
+                                                />
+
+                                                <div className="review-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="save-btn"
+                                                        onClick={handleSave}
+                                                    >
+                                                        Сохранить
+                                                    </button>
+
+                                                    {existingReview && (
+                                                        <button
+                                                            type="button"
+                                                            className="delete-btn"
+                                                            onClick={() => {
+                                                                if (confirm('Удалить отзыв?')) {
+                                                                    router.delete(`/reviews/${existingReview.id}`, {
+                                                                        preserveScroll: true,
+
+                                                                        onSuccess: () => {
+                                                                            setOpen(false);
+                                                                        }
+                                                                    });
+
+                                                                }
+                                                            }}
+                                                        >
+                                                            Удалить
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-
-                                    <div className="order-item-total">
-                                        {(item.quantity * item.price_at_purchase).toLocaleString()} ₽
-                                    </div>
-
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -154,6 +327,19 @@ export default function OrderShow({ auth, order }) {
                                     Оплатить
                                 </button>
                             )}
+                            {/* отмена */}
+                            {['new', 'processing'].includes(order.status) && (
+                                <button
+                                    className="cancel-btn"
+                                    onClick={() => {
+                                        if (confirm('Отменить заказ?')) {
+                                            router.post(`/order/${order.id}/cancel`);
+                                        }
+                                    }}
+                                >
+                                    Отменить заказ
+                                </button>
+                            )}
                         </div>
 
                         {/* код получения */}
@@ -167,23 +353,10 @@ export default function OrderShow({ auth, order }) {
                             <p className="muted">
                                 Один код действует на весь заказ
                             </p>
+
                         </div>
 
-                        {/* отмена */}
-                        {['new', 'processing'].includes(order.status) && (
-                            <div className="order-block">
-                                <button
-                                    className="cancel-btn"
-                                    onClick={() => {
-                                        if (confirm('Отменить заказ?')) {
-                                            router.post(`/order/${order.id}/cancel`);
-                                        }
-                                    }}
-                                >
-                                    Отменить заказ
-                                </button>
-                            </div>
-                        )}
+
 
                     </div>
                 </div>

@@ -25,6 +25,7 @@
     },
     "dependencies": {
         "@stripe/stripe-js": "^8.2.0",
-        "date-fns": "^4.1.0"
+        "date-fns": "^4.1.0",
+        "react-barcode": "^1.6.1"
     }
 }

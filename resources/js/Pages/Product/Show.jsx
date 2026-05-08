@@ -74,7 +74,7 @@ export default function ProductShow({ auth, product, seller, hasOrdered, existin
       preserveState: true,
       onSuccess: () => {
         alert('Заказ успешно оформлен!');
-      },
+      },  
       onError: (errors) => {
         alert('Ошибка при оформлении заказа');
       }

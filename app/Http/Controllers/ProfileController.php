@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\RedirectResponse;
@@ -22,24 +23,82 @@ class ProfileController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
-        $myNfts = Product::where('user_id', $user->id)->where('is_on_action', 1)
-            ->with(['category', 'user'])
+       $user = auth()->user()->load('sellerProfile');
+
+        // Рекомендации
+        $LikeProducts = Product::with('user', 'category')
+            ->where('is_on_action', 1)
+            ->limit(20)
             ->get();
+        // Добавляем флаг избранного
+        if (auth()->check()) {
+            $userId = auth()->id();
+            $favoriteNftIds = DB::table('favorites')
+                ->where('user_id', $userId)
+                ->whereNotNull('product_id')
+                ->pluck('product_id')
+                ->toArray();
+
+
+            $LikeProducts->each(function ($product) use ($favoriteNftIds) {
+                $product->is_favorite = in_array($product->id, $favoriteNftIds);
+            });
+        } else {
+            $LikeProducts->each(fn($product) => $product->is_favorite = false);
+        }
+        // Заказы с items и маппингом статусов
+        $orders = Order::with('items.variant.product')
+            ->where('buyer_id', $user->id)
+            ->whereNotIn('status', ['canceled', 'issued', 'returned'])
+            ->orderBy('created_at', 'desc')
+            ->limit(1)
+            ->get()
+            ->map(function ($order) {
+                $order->frontend_status =
+                    match ($order->status) {
+                        'new', 'paid', 'processing' => 'pending',
+                        'in_transit' => 'shipping',
+                        'ready_for_pickup', 'at_pvz' => 'ready',
+                        'issued' => 'completed',
+                        'canceled', 'returned' => 'cancelled',
+                        default => 'pending',
+                    };
+
+                if ($order->status === 'ready_for_pickup' || $order->status === 'at_pvz') {
+                    $order->pickup_code = $order->order_code;
+                }
+
+                return $order;
+            });
+            
+        // Избранное
+        $myFavorites = Product::select('products.*')
+            ->join('favorites', 'products.id', '=', 'favorites.product_id')
+            ->where('favorites.user_id', $user->id) 
+            ->with(['category', 'seller'])
+            ->orderBy('favorites.created_at', 'desc')
+            ->get();
+
+        $myFavorites->each(fn($p) => $p->is_favorite = true);
+
         return Inertia::render('Profile/Index', [
+            'LikeProducts' => $LikeProducts,
             'auth' => ['user' => $user],
             'users' => User::all(),
-            'nfts' => $myNfts,
             'categories' => Category::all(),
+            'orders' => $orders,
+            'myFavorites' => $myFavorites,
         ]);
     }
+
+
     public function filter(Request $request)
     {
         $user = Auth::user();
 
         $myNfts = collect(); // по умолчанию — пустая коллекция
         $user = Auth::user();
-        $myNfts = Product::where('user_id', $user->id)->where('is_on_action', 1)
+        $myNfts = Product::where('seller_id', $user->id)->where('is_on_action', 1)
             ->with(['category', 'user']) // добавляем загрузку пользователя
             ->get();
 

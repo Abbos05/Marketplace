@@ -5,6 +5,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SellerProfileController;
 use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
@@ -65,20 +67,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/favorites', [ProfileController::class, 'favorites'])
         ->name('favorites.index');
 
-        // routes/web.php
+    // routes/web.php
 
     Route::get('/orders', [OrderController::class, 'index'])->name('profile.orders');
-    Route::get('/order/{order}', [OrderController::class, 'show'])->name('order.show');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('order.show');
     Route::post('/order/create', [OrderController::class, 'create']);
-    
+
     // Создание заказов
     Route::post('/order/create-from-product', [OrderController::class, 'createFromProduct'])->name('order.create.from.product');
     Route::post('/order/create-from-cart', [OrderController::class, 'createFromCart'])->name('order.create.from.cart');
-    
+
     // Действия с заказом
     Route::post('/order/{order}/cancel', [OrderController::class, 'cancel'])->name('order.cancel');
     Route::post('/order/{order}/repeat', [OrderController::class, 'repeat'])->name('order.repeat');
-    
+
     // Оплата
     Route::post('/payment/order-wallet', [StripePaymentController::class, 'orderWallet'])->name('payment.order.wallet');
     Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
@@ -87,8 +89,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('checkout.cancel');
 
     Route::post('/stripe/checkout', [StripePaymentController::class, 'createCheckoutSession']);
-Route::post('/stripe/order-checkout', [StripePaymentController::class, 'createOrderCheckoutSession']);
-Route::get('/stripe/success', [StripePaymentController::class, 'success'])->name('stripe.success');
+    Route::post('/stripe/order-checkout', [StripePaymentController::class, 'createOrderCheckoutSession']);
+    Route::get('/stripe/success', [StripePaymentController::class, 'success'])->name('stripe.success');
 });
 
 Route::middleware(['auth', CheckRole::class . ':admin'])->group(function () {
@@ -106,7 +108,17 @@ Route::middleware(['auth', CheckRole::class . ':admin'])->group(function () {
 
 // Страница продавца
 Route::get('/sellerProfile/{id}', [SellerController::class, 'index'])->name('seller.index');
-
-// routes/web.php
+Route::middleware(['auth'])->group(function () {
+    Route::post('/seller-profile/store', [SellerProfileController::class, 'store'])->name('seller-profile.store');
+    Route::get('/seller-profile', [SellerProfileController::class, 'getProfile'])->name('seller-profile.get');
+    Route::put('/seller-profile/update', [SellerProfileController::class, 'update'])->name('seller-profile.update');
+});
+// Отзыв
+Route::post('/reviews', [ReviewController::class, 'store'])
+    ->name('reviews.store')
+    ->middleware('auth');
+Route::put('/reviews/{review}', [ReviewController::class, 'update'])
+    ->middleware('auth');
+Route::delete('/reviews/{review}', [ReviewController::class, 'destroy']);
 
 require __DIR__ . '/auth.php';

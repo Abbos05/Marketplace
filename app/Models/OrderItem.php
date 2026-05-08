@@ -36,4 +36,9 @@ class OrderItem extends Model
     {
         return $this->belongsTo(User::class, 'seller_id');
     }
+    public function review()
+{
+    return $this->hasOne(\App\Models\Review::class, 'variant_id', 'variant_id')
+        ->where('user_id', auth()->id());
+}
 }

@@ -1,142 +1,346 @@
     .order-page {
-    max-width: 1400px;
-    margin: auto;
-    padding: 30px;
-    background: #f6f7fb;
-    min-height: 100vh;
-}
+        padding: 30px;
+        background: #ffffffcf;
+        min-height: 100vh;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+    }
 
-.back-link {
-    display: inline-block;
-    margin-bottom: 20px;
-    color: #666;
-    text-decoration: none;
-}
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #666;
+        text-decoration: none;
+    }
 
-.order-header {
-    margin-bottom: 30px;
-}
+    .order-headerShow {
+        margin-bottom: 30px;
+        display: auto;
+        display: flex;
+        align-items: top;
+        justify-content: space-between;
+    }
 
-.order-header h1 {
-    font-size: 34px;
-    margin-bottom: 8px;
-}
-
-.order-header span {
-    color: #6c5ce7;
-    font-weight: 600;
-}
-
-.order-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 24px;
-}
-
-.order-left,
-.order-right {
+    .order-headerShow h1 {
+        font-size: 34px;
+        margin-bottom: 8px;
+    }
+ .order-stroke{
     display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
+    gap: 10px;
+    margin-top: -25px;
+ }
+    .order-headerShow .order-number {
+        color: var(--background) !important;
+        border: 1px solid var(--border) !important;
+        font-weight: 600;
+        background-color: rgb(236, 236, 236);
+        height: max-content;
+        padding: 5px 10px;
+        border-radius: 8px;
+    }
 
-.order-block {
-    background: white;
-    border-radius: 18px;
-    padding: 24px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
-}
+    .order-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+    }
 
-.order-block h3 {
-    margin-bottom: 15px;
-    font-size: 22px;
-}
+    .order-left,
+    .order-right {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
 
-.order-item {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    padding: 16px 0;
-    border-bottom: 1px solid #eee;
-}
+    .order-block {
+        background: white;
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--border);
 
-.order-item:last-child {
-    border-bottom: none;
-}
+    }
 
-.order-item img {
-    width: 90px;
-    height: 90px;
-    object-fit: cover;
-    border-radius: 14px;
-}
+    .order-block h3 {
+        margin-bottom: 15px;
+        font-size: 22px;
+    }
 
-.order-item-info {
-    flex: 1;
-}
+    .order-item {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 16px 0;
+        border-bottom: 1px solid #eee;
+        flex-wrap: wrap;
+    }
 
-.order-item-info .title {
-    font-weight: 600;
-    margin-bottom: 8px;
-}
+    .order-item--data {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        width: 80%;
+    }
 
-.order-item-info .qty {
-    color: #777;
-}
+    .order-item:last-child {
+        border-bottom: none;
+    }
 
-.price {
-    font-weight: 700;
-    font-size: 18px;
-}
+    .order-item img {
+        width: 90px;
+        height: 90px;
+        object-fit: cover;
+        border-radius: 14px;
+    }
 
-.summary-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 14px;
-}
+    .order-item-info {
+        flex: 1;
+    }
 
-.summary-row.total {
-    font-size: 20px;
-    margin-top: 20px;
-}
+    .order-item-info .title {
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
 
-.pay-btn,
-.repeat-btn,
-.cancel-btn {
-    width: 100%;
-    border: none;
-    padding: 16px;
-    border-radius: 14px;
-    font-size: 17px;
-    cursor: pointer;
-    margin-top: 15px;
-}
+    .order-item-info .qty {
+        color: #777;
+    }
 
-.pay-btn {
-    background: #005bff;
-    color: white;
-}
+    .price {
+        font-weight: 700;
+        font-size: 18px;
+    }
 
-.repeat-btn {
-    background: #eef5ff;
-    color: #005bff;
-}
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 14px;
+    }
 
-.cancel-btn {
-    background: #ffecec;
-    color: #ff3b30;
-}
+    .summary-row.total {
+        font-size: 20px;
+        margin-top: 20px;
+    }
 
-.pickup-code {
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: 6px;
-    margin: 20px 0;
-    color: #111;
-}
+    .pay-btn,
+    .repeat-btn,
+    .cancel-btn {
+        width: 100%;
+        border: none;
+        padding: 16px;
+        border-radius: 14px;
+        font-size: 17px;
+        cursor: pointer;
+        margin-top: 15px;
+    }
 
-.order-not-found {
-    padding: 100px;
-    text-align: center;
-    font-size: 24px;
-}
+    .pay-btn {
+        background: #005bff;
+        color: white;
+    }
+
+    .repeat-btn {
+        background: #eef5ff;
+        color: #005bff;
+    }
+
+    .cancel-btn {
+        background: #ffecec;
+        color: #ff3b30;
+    }
+
+    .pickup-code {
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: 6px;
+        margin: 20px 0;
+        color: #111;
+    }
+
+    .order-not-found {
+        padding: 100px;
+        text-align: center;
+        font-size: 24px;
+    }
+
+    /* кнопка */
+    .review-open-btn {
+        background: none;
+        border: 1px solid #ddd;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+    /* блок */
+    .review-box {
+        margin-top: 15px;
+        padding: 15px;
+        background: #fafafa;
+        border-radius: 12px;
+        border: 1px solid #eee;
+        width: 100%;
+    }
+
+
+
+    /* контейнер */
+    .review-view {
+        width: 100%;
+        border: 1px solid #eee;
+        border-radius: 14px;
+        padding: 14px;
+        background: #fafafa;
+    }
+
+    /* верх */
+    .review-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    /* левый блок */
+    .review-left {
+        display: flex;
+        align-items: center;
+    }
+
+    /* правый блок */
+    .review-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* статус */
+    .review-status {
+        font-size: 14px;
+        margin-bottom: 10px;
+        font-weight: 500;
+        color: black;
+        width: max-content;
+        height: max-content;
+        background-color: #e3e3e3;
+        padding: 4px 8px;
+        border-radius: 8px;
+    }
+
+    .review-status.ok {
+        color: white;
+        background-color: green;
+    }
+
+    .review-status.pending {
+        background-color: orange;
+
+    }
+
+    .review-stars {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 10px;
+
+    }
+
+
+    .star {
+        font-size: 20px;
+        cursor: pointer;
+        color: #ddd;
+        transition: 0.2s;
+    }
+
+
+    .star {
+        font-size: 22px;
+        cursor: pointer;
+        color: #ccc;
+        transition: 0.2s;
+    }
+
+    .star.active {
+        color: #ffc107;
+    }
+
+    /* hover эффект */
+    .star:hover,
+    .star.hovered {
+        color: #ffca28;
+    }
+
+    .star-public:hover {
+        color: #ccc !important;
+    }
+
+    /* выбранные */
+    .star.active {
+        color: #ffc107;
+    }
+
+    /* текст */
+    .review-text {
+        font-size: 14px;
+        line-height: 1.4;
+        color: #333;
+        padding-top: 6px;
+    }
+
+    /* кнопка */
+    .review-open-btn {
+        border: none;
+        background: none;
+        color: #005bff;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .review-textarea {
+        width: 100%;
+        min-height: 90px;
+        max-height: 180px;
+        /* 👈 ограничение */
+        border-radius: 10px;
+        border: 1px solid #ddd;
+        padding: 10px 12px;
+        resize: none;
+        /* 👈 убираем ручное растягивание */
+        outline: none;
+        font-size: 14px;
+        line-height: 1.4;
+        background: #fff;
+        transition: border 0.2s, box-shadow 0.2s;
+    }
+
+    /* фокус */
+    .review-textarea:focus {
+        border: 1px solid #005bff;
+        box-shadow: 0 0 0 2px rgba(0, 91, 255, 0.1);
+    }
+
+    /* кнопки */
+    .review-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .save-btn {
+        background: #005bff;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+    }
+
+    .delete-btn {
+        background: #ffecec;
+        color: red;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+    }

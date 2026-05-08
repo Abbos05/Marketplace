@@ -18,7 +18,7 @@ class OrderController extends Controller
             ->where('buyer_id', auth()->id())
             ->latest()
             ->get();
-        
+
         return Inertia::render('Profile/Orders', [
             'orders' => $orders->map(function ($order) {
                 return [
@@ -54,96 +54,101 @@ class OrderController extends Controller
     }
 
     public function create(Request $request)
-{
-    $user = auth()->user();
-    $items = $request->items;
+    {
+        $user = auth()->user();
+        $items = $request->items;
 
-    if (!$items || count($items) === 0) {
-        return back()->with('error', 'Нет товаров');
-    }
-
-    DB::beginTransaction();
-
-    // Генерация номера заказа
-    $number = 'ORD-' . time() . '-' . rand(1000, 9999);
-    $orderCode = strtoupper(substr(md5(uniqid()), 0, 10));
-
-    $order = Order::create([
-        'number' => $number,
-        'order_code' => $orderCode,
-        'buyer_id' => $user->id,
-        'status' => 'new',
-        'total' => 0,
-        'payment_status' => 'pending',
-        'delivery_method' => 'pvz',
-    ]);
-
-    $total = 0;
-
-    foreach ($items as $item) {
-        // Если есть cart_id - берем из корзины
-        if (isset($item['cart_id'])) {
-            $cartItem = Cart::with('variant.product')
-                ->where('id', $item['cart_id'])
-                ->where('user_id', $user->id)
-                ->first();
-
-            $price = $cartItem->variant->price;
-            $variantId = $cartItem->variant_id;
-            $sellerId = $cartItem->variant->product->seller_id;
-            $quantity = $item['quantity'];
-
-            $cartItem->delete();
-        } 
-        // Если нет cart_id, но есть variant_id - прямой заказ
-        else {
-            $variant = ProductVariant::with('product')->find($item['variant_id']);
-            
-            $price = $variant->price;
-            $variantId = $variant->id;
-            $sellerId = $variant->product->seller_id;
-            $quantity = $item['quantity'] ?? 1;
+        if (!$items || count($items) === 0) {
+            return back()->with('error', 'Нет товаров');
         }
 
-        $total += $price * $quantity;
+        DB::beginTransaction();
 
-        OrderItem::create([
-            'order_id' => $order->id,
-            'variant_id' => $variantId,
-            'seller_id' => $sellerId,
-            'quantity' => $quantity,
-            'price_at_purchase' => $price,
-            'commission_percent' => 0,
+        // Генерация номера заказа
+        $number = 'ORD-' . time() . '-' . rand(1000, 9999);
+        $orderCode = strtoupper(substr(md5(uniqid()), 0, 10));
+
+        $order = Order::create([
+            'number' => $number,
+            'order_code' => $orderCode,
+            'buyer_id' => $user->id,
+            'status' => 'new',
+            'total' => 0,
+            'payment_status' => 'pending',
+            'delivery_method' => 'pvz',
         ]);
+
+        $total = 0;
+
+        foreach ($items as $item) {
+            // Если есть cart_id - берем из корзины
+            if (isset($item['cart_id'])) {
+                $cartItem = Cart::with('variant.product')
+                    ->where('id', $item['cart_id'])
+                    ->where('user_id', $user->id)
+                    ->first();
+
+                $price = $cartItem->variant->price;
+                $variantId = $cartItem->variant_id;
+                $sellerId = $cartItem->variant->product->seller_id;
+                $quantity = $item['quantity'];
+
+                $cartItem->delete();
+            }
+            // Если нет cart_id, но есть variant_id - прямой заказ
+            else {
+                $variant = ProductVariant::with('product')->find($item['variant_id']);
+
+                $price = $variant->price;
+                $variantId = $variant->id;
+                $sellerId = $variant->product->seller_id;
+                $quantity = $item['quantity'] ?? 1;
+            }
+
+            $total += $price * $quantity;
+
+            OrderItem::create([
+                'order_id' => $order->id,
+                'variant_id' => $variantId,
+                'seller_id' => $sellerId,
+                'quantity' => $quantity,
+                'price_at_purchase' => $price,
+                'commission_percent' => 0,
+            ]);
+        }
+
+        $order->update(['total' => $total]);
+
+        DB::commit();
+
+        return redirect()->route('profile.orders')->with('success', 'Заказ оформлен!');
     }
-
-    $order->update(['total' => $total]);
-
-    DB::commit();
-
-    return redirect()->route('profile.orders')->with('success', 'Заказ оформлен!');
-}
     public function show(Order $order)
 {
     if ($order->buyer_id !== auth()->id()) {
         abort(403);
     }
-    
+
+    $order->load([
+        'items.variant.product',
+        'items.review' // 👈 ВОТ ЭТО ДОБАВИЛ
+    ]);
+
     return Inertia::render('Profile/OrderShow', [
-        'order' => $order->load('items.variant.product')
+        'order' => $order
     ]);
 }
 
-public function cancel(Order $order)
-{
-    if ($order->buyer_id !== auth()->id()) {
-        abort(403);
+    public function cancel(Order $order)
+    {
+        if ($order->buyer_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($order->status === 'new') {
+            $order->update(['status' => 'canceled', 'payment_status' => 'failed']);
+        }
+
+        return back()->with('success', 'Заказ отменён');
     }
-    
-    if ($order->status === 'new') {
-        $order->update(['status' => 'canceled', 'payment_status' => 'failed']);
-    }
-    
-    return back()->with('success', 'Заказ отменён');
-}
 }

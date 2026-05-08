@@ -37,7 +37,10 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class, 'order_id');
     }
-
+public function variant()
+{
+    return $this->belongsTo(ProductVariant::class);
+}
     public function payments()
     {
         return $this->hasMany(Payment::class, 'order_id');

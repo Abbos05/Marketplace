@@ -67,7 +67,7 @@
 }
 
 .products__image-wrapper svg:hover {
-cursor: pointer;
+  cursor: pointer;
 }
 
 .noActive {
@@ -90,6 +90,7 @@ cursor: pointer;
 .noActive:hover path {
   fill: red;
 }
+
 .active {
   cursor: pointer;
 }
@@ -111,6 +112,7 @@ cursor: pointer;
   fill: rgb(183, 0, 0);
   stroke: rgb(183, 0, 0);
 }
+
 .product__img-stock {
   position: absolute;
   bottom: 5%;
@@ -150,7 +152,7 @@ cursor: pointer;
   flex-direction: column;
   gap: 5px;
 
-  
+
 }
 
 .products__prices {
@@ -246,11 +248,12 @@ cursor: pointer;
   color: black;
   margin-bottom: -10px;
 }
+
 .products__ratin-stars {
   color: #000 !important;
 }
 
-.products__btn{
+.products__btn {
   max-width: 100%;
   display: flex;
   align-items: stretch;
@@ -259,11 +262,12 @@ cursor: pointer;
   margin-top: auto;
   width: 100%;
 }
+
 .products__btn button {
   border-radius: 10px;
   background: var(--background);
   cursor: pointer;
-  
+
   width: 100%;
   padding: 10px;
   text-align: center;
@@ -589,36 +593,41 @@ cursor: pointer;
 
 
 .showMore__btn {
-    max-width: 100%;
-    width: max-content;
-    padding: 10px 40px;
-    display: grid;
-    place-items: center;
-    margin: 0 auto;
+  max-width: 100%;
+  width: max-content;
+  padding: 10px 40px;
+  display:block;
+  margin: 0 auto;
+  border-radius: 10px;
+  font-family: var(--font-family);
+  font-weight: 500;
+  font-size: 18px;
+  text-align: center;
+  background: transparent;
+  color: #FF2E63;
+  border: 1px solid #FF2E63;
+  transition: var(--trans-3);
+  outline: none;
+  cursor: pointer;
+  transform: none;
+}
 
-    border-radius: 10px;
-    background: var(--background);
-    font-family: var(--font-family);
-    font-weight: 500;
-    font-size: 18px;
-    color: #fff;
-    text-align: center;
-    transition: var(--trans-3);
-    border: none;
-    outline: none;
-    cursor: pointer;
-    transform:none;
-}
 .showMore__btn--active {
-    transform: translate(141px);
+  transform: translate(141px);
 }
+
 .showMore__btn:active {
-    opacity: 0.7;
+  opacity: 0.7;
 }
+
 
 .showMore__btn:hover {
-    background: #003cac;
+  background: #FF2E63;
+  color: white;
+  cursor: pointer;
+
 }
+
 /* ==== АДАПТИВНОСТЬ ==== */
 @media (max-width: 480px) {
 
