@@ -49,7 +49,7 @@
                         key={product.id}
                         onClick={() => router.visit(`/product/${product.id}`)}>
                         <img
-                            src={product.image ?? '/img/products/default.jpg'}
+                            src={product.image ?? '/img/products/default.png'}
                             alt={`Product: ${product.title}`}
                             className="products__image"
 

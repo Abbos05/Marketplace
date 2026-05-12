@@ -15,13 +15,11 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-
-
-    // Для маршрута /login
     public function showLogin(Request $request)
     {
         $homeController = new HomeController();
-        $data = $homeController->index(true); 
+        // Передаём true для $returnDataOnly — получаем массив данных
+        $data = $homeController->index($request, true);
         $data['showModal'] = 'login';
 
         return Inertia::render('Home', $data);
@@ -30,7 +28,8 @@ class AuthenticatedSessionController extends Controller
     public function showRegister(Request $request)
     {
         $homeController = new HomeController();
-        $data = $homeController->index(true);
+        // Передаём true для $returnDataOnly — получаем массив данных
+        $data = $homeController->index($request, true);
         $data['showModal'] = 'register';
 
         return Inertia::render('Home', $data);

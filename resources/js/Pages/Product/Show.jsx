@@ -114,7 +114,7 @@ export default function ProductShow({ auth, product, seller, hasOrdered, existin
           <div className="product-page__main">
             <div className="product-page__gallery">
               <div className="product-page__main-image">
-                <img src={product.image ?? '/img/products/default.jpg'} alt={product.title} />
+                <img src={product.image ?? '/img/products/default.png'} alt={product.title} />
               </div>
             </div>
 

@@ -37,4 +37,9 @@ class Category extends Model
     {
         return $this->hasOne(CommissionRate::class, 'category_id');
     }
+    public function attributes()
+{
+    return $this->hasMany(CategoryAttribute::class);
+}
+
 }

@@ -23,7 +23,7 @@ export default function About() {
               ALVORA
             </h1>
             <p className="text-2xl md:text-4xl text-yellow-100 mt-6 opacity-90">
-              NFT-маркетплейс нового поколения
+              маркетплейс нового поколения
             </p>
           </div>
 
@@ -33,7 +33,7 @@ export default function About() {
               Мы создаём будущее цифрового искусства
             </h2>
             <p className="text-xl md:text-2xl text-gray-200 leading-relaxed max-w-4xl mx-auto">
-              ALVORA — это не просто маркетплейс. Это экосистема, где художники, коллекционеры и инвесторы встречаются в мире премиальных NFT.
+              ALVORA — это не просто маркетплейс. Это экосистема, где художники, коллекционеры и инвесторы встречаются в мире премиальных.
               Низкие комиссии, мгновенные транзакции, полная прозрачность и стиль, от которого невозможно отвести взгляд.
             </p>
           </div>
@@ -42,7 +42,7 @@ export default function About() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mt-20 max-w-6xl mx-auto">
             {[
               { num: "50K+", label: "Активных пользователей" },
-              { num: "250K+", label: "Проданных NFT" },
+              { num: "250K+", label: "Проданных Товаров" },
               { num: "1.5%", label: "Комиссия платформы" }
             ].map((stat, i) => (
               <div key={i} className="stat-card text-center" data-aos="zoom-in" data-aos-delay={i * 200}>

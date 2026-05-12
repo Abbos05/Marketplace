@@ -6,7 +6,9 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\SellerProfileController;
+use App\Http\Controllers\Seller\DashboardController;
 use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
@@ -112,6 +114,22 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/seller-profile/store', [SellerProfileController::class, 'store'])->name('seller-profile.store');
     Route::get('/seller-profile', [SellerProfileController::class, 'getProfile'])->name('seller-profile.get');
     Route::put('/seller-profile/update', [SellerProfileController::class, 'update'])->name('seller-profile.update');
+
+
+
+});
+// routes/web.php
+Route::middleware(['auth', 'seller'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('seller.dashboard');
+    Route::get('/products', [ProductController::class, 'index'])->name('seller.products');
+    // Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+
+    Route::get('/products/create', [SellerProductController::class, 'create'])->name('seller.products.create');
+
+    Route::post('/products/store', [SellerProductController::class, 'store'])->name('seller.products.store');
+
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders');
+    // Route::get('/statistics', [StatisticsController::class, 'index'])->name('statistics');
 });
 // Отзыв
 Route::post('/reviews', [ReviewController::class, 'store'])

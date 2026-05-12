@@ -43,7 +43,7 @@ class OrderController extends Controller
                                 'product' => [
                                     'id' => $item->variant->product->id ?? null,
                                     'title' => $item->variant->product->title ?? 'Товар',
-                                    'image' => $item->variant->product->image ?? '/img/products/default.jpg',
+                                    'image' => $item->variant->product->image ?? '/img/products/default.png',
                                 ]
                             ]
                         ];

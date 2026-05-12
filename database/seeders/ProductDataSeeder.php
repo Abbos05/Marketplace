@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -10,19 +11,7 @@ class ProductDataSeeder extends Seeder
 {
     public function run()
     {
-        // 1. Категории (оставляем 10 штук)
-        $categoryData = [
-            ['id' => 1, 'name' => 'Электроника', 'slug' => 'electronics', 'icon' => '/img/categories/electronics.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 2, 'name' => 'Одежда и обувь', 'slug' => 'clothing', 'icon' => '/img/categories/clothing.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 3, 'name' => 'Дом и интерьер', 'slug' => 'home', 'icon' => '/img/categories/home.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 4, 'name' => 'Спорт и отдых', 'slug' => 'sports', 'icon' => '/img/categories/sports.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 5, 'name' => 'Книги и медиа', 'slug' => 'books', 'icon' => '/img/categories/books.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 6, 'name' => 'Красота и здоровье', 'slug' => 'beauty', 'icon' => '/img/categories/beauty.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 7, 'name' => 'Детские товары', 'slug' => 'kids', 'icon' => '/img/categories/kids.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 8, 'name' => 'Автотовары', 'slug' => 'auto', 'icon' => '/img/categories/auto.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 9, 'name' => 'Зоотовары', 'slug' => 'pets', 'icon' => '/img/categories/pets.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 10, 'name' => 'Мебель', 'slug' => 'furniture', 'icon' => '/img/categories/furniture.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-        ];
+     
 
         // 2. Товары (20 штук, по 2 на категорию)
         $products = [
@@ -67,8 +56,7 @@ class ProductDataSeeder extends Seeder
             ['seller_id' => 2, 'category_id' => 10, 'title' => 'Письменный стол', 'description' => 'ЛДСП 120x60 см, белый, ящик.', 'short_description' => 'Стол для работы', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
         ];
 
-        // 3. Вставляем категории
-        DB::table('categories')->insert($categoryData);
+     
 
         // 4. Вставляем товары (получаем их ID)
         DB::table('products')->insert($products);

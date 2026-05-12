@@ -160,7 +160,7 @@ export default function OrderShow({ auth, order }) {
                                             }}>
                                             <img
                                                 className="order-item-image"
-                                                src={item.variant?.product?.image || '/img/products/default.jpg'}
+                                                src={item.variant?.product?.image || '/img/products/default.png'}
                                             />
 
                                             <div className="order-item-info">

@@ -14,6 +14,6 @@ os.makedirs(output_dir, exist_ok=True)
 # Открываем исходное изображение
 with Image.open(input_image_path) as img:
     for i in range(1, num_copies + 1):
-        output_path = os.path.join(output_dir, f"nft{i}.png")
+        output_path = os.path.join(output_dir, f"product{i}.png")
         img.save(output_path)
         print(f"Сохранено: {output_path}")

@@ -21,7 +21,7 @@ return new class extends Migration
                   ->constrained('users')
                   ->onDelete('cascade');
                   
-            // КАКОЙ NFT
+            // КАКОЙ product_id
             $table->foreignId('product_id')
                   ->constrained()
                   ->onDelete('cascade');

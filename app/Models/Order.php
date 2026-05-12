@@ -13,9 +13,18 @@ class Order extends Model
     protected $table = 'orders';
 
     protected $fillable = [
-        'number', 'order_code', 'buyer_id', 'status', 'total', 'discount',
-        'delivery_address', 'payment_status', 'region_id', 'delivery_method',
-        'payment_method', 'comment',
+        'number',
+        'order_code',
+        'buyer_id',
+        'status',
+        'total',
+        'discount',
+        'delivery_address',
+        'payment_status',
+        'region_id',
+        'delivery_method',
+        'payment_method',
+        'comment',
     ];
 
     protected $casts = [
@@ -37,10 +46,10 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class, 'order_id');
     }
-public function variant()
-{
-    return $this->belongsTo(ProductVariant::class);
-}
+    public function variant()
+    {
+        return $this->belongsTo(ProductVariant::class);
+    }
     public function payments()
     {
         return $this->hasMany(Payment::class, 'order_id');
@@ -64,5 +73,11 @@ public function variant()
     public function promocodeUsage()
     {
         return $this->hasOne(PromocodeUsage::class, 'order_id');
+    }
+    public function getSellerProductsAttribute()
+    {
+        return $this->items->flatMap(function ($item) {
+            return $item->variant->product ?? null;
+        })->filter();
     }
 }

@@ -10,7 +10,7 @@ class PDFController extends Controller
 {
     public function download($txId)
     {
-        $tx = \App\Models\Transaction::with('nft')->findOrFail($txId);
+        $tx = \App\Models\Transaction::with('product')->findOrFail($txId);
         $status = $tx->status == 'failed' ? 'Отказано' : 'Успешно';
         $buyer = User::withTrashed()->where('id', $tx->buyer_id)->first();
         $seller = User::withTrashed()->where('id', $tx->seller_id)->first();
@@ -20,11 +20,11 @@ class PDFController extends Controller
     
         $data = [
             'type' => $status,
-            'nft_title' => $tx->nft->title ?? 'Неизвестно',
-            'product_id' => $tx->nft->id,
+            'product_title' => $tx->product->title ?? 'Неизвестно',
+            'product_id' => $tx->product->id,
             'buyer' => $buyerName, // <-- Используем обработанное имя
             'seller' => $sellerName, // <-- Используем обработанное имя
-            'price' => $tx->nft->price ?? 'Не указано',
+            'price' => $tx->product->price ?? 'Не указано',
             'date' => \Carbon\Carbon::parse($tx->created_at)->format('d.m.Y H:i'),
             'tx_id' => $tx->id,
         ];

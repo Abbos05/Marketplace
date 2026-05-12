@@ -12,7 +12,7 @@ const slidesData = [
     image: 'img/header/slider1.png',
   },
   {
-    title: 'Продавайте свои NFT без комиссии',
+    title: 'Продавайте свои товары без комиссии',
     description:
       'Установите свою комиссию за каждую вторичную продажу и получайте доход без усилий. Подключите смарт-контракт и начните зарабатывать.',
     buttonText: 'Настроить продажу',
@@ -55,7 +55,7 @@ const Slider = () => {
     switchImage(currentImageIndex);
   }, [currentImageIndex]);
   const click = () => {
-    window.location.href = route('nft.create');
+    window.location.href = route('seller.products.create');
   }
   return (
     <section className="sectionSlider">

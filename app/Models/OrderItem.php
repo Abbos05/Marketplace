@@ -41,4 +41,9 @@ class OrderItem extends Model
     return $this->hasOne(\App\Models\Review::class, 'variant_id', 'variant_id')
         ->where('user_id', auth()->id());
 }
+// В модели OrderItem добавь
+public function getProductAttribute()
+{
+    return $this->variant?->product;
+}
 }

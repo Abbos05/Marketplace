@@ -17,7 +17,7 @@ import '../../../css/profile/style.css';
 import CompanyFormModal from '@/Components/Company/CompanyFormModal';
 import CompanyProfile from '@/Components/Company/CompanyProfile';
 
-export default function Profile({ auth, products = [], LikeProducts = [], orders = [], myFavorites = [] }) {
+export default function Profile({ auth, products = [], LikeProducts = [], orders = [], myFavorites = [], sellerProfile = null }) {
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
@@ -83,7 +83,6 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
 
 
   // Добавьте в начало компонента:
-  const [sellerProfile, setSellerProfile] = useState(auth.user?.seller_profile || null);
   const [showCompanyForm, setShowCompanyForm] = useState(false);
 
   // Форма для создания компании
@@ -115,24 +114,38 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
     sun: 'Воскресенье',
   };
 
-  const handleSubmitCompany = (e) => {
+const handleSubmitCompany = (e) => {
     e.preventDefault();
-
-    // Преобразуем working_hours в JSON строку
-    const formData = {
-      ...data,
-      working_hours: JSON.stringify(data.working_hours),
+    
+    const submitData = {
+        inn: data.inn,
+        shop_name: data.shop_name,
+        legal_address: data.legal_address,
+        pickup_address: data.pickup_address,
+        description: data.description,
+        working_hours: data.working_hours
     };
-
-    post(route('seller-profile.store'), {
-      data: formData,
-      onSuccess: () => {
-        setShowCompanyForm(false);
-        reset();
-        router.reload();
-      },
+    
+    post('/seller-profile/store', submitData, {
+        preserveScroll: true,
+        onSuccess: () => {
+            // Закрываем форму
+            setShowCompanyForm(false);
+            // Сбрасываем форму
+            reset();
+            // Показываем сообщение
+            setMessage('Компания успешно добавлена!');
+            // Перезагружаем страницу чтобы обновить данные
+            setTimeout(() => {
+                router.reload();
+            }, 500);
+        },
+        onError: (errors) => {
+            console.log('Ошибки:', errors);
+            setMessage('Ошибка при создании компании: ' + (errors.error || 'Попробуйте еще раз'));
+        },
     });
-  };
+};
 
   const handleWorkingHoursChange = (day, field, value) => {
     setData('working_hours', {
@@ -259,7 +272,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
               {LikeProducts && LikeProducts.length > 0 && (
                 <>
                   <section className="category-header">
-                    <h2>Рекомендации для вас</h2>
+                    <h2 className='profile__title'>Рекомендации для вас</h2>
 
                   </section>
                   {/* Передаём только первые `displayCount` элементов */}
@@ -278,12 +291,12 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
           {activeTab === 'orders' && (
             <div className="orders-section">
               <div className="orders-header">
-                <h2>Мои заказы</h2>
+                <h2 className='profile__title'>Мои заказы</h2>
               </div>
 
               {orders && orders.length > 0 ? (
                 <>
-                  <div className="orders-list">
+                  <div className="orders-list products">
                     {orders.map((order) => (
                       <div
                         key={order.id}
@@ -294,7 +307,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                         <div className="order-info">
                           {order.items && order.items[0] && (
                             <img
-                              src={order.items[0].variant?.product?.image || '/img/products/default.jpg'}
+                              src={order.items[0].variant?.product?.image || '/img/products/default.png'}
                               className="order-image"
                             />
                           )}
@@ -337,7 +350,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                   </div>
                 </>
               ) : (
-                <div className="empty-orders">
+                <div className="empty-orders products">
                   <p>У вас пока нет заказов</p>
                   <Link href="/" className="shop-now-btn">
                     Перейти в каталог
@@ -369,12 +382,13 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
           {activeTab === 'favorites' && (
             <div className="Profile__recommendated">
               {/* Рекомендации */}
-              {myFavorites && myFavorites.length > 0 && (
-                <>
-                  <section className="category-header">
-                    <h2>Мои избранные товары</h2>
+              <section className="category-header">
+                <h2 className='profile__title'>Мои избранные товары</h2>
 
-                  </section>
+              </section>
+              {myFavorites && myFavorites.length > 0 ? (
+                <>
+
                   {/* Передаём только первые `displayCount` элементов */}
                   <MyFavorites
                     products={myFavorites.slice(0, 4)}
@@ -382,8 +396,15 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                   <Link href="/favorites" className="showMore__btn">
                     Показать еще
                   </Link>
-                </>
-              )}
+                </>)
+                : (
+                  <div className="empty-favorite products">
+                    <p>У вас пока избранных товаров</p>
+                    <Link href="/" className="shop-now-btn">
+                      Перейти в каталог
+                    </Link>
+                  </div>
+                )}
             </div>
           )}
 
@@ -403,24 +424,6 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                   >
                     + Добавить компанию
                   </button>
-
-                  <div className="company-benefits">
-                    <div className="benefit-item">
-                      <div className="benefit-icon">⚡</div>
-                      <h4>Регистрация за минуту</h4>
-                      <p>Потребуется только ИНН</p>
-                    </div>
-                    <div className="benefit-item">
-                      <div className="benefit-icon">💳</div>
-                      <h4>Оплата по счёту</h4>
-                      <p>Возмещение НДС до 20%</p>
-                    </div>
-                    <div className="benefit-item">
-                      <div className="benefit-icon">📄</div>
-                      <h4>Документы онлайн</h4>
-                      <p>В ЭДО или личном кабинете</p>
-                    </div>
-                  </div>
                 </div>
               )}
 

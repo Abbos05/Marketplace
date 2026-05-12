@@ -24,7 +24,7 @@ const Category = ({ categories = [] }) => {
                     {categories.map((category) => (
                         <div key={category.id} className="category_item" onClick={() => router.visit(`/category/${category.id}`)}>
                             <img
-                                src={category.img ?? '/img/products/default.jpg'}
+                                src={category.img ?? '/img/products/default.png'}
                                 alt={category.name}
                                 className="category_image"
                             />

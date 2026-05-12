@@ -25,7 +25,7 @@ export default function Seller({ auth }) {
                         {/* Блок с аватаром */}
                         <div className="seller__avatar">
                             {seller?.img ? (
-                                <img src={products?.img || "/img/products/default.jpg"} onClick={() => { window.open(products?.img || "/img/products/default.jpg", "_blank"); }} alt={`${seller.name}'s avatar`} className="seller__avatar-img" />
+                                <img src={products?.img || "/img/products/default.png"} onClick={() => { window.open(products?.img || "/img/products/default.png", "_blank"); }} alt={`${seller.name}'s avatar`} className="seller__avatar-img" />
                             ) : (
                                 <div className="seller__avatar-placeholder">
                                     <span>{seller?.name?.charAt(0) || 'A'}</span>

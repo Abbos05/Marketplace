@@ -88,6 +88,8 @@ class ProfileController extends Controller
             'categories' => Category::all(),
             'orders' => $orders,
             'myFavorites' => $myFavorites,
+                    'sellerProfile' => $user->sellerProfile, // ← ДОБАВЬ ЭТУ СТРОКУ
+
         ]);
     }
 
