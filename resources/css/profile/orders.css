@@ -277,3 +277,66 @@ max-width: 150px;
     border-radius: 16px;
     object-fit: cover;
 }
+
+
+/* Пустая корзина */
+.NoCart {
+    text-align: center;
+    padding: 50px;
+    background: white;
+    border-radius: 12px;
+}
+
+.NoCart__image {
+    width: 200px;
+    margin-bottom: 20px;
+}
+
+.NoCart__title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.NoCart__text {
+    color: #666;
+    max-width: 420px;
+    margin: 0 auto 24px;
+    line-height: 1.5;
+    font-size: 15px;
+}
+
+.NoCart__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 200px;
+    padding: 14px 32px;
+    margin-top: 4px;
+    border: none;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+}
+
+.NoCart__button:hover {
+    background: var(--background, #6a5cff);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(106, 92, 255, 0.35);
+}
+
+.NoCart__button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+}
+
+.NoCart__button:focus-visible {
+    outline: 2px solid var(--background, #6a5cff);
+    outline-offset: 3px;
+}

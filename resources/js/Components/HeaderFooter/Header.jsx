@@ -1,14 +1,69 @@
 import React, { useState, useEffect, useRef } from 'react';
 import HeaderMenu from './HeaderMenu';
 import { Link, router, usePage } from '@inertiajs/react';
+import { pinWidgetFromHeaderDrag } from '@/lib/messagesWidget';
 import '../../../css/MainLayout.css';
 
-const Header = ({ setIsModalOpen, setIsLogin }) => {
-  const { auth: { user }, categories, filters } = usePage().props;
+const Header = ({ setIsModalOpen }) => {
+  const { auth, categories, filters, messagesHubUnreadCount = 0 } = usePage().props;
+  const user = auth?.user;
+  const [hubBadge, setHubBadge] = useState(() => Number(messagesHubUnreadCount) || 0);
+
+  useEffect(() => {
+    setHubBadge(Number(messagesHubUnreadCount) || 0);
+  }, [messagesHubUnreadCount]);
+
+  useEffect(() => {
+    const onHub = (e) => {
+      setHubBadge(Number(e.detail) || 0);
+    };
+    window.addEventListener('inertia:messages-hub-unread', onHub);
+    return () => window.removeEventListener('inertia:messages-hub-unread', onHub);
+  }, []);
 
   // Меню категорий
   const [isStoreMenuOpen, setIsStoreMenuOpen] = useState(false);
   const storeMenuRef = useRef(null);
+  const msgDragRef = useRef(null);
+  const suppressMsgClickRef = useRef(false);
+
+  const MSG_DRAG_THRESHOLD = 12;
+
+  const onMessagesPointerDown = (e) => {
+    if (!user || e.button !== 0) return;
+    msgDragRef.current = { x: e.clientX, y: e.clientY, dragging: false };
+    const onMove = (ev) => {
+      const d = msgDragRef.current;
+      if (!d) return;
+      if (Math.hypot(ev.clientX - d.x, ev.clientY - d.y) > MSG_DRAG_THRESHOLD) {
+        d.dragging = true;
+      }
+    };
+    const onUp = (ev) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      const d = msgDragRef.current;
+      msgDragRef.current = null;
+      if (!d) return;
+      if (d.dragging) {
+        suppressMsgClickRef.current = true;
+        pinWidgetFromHeaderDrag(ev.clientX, ev.clientY);
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  };
+
+  const onMessagesClick = (e) => {
+    if (suppressMsgClickRef.current) {
+      e.preventDefault();
+      suppressMsgClickRef.current = false;
+      return;
+    }
+    router.visit(route('messages.index'));
+  };
 
   // Поиск
   const [searchQuery, setSearchQuery] = useState('');
@@ -126,7 +181,7 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
   const handleWithdraw = () => {
     const amount = parseFloat(withdrawAmount);
     if (amount < 50) return setWithdrawError('Минимум 50 ₽');
-    if (amount > user.balance) return setWithdrawError('Недостаточно средств');
+    if (!user || amount > user.balance) return setWithdrawError('Недостаточно средств');
     if (cardNumber.length !== 16) return setWithdrawError('Номер карты — 16 цифр');
 
     setWithdrawLoading(true);
@@ -179,17 +234,26 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
 
             {isStoreMenuOpen && (
               <ul className="header-store-menu-dropdown">
-                <li className="header-store-menu-item no-select" style={{ cursor: 'auto', background: '#111826' }}>
+                <li className="header-store-menu-item no-select" style={{ cursor: 'auto', color: '#000000' }}>
                   Каталог
                 </li>
                 {categories?.map((catalog) => (
                   <li key={catalog.id} className="header-store-menu-item">
                     <Link href={`/category/${catalog.id}`} className="header-store-menu-link">
-                      <img src={catalog.img} alt={catalog.name} className="header-store-menu-image" />
+                      <img
+                        src={catalog.img || catalog.icon || '/img/products/default.png'}
+                        alt=""
+                        className="header-store-menu-image"
+                      />
                       <span>{catalog.name}</span>
                     </Link>
                   </li>
-                ))}
+                ))} 
+                   <li className="header-store-menu-item">
+                    <Link href={`/category`} className="header-store-menu-link">
+                      <span>Перейти в каталог</span>
+                    </Link>
+                  </li>
               </ul>
             )}
           </li>
@@ -210,6 +274,81 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
 
           <div className="header-wallet-block">
             <li>
+              {user ? (
+                <div
+                  className="header-wallet header-messages-drag"
+                  style={{ position: 'relative' }}
+                  onPointerDown={onMessagesPointerDown}
+                  onClick={onMessagesClick}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.visit(route('messages.index'));
+                    }
+                  }}
+                  aria-label="Сообщения. Клик — открыть чат. Удерживайте и перетащите — закрепить окно чата"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" className="products__basket">
+                    <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" />
+                  </svg>
+                  <p>Сообщения</p>
+                  {Number(hubBadge) > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 2,
+                        right: 4,
+                        background: '#ef4444',
+                        color: '#fff',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        minWidth: 16,
+                        height: 16,
+                        borderRadius: 999,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 4px',
+                      }}
+                    >
+                      {Number(hubBadge) > 99 ? '99+' : hubBadge}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <Link href={route('messages.index')} className="header-wallet" style={{ position: 'relative' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" className="products__basket">
+                    <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" />
+                  </svg>
+                  <p>Сообщения</p>
+                  {Number(hubBadge) > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 2,
+                        right: 4,
+                        background: '#ef4444',
+                        color: '#fff',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        minWidth: 16,
+                        height: 16,
+                        borderRadius: 999,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 4px',
+                      }}
+                    >
+                      {Number(hubBadge) > 99 ? '99+' : hubBadge}
+                    </span>
+                  )}
+                </Link>
+              )}
+            </li>
+            <li>
               <Link href="/orders" className="header-wallet">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="26" viewBox="0 0 24 24" class="products__basket">
                   <path fill="currentColor" d="M14.692 5.694c.368-.205.365-.469-.009-.664C13.367 4.343 12.708 4 12 4s-1.367.343-2.683 1.03l-2 1.044c-1.614.842-2.42 1.263-2.869 2.02C4 8.85 4 9.79 4 11.673v1.652c0 1.883 0 2.824.448 3.58s1.255 1.178 2.869 2.02l2 1.044C10.633 20.657 11.292 21 12 21s1.367-.343 2.683-1.03l2-1.044c1.614-.842 2.42-1.263 2.869-2.02.448-.756.448-1.697.448-3.58v-1.652c0-1.883 0-2.824-.448-3.58-.329-.556-.851-.93-1.744-1.423-.367-.203-.389-.204-.763.004L11 10c-.344.19-.739.394-.91.77-.09.197-.09.375-.09.73V14a1 1 0 0 1-2 0v-4a1 1 0 0 1 .514-.874z"></path>
@@ -224,7 +363,7 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
               </Link>
             </li>
 
-            <li className="wallet-btnRelative">
+            {/* <li className="wallet-btnRelative">
               <div className="wallet-btn">
                 <Link href="/favorites" className="header-wallet">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M3 10.163C3 7.262 5.13 5 8 5c1.929 0 3.244 1.102 4 2.066C12.756 6.102 14.071 5 16 5c2.87 0 5 2.264 5 5.163 0 4.561-4.568 7.856-8.243 9.66a1.71 1.71 0 0 1-1.514 0C7.568 18.02 3 14.724 3 10.163"></path></svg>
@@ -234,9 +373,9 @@ const Header = ({ setIsModalOpen, setIsLogin }) => {
               </div>
 
 
-            </li>
+            </li> */}
 
-            <HeaderMenu setIsModalOpen={setIsModalOpen} setIsLogin={setIsLogin} />
+            <HeaderMenu setIsModalOpen={setIsModalOpen} />
           </div>
         </ul>
       </div>

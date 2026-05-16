@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\HomeController;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
+use App\Notifications\MarketplaceAlert;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,9 +20,8 @@ class AuthenticatedSessionController extends Controller
     public function showLogin(Request $request)
     {
         $homeController = new HomeController();
-        // Передаём true для $returnDataOnly — получаем массив данных
         $data = $homeController->index($request, true);
-        $data['showModal'] = 'login';
+        $data['showModal'] = 'phone_auth';
 
         return Inertia::render('Home', $data);
     }
@@ -28,9 +29,8 @@ class AuthenticatedSessionController extends Controller
     public function showRegister(Request $request)
     {
         $homeController = new HomeController();
-        // Передаём true для $returnDataOnly — получаем массив данных
         $data = $homeController->index($request, true);
-        $data['showModal'] = 'register';
+        $data['showModal'] = 'phone_auth';
 
         return Inertia::render('Home', $data);
     }
@@ -44,6 +44,15 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
         $request->session()->save(); // ← добавь эту строку
+        $user = $request->user();
+        if ($user instanceof User) {
+            $user->notify(new MarketplaceAlert(
+                'Вход в аккаунт',
+                'Вход выполнен '.now()->timezone('Europe/Moscow')->format('d.m.Y H:i').' (MSK). Если это были не вы, смените пароль.',
+                route('messages.index', ['notifications' => 1], false),
+            ));
+        }
+
         return redirect(route('profile', absolute: false));
     }
 

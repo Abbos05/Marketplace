@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Head, router, Link, usePage } from '@inertiajs/react';
+import React from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Slider from '@/Components/Slider/Slider';
 import ProductPage from '@/Components/Product/ProductPage';
@@ -7,60 +7,43 @@ import ProductsCatalog from '@/Components/Product/FilterProducts';
 import '../../css/Home.css';
 import LikeProductsCom from '@/Components/Product/ProductPage';
 
-export default function Home({ auth, categoryData, showModal }) {
-  const { mysqlNftsData, search = '', sort = 'price_desc', filters = {}, LikeProducts } = usePage().props;
-  const [sortBy, setSortBy] = useState(sort);
+export default function Home({ auth, categoryData, showModal, homeSlides = [] }) {
+    const {
+        mysqlNftsData,
+        search = '',
+        filters = {},
+        facets = {},
+        total = 0,
+        LikeProducts,
+    } = usePage().props;
 
-  const { category } = usePage().props;
+    return (
+        <MainLayout auth={auth} categories={categoryData} showModal={showModal}>
+            <Head title="Home" />
 
-  useEffect(() => {
-    setSortBy(sort);
-  }, [sort]);
-
-  const handleSortChange = (e) => {
-    const newSort = e.target.value;
-    setSortBy(newSort);
-
-    router.get('/',
-      {
-        search: search || undefined,
-        sort: newSort
-      },
-      {
-        preserveState: true,
-        preserveScroll: true,
-        only: ['mysqlNftsData', 'search', 'sort', 'filters']
-      }
-    );
-  };
-
-  return (
-    <MainLayout auth={auth} categories={categoryData} showModal={showModal}>
-      <Head title="Home" />
-
-      {search ? (
-        <div className="nfts_block">
-
-          <ProductsCatalog
-            dataProduct={mysqlNftsData}
-            category={{ name: 'Результаты поиска', id: null }}
-            filters={{ ...filters, search: search, sort: sortBy }}
-            isHomePage={true}
-          />
-            {LikeProducts && LikeProducts.length > 0 && LikeProductsCom && (
+            {search ? (
+                <div className="nfts_block">
+                    <ProductsCatalog
+                        dataProduct={mysqlNftsData}
+                        category={{ name: 'Результаты поиска', id: null }}
+                        filters={{ ...filters, search }}
+                        facets={facets}
+                        total={total}
+                        isHomePage={true}
+                    />
+                    {LikeProducts && LikeProducts.length > 0 && LikeProductsCom && (
+                        <>
+                            <h2 className="info_dop">Возможно, вам понравится</h2>
+                            <LikeProductsCom products={LikeProducts} />
+                        </>
+                    )}
+                </div>
+            ) : (
                 <>
-                    <h2 className='info_dop'>Возможно, вам понравится</h2>
-                    <LikeProductsCom products={LikeProducts} />
+                    <Slider slides={homeSlides} />
+                    <ProductPage products={mysqlNftsData} />
                 </>
             )}
-
-        </div>
-      ) : (
-        <>
-          <Slider />
-          <ProductPage key={mysqlNftsData.id} products={mysqlNftsData} />
-        </>
-      )}
-    </MainLayout>
-  );
+        </MainLayout>
+    );
 }

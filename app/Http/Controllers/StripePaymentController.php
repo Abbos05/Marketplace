@@ -9,6 +9,8 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\OrderLedgerService;
+use App\Services\StripeRefundService;
 use Illuminate\Support\Facades\DB;
 
 class StripePaymentController extends Controller
@@ -142,8 +144,9 @@ class StripePaymentController extends Controller
                     if ($order) {
                         $order->update([
                             'payment_status' => 'paid',
-                            'status' => 'paid'
                         ]);
+                        app(StripeRefundService::class)->recordSuccessfulCheckout($order, $session);
+                        app(OrderLedgerService::class)->recordPayment($order);
                     }
                     return redirect()->route('profile.orders')->with('success', 'Заказ успешно оплачен!');
                 }

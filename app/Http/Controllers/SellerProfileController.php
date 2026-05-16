@@ -98,7 +98,7 @@ public function store(Request $request)
             'legal_address' => 'nullable|string|max:300',
             'pickup_address' => 'sometimes|string|max:300',
             'description' => 'nullable|string',
-            'working_hours' => 'nullable|json',
+            'working_hours' => 'nullable|array',
         ]);
 
         $profile->update($request->only([

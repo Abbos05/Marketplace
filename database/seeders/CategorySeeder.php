@@ -2,345 +2,179 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Category;
 use App\Models\CategoryAttribute;
+use Illuminate\Database\Seeder;
 
 class CategorySeeder extends Seeder
 {
     public function run(): void
     {
-        /*
-        |--------------------------------------------------------------------------
-        | ROOT CATEGORIES
-        |--------------------------------------------------------------------------
-        */
+        $roots = $this->seedRoots();
 
-        $electronics = Category::firstOrCreate(
-            ['slug' => 'electronics'],
-            ['name' => 'Электроника', 'icon' => '/img/categories/electronics.png', 'is_active' => true]
-        );
+        $this->purgeChildCategories();
 
-        $clothing = Category::firstOrCreate(
-            ['slug' => 'clothing'],
-            ['name' => 'Одежда и обувь', 'icon' => '/img/categories/clothing.png', 'is_active' => true]
-        );
+        $subNamesByRoot = [
+            'electronics' => ['Смартфоны и гаджеты', 'Ноутбуки и ПК', 'ТВ и медиа', 'Периферия и аксессуары'],
+            'clothing' => ['Верхняя одежда', 'Повседневная одежда', 'Обувь', 'Аксессуары'],
+            'home' => ['Мебель для дома', 'Текстиль и декор', 'Кухня и посуда', 'Хранение и порядок'],
+            'sports' => ['Фитнес и тренажёры', 'Туризм и активный отдых', 'Командные виды', 'Инвентарь для зала'],
+            'auto' => ['Шины и диски', 'Масла и жидкости', 'Аккумуляторы и электрика', 'Аксессуары в салон'],
+            'books' => ['Художественная литература', 'Учебники и методички', 'Деловая литература', 'Детские книги'],
+            'beauty' => ['Уход за кожей', 'Декоративная косметика', 'Парфюмерия', 'Инструменты и аппараты'],
+            'kids' => ['Игрушки и развитие', 'Одежда для детей', 'Товары для малышей', 'Школа и творчество'],
+            'pets' => ['Корма и лакомства', 'Игрушки и аксессуары', 'Гигиена и уход', 'Одежда и переноски'],
+            'furniture' => ['Офисная мебель', 'Мебель для спальни', 'Гостиная и столовая', 'Прихожая и хранение'],
+        ];
 
-        $home = Category::firstOrCreate(
-            ['slug' => 'home'],
-            ['name' => 'Дом и интерьер', 'icon' => '/img/categories/home.png', 'is_active' => true]
-        );
+        foreach ($roots as $root) {
+            $names = $subNamesByRoot[$root->slug] ?? [
+                "{$root->name} — раздел 1",
+                "{$root->name} — раздел 2",
+                "{$root->name} — раздел 3",
+                "{$root->name} — раздел 4",
+            ];
 
-        $sports = Category::firstOrCreate(
-            ['slug' => 'sports'],
-            ['name' => 'Спорт и отдых', 'icon' => '/img/categories/sports.png', 'is_active' => true]
-        );
+            for ($i = 1; $i <= 4; $i++) {
+                $slug = $root->slug.'-s'.$i;
+                $child = Category::query()->updateOrCreate(
+                    ['slug' => $slug],
+                    [
+                        'name' => $names[$i - 1],
+                        'parent_id' => $root->id,
+                        'is_active' => true,
+                    ]
+                );
 
-        $auto = Category::firstOrCreate(
-            ['slug' => 'auto'],
-            ['name' => 'Автотовары', 'icon' => '/img/categories/auto.png', 'is_active' => true]
-        );
-
-        $books = Category::firstOrCreate(
-            ['slug' => 'books'],
-            ['name' => 'Книги и медиа', 'icon' => '/img/categories/books.png', 'is_active' => true]
-        );
-
-        $beauty = Category::firstOrCreate(
-            ['slug' => 'beauty'],
-            ['name' => 'Красота и здоровье', 'icon' => '/img/categories/beauty.png', 'is_active' => true]
-        );
-
-        $kids = Category::firstOrCreate(
-            ['slug' => 'kids'],
-            ['name' => 'Детские товары', 'icon' => '/img/categories/kids.png', 'is_active' => true]
-        );
-
-        $pets = Category::firstOrCreate(
-            ['slug' => 'pets'],
-            ['name' => 'Зоотовары', 'icon' => '/img/categories/pets.png', 'is_active' => true]
-        );
-
-        $furniture = Category::firstOrCreate(
-            ['slug' => 'furniture'],
-            ['name' => 'Мебель', 'icon' => '/img/categories/furniture.png', 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | ELECTRONICS CHILDREN
-        |--------------------------------------------------------------------------
-        */
-
-        $smartphones = Category::firstOrCreate(
-            ['slug' => 'smartphones'],
-            ['name' => 'Смартфоны', 'parent_id' => $electronics->id, 'is_active' => true]
-        );
-
-        $laptops = Category::firstOrCreate(
-            ['slug' => 'laptops'],
-            ['name' => 'Ноутбуки', 'parent_id' => $electronics->id, 'is_active' => true]
-        );
-
-        $tvs = Category::firstOrCreate(
-            ['slug' => 'tvs'],
-            ['name' => 'Телевизоры', 'parent_id' => $electronics->id, 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | CLOTHING CHILDREN
-        |--------------------------------------------------------------------------
-        */
-
-        $mens = Category::firstOrCreate(
-            ['slug' => 'mens-clothes'],
-            ['name' => 'Мужская одежда', 'parent_id' => $clothing->id, 'is_active' => true]
-        );
-
-        $womens = Category::firstOrCreate(
-            ['slug' => 'womens-clothes'],
-            ['name' => 'Женская одежда', 'parent_id' => $clothing->id, 'is_active' => true]
-        );
-
-        $shoes = Category::firstOrCreate(
-            ['slug' => 'shoes'],
-            ['name' => 'Обувь', 'parent_id' => $clothing->id, 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | HOME CHILDREN
-        |--------------------------------------------------------------------------
-        */
-
-        $furnitureHome = Category::firstOrCreate(
-            ['slug' => 'home-furniture'],
-            ['name' => 'Мебель для дома', 'parent_id' => $home->id, 'is_active' => true]
-        );
-
-        $decor = Category::firstOrCreate(
-            ['slug' => 'decor'],
-            ['name' => 'Декор', 'parent_id' => $home->id, 'is_active' => true]
-        );
-
-        $kitchen = Category::firstOrCreate(
-            ['slug' => 'kitchen'],
-            ['name' => 'Посуда и кухня', 'parent_id' => $home->id, 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | SPORTS CHILDREN
-        |--------------------------------------------------------------------------
-        */
-
-        $fitness = Category::firstOrCreate(
-            ['slug' => 'fitness'],
-            ['name' => 'Фитнес', 'parent_id' => $sports->id, 'is_active' => true]
-        );
-
-        $tourism = Category::firstOrCreate(
-            ['slug' => 'tourism'],
-            ['name' => 'Туризм', 'parent_id' => $sports->id, 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | AUTO CHILDREN
-        |--------------------------------------------------------------------------
-        */
-
-        $tires = Category::firstOrCreate(
-            ['slug' => 'tires'],
-            ['name' => 'Шины и диски', 'parent_id' => $auto->id, 'is_active' => true]
-        );
-
-        $oils = Category::firstOrCreate(
-            ['slug' => 'oils'],
-            ['name' => 'Масла и жидкости', 'parent_id' => $auto->id, 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | BOOKS CHILDREN
-        |--------------------------------------------------------------------------
-        */
-
-        $fiction = Category::firstOrCreate(
-            ['slug' => 'fiction'],
-            ['name' => 'Художественная литература', 'parent_id' => $books->id, 'is_active' => true]
-        );
-
-        $education = Category::firstOrCreate(
-            ['slug' => 'education'],
-            ['name' => 'Учебная литература', 'parent_id' => $books->id, 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | BEAUTY CHILDREN
-        |--------------------------------------------------------------------------
-        */
-
-        $cosmetics = Category::firstOrCreate(
-            ['slug' => 'cosmetics'],
-            ['name' => 'Косметика', 'parent_id' => $beauty->id, 'is_active' => true]
-        );
-
-        $health = Category::firstOrCreate(
-            ['slug' => 'health'],
-            ['name' => 'Здоровье', 'parent_id' => $beauty->id, 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | KIDS CHILDREN
-        |--------------------------------------------------------------------------
-        */
-
-        $toys = Category::firstOrCreate(
-            ['slug' => 'toys'],
-            ['name' => 'Игрушки', 'parent_id' => $kids->id, 'is_active' => true]
-        );
-
-        $baby = Category::firstOrCreate(
-            ['slug' => 'baby-products'],
-            ['name' => 'Товары для новорожденных', 'parent_id' => $kids->id, 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | PETS CHILDREN
-        |--------------------------------------------------------------------------
-        */
-
-        $dog = Category::firstOrCreate(
-            ['slug' => 'dog-supplies'],
-            ['name' => 'Для собак', 'parent_id' => $pets->id, 'is_active' => true]
-        );
-
-        $cat = Category::firstOrCreate(
-            ['slug' => 'cat-supplies'],
-            ['name' => 'Для кошек', 'parent_id' => $pets->id, 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | FURNITURE CHILDREN
-        |--------------------------------------------------------------------------
-        */
-
-        $office = Category::firstOrCreate(
-            ['slug' => 'office-furniture'],
-            ['name' => 'Офисная мебель', 'parent_id' => $furniture->id, 'is_active' => true]
-        );
-
-        $bedroom = Category::firstOrCreate(
-            ['slug' => 'bedroom-furniture'],
-            ['name' => 'Спальня', 'parent_id' => $furniture->id, 'is_active' => true]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | ATTRIBUTES FOR EACH CATEGORY
-        |--------------------------------------------------------------------------
-        */
-
-        // Смартфоны
-        $this->addAttributes($smartphones->id, [
-            ['name' => 'Бренд', 'type' => 'select', 'options' => ['Apple', 'Samsung', 'Xiaomi', 'Huawei', 'Google'], 'required' => true],
-            ['name' => 'Память', 'type' => 'select', 'options' => ['64GB', '128GB', '256GB', '512GB', '1TB'], 'required' => true],
-            ['name' => 'Цвет', 'type' => 'select', 'options' => ['Черный', 'Белый', 'Синий', 'Красный', 'Фиолетовый'], 'required' => true],
-            ['name' => 'Диагональ экрана', 'type' => 'number', 'options' => null, 'required' => true],
-        ]);
-
-        // Ноутбуки
-        $this->addAttributes($laptops->id, [
-            ['name' => 'Бренд', 'type' => 'select', 'options' => ['Apple', 'Asus', 'Lenovo', 'HP', 'Acer', 'MSI'], 'required' => true],
-            ['name' => 'Процессор', 'type' => 'select', 'options' => ['Intel i5', 'Intel i7', 'Intel i9', 'Ryzen 5', 'Ryzen 7'], 'required' => true],
-            ['name' => 'Оперативная память', 'type' => 'select', 'options' => ['8GB', '16GB', '32GB', '64GB'], 'required' => true],
-        ]);
-
-        // Мужская одежда
-        $this->addAttributes($mens->id, [
-            ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true],
-            ['name' => 'Размер', 'type' => 'select', 'options' => ['XS', 'S', 'M', 'L', 'XL', 'XXL'], 'required' => true],
-            ['name' => 'Цвет', 'type' => 'select', 'options' => ['Черный', 'Белый', 'Серый', 'Синий'], 'required' => true],
-            ['name' => 'Материал', 'type' => 'text', 'options' => null, 'required' => true],
-        ]);
-
-        // Женская одежда
-        $this->addAttributes($womens->id, [
-            ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true],
-            ['name' => 'Размер', 'type' => 'select', 'options' => ['XS', 'S', 'M', 'L', 'XL'], 'required' => true],
-            ['name' => 'Цвет', 'type' => 'select', 'options' => ['Черный', 'Белый', 'Розовый', 'Красный'], 'required' => true],
-        ]);
-
-        // Обувь
-        $this->addAttributes($shoes->id, [
-            ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true],
-            ['name' => 'Размер', 'type' => 'select', 'options' => ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'], 'required' => true],
-            ['name' => 'Цвет', 'type' => 'select', 'options' => ['Черный', 'Белый', 'Коричневый', 'Серый'], 'required' => true],
-        ]);
-
-        // Мебель для дома
-        $this->addAttributes($furnitureHome->id, [
-            ['name' => 'Материал', 'type' => 'select', 'options' => ['ДСП', 'МДФ', 'Массив', 'Пластик', 'Металл'], 'required' => true],
-            ['name' => 'Цвет', 'type' => 'select', 'options' => ['Белый', 'Дуб', 'Орех', 'Венге', 'Серый'], 'required' => true],
-        ]);
-
-        // Декор
-        $this->addAttributes($decor->id, [
-            ['name' => 'Материал', 'type' => 'select', 'options' => ['Керамика', 'Стекло', 'Дерево', 'Металл', 'Пластик'], 'required' => true],
-            ['name' => 'Стиль', 'type' => 'select', 'options' => ['Современный', 'Классический', 'Лофт', 'Минимализм'], 'required' => true],
-        ]);
-
-        // Фитнес
-        $this->addAttributes($fitness->id, [
-            ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true],
-            ['name' => 'Тип', 'type' => 'select', 'options' => ['Беговая дорожка', 'Велотренажер', 'Эллипс', 'Силовой тренажер'], 'required' => true],
-        ]);
-
-        // Шины
-        $this->addAttributes($tires->id, [
-            ['name' => 'Сезонность', 'type' => 'select', 'options' => ['Летние', 'Зимние', 'Всесезонные'], 'required' => true],
-            ['name' => 'Диаметр', 'type' => 'select', 'options' => ['R13', 'R14', 'R15', 'R16', 'R17', 'R18'], 'required' => true],
-        ]);
-
-        // Игрушки
-        $this->addAttributes($toys->id, [
-            ['name' => 'Возраст', 'type' => 'select', 'options' => ['0+', '1+', '3+', '5+', '7+', '12+'], 'required' => true],
-            ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true],
-        ]);
-
-        // Для собак
-        $this->addAttributes($dog->id, [
-            ['name' => 'Вид', 'type' => 'select', 'options' => ['Корм', 'Игрушки', 'Аксессуары', 'Косметика'], 'required' => true],
-            ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true],
-        ]);
-
-        // Офисная мебель
-        $this->addAttributes($office->id, [
-            ['name' => 'Материал', 'type' => 'select', 'options' => ['ДСП', 'МДФ', 'Металл', 'Пластик'], 'required' => true],
-            ['name' => 'Цвет', 'type' => 'select', 'options' => ['Белый', 'Дуб', 'Венге', 'Серый', 'Черный'], 'required' => true],
-        ]);
+                $this->addAttributes($child->id, $this->attributeTemplateForRootSlug($root->slug));
+            }
+        }
     }
 
-   private function addAttributes($categoryId, $attributes)
-{
-    foreach ($attributes as $attr) {
-        CategoryAttribute::firstOrCreate(
-            [
-                'category_id' => $categoryId,
-                'name' => $attr['name'],
+    /** @return list<Category> */
+    private function seedRoots(): array
+    {
+        $slugs = [
+            ['slug' => 'electronics', 'name' => 'Электроника', 'icon' => '/img/categories/electronics.png'],
+            ['slug' => 'clothing', 'name' => 'Одежда и обувь', 'icon' => '/img/categories/clothing.png'],
+            ['slug' => 'home', 'name' => 'Дом и интерьер', 'icon' => '/img/categories/home.png'],
+            ['slug' => 'sports', 'name' => 'Спорт и отдых', 'icon' => '/img/categories/sports.png'],
+            ['slug' => 'auto', 'name' => 'Автотовары', 'icon' => '/img/categories/auto.png'],
+            ['slug' => 'books', 'name' => 'Книги и медиа', 'icon' => '/img/categories/books.png'],
+            ['slug' => 'beauty', 'name' => 'Красота и здоровье', 'icon' => '/img/categories/beauty.png'],
+            ['slug' => 'kids', 'name' => 'Детские товары', 'icon' => '/img/categories/kids.png'],
+            ['slug' => 'pets', 'name' => 'Зоотовары', 'icon' => '/img/categories/pets.png'],
+            ['slug' => 'furniture', 'name' => 'Мебель', 'icon' => '/img/categories/furniture.png'],
+        ];
+
+        $roots = [];
+        foreach ($slugs as $row) {
+            $roots[] = Category::query()->firstOrCreate(
+                ['slug' => $row['slug']],
+                [
+                    'name' => $row['name'],
+                    'icon' => $row['icon'],
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        return $roots;
+    }
+
+    private function purgeChildCategories(): void
+    {
+        $childIds = Category::query()->whereNotNull('parent_id')->pluck('id');
+        if ($childIds->isEmpty()) {
+            return;
+        }
+
+        CategoryAttribute::query()->whereIn('category_id', $childIds)->delete();
+        Category::query()->whereNotNull('parent_id')->delete();
+    }
+
+    /**
+     * Шаблон атрибутов для всех листьев данного корня (одинаковый набор для 4 подкатегорий).
+     * У каждого листа должны быть product-атрибуты и минимум один variant-атрибут с >=3 значениями для 3 SKU.
+     *
+     * @return list<array{name: string, type: string, options: ?array, required: bool, applies_to: string}>
+     */
+    private function attributeTemplateForRootSlug(string $rootSlug): array
+    {
+        return match ($rootSlug) {
+            'electronics' => [
+                ['name' => 'Бренд', 'type' => 'select', 'options' => ['Samsung', 'Apple', 'Xiaomi', 'LG', 'Sony'], 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Диагональ экрана', 'type' => 'number', 'options' => null, 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Память', 'type' => 'select', 'options' => ['128GB', '256GB', '512GB'], 'required' => true, 'applies_to' => 'variant'],
+                ['name' => 'Цвет', 'type' => 'select', 'options' => ['Черный', 'Белый', 'Синий'], 'required' => true, 'applies_to' => 'variant'],
             ],
-            [
-                'type' => $attr['type'],
-                'options' => is_array($attr['options']) ? json_encode($attr['options']) : $attr['options'],
-                'required' => $attr['required'],
-            ]
-        );
+            'clothing' => [
+                ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Материал', 'type' => 'text', 'options' => null, 'required' => false, 'applies_to' => 'product'],
+                ['name' => 'Размер', 'type' => 'select', 'options' => ['S', 'M', 'L', 'XL'], 'required' => true, 'applies_to' => 'variant'],
+                ['name' => 'Цвет', 'type' => 'select', 'options' => ['Черный', 'Бежевый', 'Синий', 'Серый'], 'required' => true, 'applies_to' => 'variant'],
+            ],
+            'home', 'furniture' => [
+                ['name' => 'Материал', 'type' => 'select', 'options' => ['ДСП', 'МДФ', 'Массив', 'Металл'], 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Стиль', 'type' => 'select', 'options' => ['Современный', 'Сканди', 'Классика'], 'required' => false, 'applies_to' => 'product'],
+                ['name' => 'Цвет', 'type' => 'select', 'options' => ['Белый', 'Дуб', 'Венге', 'Серый'], 'required' => true, 'applies_to' => 'variant'],
+                ['name' => 'Комплектация', 'type' => 'select', 'options' => ['Базовая', 'Стандарт', 'Премиум'], 'required' => true, 'applies_to' => 'variant'],
+            ],
+            'sports' => [
+                ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Назначение', 'type' => 'select', 'options' => ['Дом', 'Зал', 'Улица', 'Путешествия'], 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Уровень', 'type' => 'select', 'options' => ['Начальный', 'Средний', 'Профи'], 'required' => true, 'applies_to' => 'variant'],
+                ['name' => 'Размер', 'type' => 'select', 'options' => ['Универсальный', 'S', 'M', 'L'], 'required' => true, 'applies_to' => 'variant'],
+            ],
+            'auto' => [
+                ['name' => 'Сезонность', 'type' => 'select', 'options' => ['Летние', 'Зимние', 'Всесезонные'], 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Диаметр', 'type' => 'select', 'options' => ['R15', 'R16', 'R17', 'R18'], 'required' => true, 'applies_to' => 'variant'],
+                ['name' => 'Индекс', 'type' => 'select', 'options' => ['91V', '94W', '96Y'], 'required' => true, 'applies_to' => 'variant'],
+            ],
+            'books' => [
+                ['name' => 'Жанр', 'type' => 'select', 'options' => ['Роман', 'Детектив', 'Фантастика', 'Биография'], 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Язык', 'type' => 'select', 'options' => ['Русский', 'Английский', 'Двуязычный'], 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Формат', 'type' => 'select', 'options' => ['Бумажный', 'Электронный', 'Комплект'], 'required' => true, 'applies_to' => 'variant'],
+            ],
+            'beauty' => [
+                ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Тип', 'type' => 'select', 'options' => ['Уход', 'Декоративная', 'Парфюм', 'Инструмент'], 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Объём', 'type' => 'select', 'options' => ['30 мл', '50 мл', '100 мл', '250 мл'], 'required' => true, 'applies_to' => 'variant'],
+            ],
+            'kids' => [
+                ['name' => 'Возраст', 'type' => 'select', 'options' => ['0+', '3+', '6+', '12+'], 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Комплектация', 'type' => 'select', 'options' => ['Мини', 'Стандарт', 'Макси'], 'required' => true, 'applies_to' => 'variant'],
+            ],
+            'pets' => [
+                ['name' => 'Вид', 'type' => 'select', 'options' => ['Корм', 'Лакомства', 'Игрушки', 'Аксессуары'], 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Вес', 'type' => 'select', 'options' => ['400 г', '1 кг', '2.5 кг', '7.5 кг'], 'required' => true, 'applies_to' => 'variant'],
+            ],
+            default => [
+                ['name' => 'Бренд', 'type' => 'text', 'options' => null, 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Серия', 'type' => 'select', 'options' => ['Lite', 'Standard', 'Pro'], 'required' => true, 'applies_to' => 'product'],
+                ['name' => 'Комплектация', 'type' => 'select', 'options' => ['Базовая', 'Расширенная', 'Премиум'], 'required' => true, 'applies_to' => 'variant'],
+            ],
+        };
     }
-}
+
+    private function addAttributes(int $categoryId, array $attributes): void
+    {
+        foreach ($attributes as $attr) {
+            CategoryAttribute::query()->firstOrCreate(
+                [
+                    'category_id' => $categoryId,
+                    'name' => $attr['name'],
+                ],
+                [
+                    'type' => $attr['type'],
+                    'options' => is_array($attr['options']) ? json_encode($attr['options']) : $attr['options'],
+                    'required' => $attr['required'],
+                    'applies_to' => $attr['applies_to'] ?? 'product',
+                ]
+            );
+        }
+    }
 }

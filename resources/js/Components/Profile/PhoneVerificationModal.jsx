@@ -1,43 +1,35 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm, router } from '@inertiajs/react';
 
-export default function PhoneVerificationModal({ isOpen, onClose, auth }) {
-  const [rawPhone, setRawPhone] = useState('');
-
-  const { data, setData, post, processing, errors } = useForm({
-    phone: '',
+/**
+ * Модал верификации профиля.
+ * Вместо ввода телефона (телефон уже используется для входа)
+ * пользователь заполняет: имя, фамилию и email.
+ */
+export default function PhoneVerificationModal({ isOpen, onClose, auth, onSuccess }) {
+  const { data, setData, post, processing, errors, reset } = useForm({
+    name:      auth?.user?.name      || '',
+    last_name: auth?.user?.last_name || '',
+    email:     auth?.user?.email     || '',
   });
 
-  const formatPhone = (value) => {
-    const digits = value.replace(/\D/g, '').slice(0, 11);
-    if (!digits) return '';
-    let result = '+7 ';
-    if (digits.length > 1) result += digits.substring(1, 4);
-    if (digits.length > 4) result += ' ' + digits.substring(4, 7);
-    if (digits.length > 7) result += ' ' + digits.substring(7, 9);
-    if (digits.length > 9) result += ' ' + digits.substring(9, 11);
-    return result;
-  };
-
-  const handleChange = (e) => {
-    let input = e.target.value.replace(/\D/g, '');
-    if (input.startsWith('8')) input = '7' + input.slice(1);
-    if (!input.startsWith('7')) input = '7' + input;
-    input = input.slice(0, 11);
-  
-    setRawPhone(input);
-    setData('phone', input); // ← ЭТО РАБОТАЕТ!
-  };
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (rawPhone.length < 11) return;
 
-    post('/profile/update-phone', {
+    const formData = new FormData();
+    formData.append('name',      data.name.trim());
+    formData.append('last_name', data.last_name.trim());
+    formData.append('email',     data.email.trim());
+
+    post('/profile/update', {
+      data: formData,
+      forceFormData: true,
       preserveState: true,
       preserveScroll: true,
       onSuccess: () => {
         onClose();
         router.reload({ only: ['auth'] });
+        onSuccess?.('Профиль заполнен!');
       },
     });
   };
@@ -46,37 +38,69 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth }) {
 
   return (
     <div className="phone-modal-overlay" onClick={onClose}>
-      <div className="phone-modal-content" onClick={e => e.stopPropagation()}>
+      <div className="phone-modal-content verification-modal" onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="modal-close-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
             <path fill="currentColor" d="M18.3 5.71a.996.996 0 0 0-1.41 0L12 10.59 7.11 5.7a.996.996 0 1 0-1.41 1.41L10.59 12l-4.89 4.89a.996.996 0 1 0 1.41 1.41L12 13.41l4.89 4.89a.996.996 0 1 0 1.41-1.41L13.41 12l4.89-4.89c.38-.38.38-1.02 0-1.4z" />
           </svg>
         </button>
 
-        <h3>Верификация телефона</h3>
-        <p>Введите номер для подтверждения личности.</p>
+        <div className="verification-modal-icon">✅</div>
+        <h3 className="verification-modal-title">Заполните профиль</h3>
+        <p className="verification-modal-subtitle">
+          Укажите имя и email — это поможет получить полный доступ к платформе
+        </p>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="tel"
-            value={formatPhone(rawPhone)}
-            onChange={handleChange}
-            placeholder="+7 999 999 99 99"
-            className="phone-modal-input"
-            required
-          />
-          {errors.phone && <p className="modal-error">{errors.phone}</p>}
+        <form onSubmit={handleSubmit} className="verification-modal-form">
+          <div className="verification-field">
+            <label className="verification-label">Имя <span className="required">*</span></label>
+            <input
+              type="text"
+              value={data.name}
+              onChange={(e) => setData('name', e.target.value.slice(0, 40))}
+              placeholder="Ваше имя"
+              className="phone-modal-input"
+              maxLength={40}
+              autoFocus
+            />
+            {errors.name && <p className="modal-error">{errors.name}</p>}
+          </div>
+
+          <div className="verification-field">
+            <label className="verification-label">Фамилия</label>
+            <input
+              type="text"
+              value={data.last_name}
+              onChange={(e) => setData('last_name', e.target.value.slice(0, 40))}
+              placeholder="Ваша фамилия"
+              className="phone-modal-input"
+              maxLength={40}
+            />
+            {errors.last_name && <p className="modal-error">{errors.last_name}</p>}
+          </div>
+
+          <div className="verification-field">
+            <label className="verification-label">Email <span className="required">*</span></label>
+            <input
+              type="email"
+              value={data.email}
+              onChange={(e) => setData('email', e.target.value)}
+              placeholder="example@mail.com"
+              className="phone-modal-input"
+            />
+            {errors.email && <p className="modal-error">{errors.email}</p>}
+          </div>
 
           <div className="phone-modal-buttons">
             <button type="button" onClick={onClose} className="phone-modal-btn phone-modal-btn--cancel">
-              Отмена
+              Позже
             </button>
             <button
               type="submit"
-              disabled={processing || rawPhone.length < 11}
+              disabled={processing || !data.name.trim() || !data.email.trim()}
               className="phone-modal-btn phone-modal-btn--submit"
             >
-              {processing ? 'Отправка...' : 'Отправить'}
+              {processing ? 'Сохранение...' : 'Сохранить'}
             </button>
           </div>
         </form>

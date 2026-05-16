@@ -59,6 +59,27 @@ class ProductVariant extends Model
         return $this->hasMany(Review::class, 'variant_id');
     }
 
+    /** Подпись варианта для карточек и страницы товара (из options). Только значения, без «Цвет:», «Размер:». */
+    public function displayLabel(): string
+    {
+        $opts = $this->options;
+        if (! is_array($opts) || $opts === []) {
+            return 'Вариант #'.$this->id;
+        }
+
+        $parts = [];
+        foreach ($opts as $val) {
+            if (is_string($val) && $val !== '') {
+                $parts[] = $val;
+            }
+        }
+
+        $parts = array_values(array_unique(array_filter($parts)));
+        $label = implode(' · ', $parts);
+
+        return $label !== '' ? $label : ('Вариант #'.$this->id);
+    }
+
     // Актуальная цена с учётом скидки
     public function getCurrentPriceAttribute()
     {

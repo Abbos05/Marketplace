@@ -917,10 +917,10 @@
     width: 260px;
     background-color: rgba(255, 255, 255, 0.772);
     border-radius: 20px;
-    padding-bottom: 10px;
     border: 1px solid var(--border);
     position: sticky;
 top: 0px;
+overflow: hidden;
 }
 
 .profile-user {
@@ -2201,4 +2201,829 @@ top: 0px;
     color: red;
     padding: 5px;
   }
-  
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SETTINGS SECTION — Раздел "Настройки" профиля
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ── Карточка ────────────────────────────────────────────────────────────── */
+.settings-card {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-card:hover {
+    border-color: rgba(255, 46, 99, 0.35);
+    box-shadow: 0 4px 18px rgba(255, 46, 99, 0.07);
+}
+
+.settings-card--danger {
+    border-color: rgba(220, 38, 38, 0.2);
+}
+.settings-card--danger:hover {
+    border-color: rgba(220, 38, 38, 0.5);
+    box-shadow: 0 4px 18px rgba(220, 38, 38, 0.07);
+}
+
+.settings-card--info {
+    border-color: rgba(99, 102, 241, 0.25);
+}
+.settings-card--info:hover {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+/* ── Шапка карточки ──────────────────────────────────────────────────────── */
+.settings-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    gap: 12px;
+}
+
+.settings-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-card-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 46, 99, 0.08);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.3;
+    font-family: var(--font-family);
+}
+
+.settings-card-value {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 400;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.settings-card-value--clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 340px;
+}
+
+.settings-value-sep {
+    color: #cbd5e1;
+}
+
+/* Аватар в шапке карточки */
+.settings-avatar-thumb {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 46, 99, 0.3);
+    flex-shrink: 0;
+}
+
+/* ── Кнопки управления ───────────────────────────────────────────────────── */
+.settings-edit-btn {
+    background: transparent;
+    border: 1.5px solid rgba(255, 46, 99, 0.4);
+    color: #FF2E63;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
+    flex-shrink: 0;
+    font-family: var(--font-family);
+}
+
+.settings-edit-btn:hover {
+    background: #FF2E63;
+    border-color: #FF2E63;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.settings-cancel-btn {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    font-family: var(--font-family);
+}
+
+.settings-cancel-btn:hover {
+    border-color: #94a3b8;
+    color: #475569;
+}
+
+.settings-danger-btn {
+    background: transparent;
+    border: 1.5px solid rgba(220, 38, 38, 0.4);
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    font-family: var(--font-family);
+}
+
+.settings-danger-btn:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+    color: #fff;
+}
+
+/* ── Тело карточки (форма) ───────────────────────────────────────────────── */
+.settings-card-body {
+    border-top: 1px solid var(--border);
+    padding: 20px 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: rgba(255, 255, 255, 0.6);
+    animation: settings-expand 0.2s ease-out;
+}
+
+@keyframes settings-expand {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Поля формы ──────────────────────────────────────────────────────────── */
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.settings-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-family: var(--font-family);
+}
+
+.settings-hint {
+    font-weight: 400;
+    color: #94a3b8;
+    margin-left: 4px;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.settings-input {
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: #1e293b;
+    font-size: 14px;
+    font-family: var(--font-family);
+    font-weight: 500;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.settings-input:focus {
+    border-color: #FF2E63;
+    box-shadow: 0 0 0 3px rgba(255, 46, 99, 0.1);
+}
+
+.settings-input::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.settings-textarea {
+    resize: vertical;
+    min-height: 96px;
+    line-height: 1.5;
+}
+
+.settings-error {
+    font-size: 12px;
+    color: #dc2626;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* ── Загрузка аватара ────────────────────────────────────────────────────── */
+.settings-avatar-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.settings-avatar-large {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2.5px solid rgba(255, 46, 99, 0.35);
+    flex-shrink: 0;
+}
+
+.settings-avatar-upload-btn {
+    background: transparent;
+    border: 1.5px dashed rgba(255, 46, 99, 0.4);
+    color: #FF2E63;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    font-family: var(--font-family);
+}
+
+.settings-avatar-upload-btn:hover {
+    background: rgba(255, 46, 99, 0.06);
+    border-color: #FF2E63;
+}
+
+/* ── Кнопка сохранения ───────────────────────────────────────────────────── */
+.settings-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 4px;
+}
+
+.settings-save-btn {
+    background: #FF2E63;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font-family);
+    padding: 10px 28px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s, opacity 0.2s;
+}
+
+.settings-save-btn:hover:not(:disabled) {
+    background: #d30035;
+    transform: translateY(-1px);
+}
+
+.settings-save-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Адаптив ─────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .settings-card-header {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .settings-edit-btn,
+    .settings-cancel-btn,
+    .settings-danger-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .settings-card-value--clamp {
+        max-width: 200px;
+    }
+
+    .settings-avatar-upload-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* ── Верификационный модал (имя / фамилия / email) ───────────────────────── */
+.verification-modal {
+    max-width: 440px;
+    border-color: rgba(255, 46, 99, 0.3);
+    box-shadow: 0 20px 50px rgba(255, 46, 99, 0.1);
+}
+
+.verification-modal-icon {
+    font-size: 42px;
+    text-align: center;
+    margin-bottom: 12px;
+    padding-top: 8px;
+}
+
+.verification-modal-title {
+    font-size: 22px !important;
+    font-weight: 700;
+    color: #FF2E63 !important;
+    text-align: center;
+    margin: 0 0 8px !important;
+    padding-top: 0 !important;
+    text-shadow: 0 0 20px rgba(255, 46, 99, 0.3) !important;
+}
+
+.verification-modal-subtitle {
+    font-size: 14px !important;
+    color: #94a3b8 !important;
+    text-align: center;
+    margin-bottom: 24px !important;
+}
+
+.verification-modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.verification-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.verification-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.verification-label .required {
+    color: #FF2E63;
+    margin-left: 2px;
+}
+
+.verification-modal .phone-modal-input {
+    margin-bottom: 0;
+    border-color: rgba(255, 46, 99, 0.2);
+}
+
+.verification-modal .phone-modal-input:focus {
+    border-color: #FF2E63;
+    box-shadow: 0 0 0 3px rgba(255, 46, 99, 0.12);
+}
+
+.verification-modal .phone-modal-btn--submit {
+    background: #FF2E63;
+    color: #fff;
+}
+
+.verification-modal .phone-modal-btn--submit:hover:not(:disabled) {
+    background: #d30035;
+}
+
+.verification-modal .phone-modal-btn--submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.verification-modal .modal-close-btn {
+    background: rgba(255, 46, 99, 0.1);
+    border-color: rgba(255, 46, 99, 0.25);
+}
+
+.verification-modal .modal-close-btn svg {
+    fill: #FF2E63;
+}
+
+.verification-modal .modal-close-btn:hover {
+    background: #FF2E63;
+}
+
+/* ── Два поля в ряд (имя + фамилия) ─────────────────────────────────────── */
+.settings-fields-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+@media (max-width: 480px) {
+    .settings-fields-row { grid-template-columns: 1fr; }
+}
+
+/* ── Телефон только для чтения ───────────────────────────────────────────── */
+.settings-input--readonly {
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
+    border-style: dashed;
+}
+.settings-hint-text {
+    font-size: 11px;
+    color: #94a3b8;
+    margin: 0;
+    font-style: italic;
+}
+
+/* ── Карточка «Аккаунт» ──────────────────────────────────────────────────── */
+.settings-card--account {
+    border-color: rgba(100, 116, 139, 0.2);
+}
+.settings-card--account:hover {
+    border-color: rgba(100, 116, 139, 0.4);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05);
+}
+
+.settings-account-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Кнопка «Выйти из аккаунта» */
+.settings-logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 1.5px solid rgba(100, 116, 139, 0.4);
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-family);
+}
+.settings-logout-btn:hover {
+    background: #475569;
+    border-color: #475569;
+    color: #fff;
+}
+
+/* ── Кнопка «Выйти» в сайдбаре профиля ──────────────────────────────────── */
+.profile-menu-logout {
+
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all 0.2s;
+}
+.profile-menu-logout:hover {
+    color: #FF2E63;
+    border-color: rgba(255, 46, 99, 0.3);
+    background: rgba(255, 46, 99, 0.04);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADMIN SECTION — Раздел администратора
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Admin section header with goto button ── */
+.admin-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+.admin-section-header .profile__title {
+    margin: 0;
+}
+.admin-goto-btn {
+    display: inline-block;
+    padding: 8px 18px;
+    border-radius: 10px;
+    background: var(--backgroundBlack);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background .2s, opacity .2s;
+    white-space: nowrap;
+}
+.admin-goto-btn:hover { background: var(--background); }
+
+/* ── Filter tabs ── */
+.admin-filter-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.admin-filter-tab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border, #e2e8f0);
+    background: rgba(255,255,255,0.85);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .2s;
+    color: inherit;
+}
+.admin-filter-tab:hover {
+    border-color: var(--backgroundBlack);
+    color: var(--background);
+}
+.admin-filter-tab.active {
+    background: var(--backgroundBlack);
+    border-color: var(--backgroundBlack);
+    color: #fff;
+}
+.admin-filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.3);
+}
+.admin-filter-tab.active .admin-filter-count {
+    background: rgba(255,255,255,0.25);
+}
+.admin-filter-tab:not(.active) .admin-filter-count {
+    background: rgba(99,102,241,0.12);
+    color: var(--background);
+}
+
+/* ── Empty state ── */
+.admin-empty {
+    text-align: center;
+    padding: 40px;
+    color: #94a3b8;
+    font-size: 15px;
+}
+
+/* ── Blocked badge ── */
+.admin-blocked-badge {
+    font-size: 10px;
+    background: rgba(239,68,68,0.12);
+    color: #dc2626;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* ── View (detail) button ── */
+.admin-btn-view {
+    background: rgba(99,102,241,0.1);
+    color: var(--background);
+}
+
+/* Sidebar admin tab */
+.profile-menu-admin {
+    padding: 15px 20px;
+    cursor: pointer;
+    transition: .4s;
+    border-top: 1px solid rgba(99, 102, 241, 0.2);
+    color: var(--backgroundBlack);
+    font-weight: 600;
+}
+.profile-menu-admin:hover {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--background);
+}
+.profile-menu-admin.active {
+    background: var(--backgroundBlack);
+    color: #fff;
+}
+
+/* Admin panel container */
+.admin-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Search bar */
+.admin-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.admin-search-input {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border, #e2e8f0);
+    background: rgba(255,255,255,0.85);
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+}
+.admin-search-input:focus {
+    border-color: var(--backgroundBlack);
+}
+.admin-users-count {
+    font-size: 13px;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+/* User list */
+.admin-users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* User card */
+.admin-user-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.85);
+    border-radius: 14px;
+    border: 1.5px solid var(--border, #e2e8f0);
+    transition: box-shadow .2s;
+}
+.admin-user-card:hover {
+    box-shadow: 0 4px 16px rgba(99,102,241,0.08);
+}
+.admin-user-card.admin-user-blocked {
+    border-color: rgba(239,68,68,0.35);
+    background: rgba(254,242,242,0.7);
+}
+.admin-user-card.admin-user-deleted {
+    opacity: 0.55;
+    border-style: dashed;
+}
+
+/* Avatar */
+.admin-user-avatar img {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border, #e2e8f0);
+}
+
+/* Info block */
+.admin-user-info {
+    flex: 1;
+    min-width: 0;
+}
+.admin-user-name {
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.admin-deleted-badge {
+    font-size: 10px;
+    background: #ef4444;
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+.admin-user-contacts {
+    display: flex;
+    gap: 10px;
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+}
+.admin-user-meta {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+/* Role badge */
+.admin-user-role {
+    flex-shrink: 0;
+}
+.admin-role-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.admin-role-badge.role-admin {
+    background: rgba(99,102,241,0.15);
+    color: var(--background);
+}
+.admin-role-badge.role-moderator {
+    background: rgba(168,85,247,0.15);
+    color: #7c3aed;
+}
+.admin-role-badge.role-seller {
+    background: rgba(245,158,11,0.15);
+    color: #b45309;
+}
+.admin-role-badge.role-user {
+    background: rgba(100,116,139,0.12);
+    color: #475569;
+}
+
+/* Actions */
+.admin-user-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.admin-role-select {
+    padding: 5px 8px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border, #e2e8f0);
+    background: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color .2s;
+}
+.admin-role-select:focus {
+    border-color: var(--backgroundBlack);
+}
+.admin-action-btn {
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: none;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity .2s, background .2s;
+}
+.admin-action-btn:hover {
+    opacity: 0.85;
+}
+.admin-btn-block {
+    background: rgba(239,68,68,0.12);
+    color: #dc2626;
+}
+.admin-btn-unblock {
+    background: rgba(34,197,94,0.12);
+    color: #16a34a;
+}
+.admin-btn-delete {
+    background: rgba(239,68,68,0.08);
+    color: #ef4444;
+    border: 1px solid rgba(239,68,68,0.25);
+}
+.admin-self-label {
+    font-size: 12px;
+    color: #94a3b8;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-user-card {
+        flex-wrap: wrap;
+    }
+    .admin-user-actions {
+        flex-wrap: wrap;
+        width: 100%;
+        margin-top: 8px;
+    }
+}

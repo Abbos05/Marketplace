@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\PickupPoint;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\RedirectResponse;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Models\User;
+use App\Notifications\MarketplaceAlert;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Favorite;
@@ -23,7 +25,7 @@ class ProfileController extends Controller
 {
     public function index()
     {
-       $user = auth()->user()->load('sellerProfile');
+       $user = auth()->user()->load(['sellerProfile', 'defaultPickupPoint.region']);
 
         // Рекомендации
         $LikeProducts = Product::with('user', 'category')
@@ -49,22 +51,23 @@ class ProfileController extends Controller
         // Заказы с items и маппингом статусов
         $orders = Order::with('items.variant.product')
             ->where('buyer_id', $user->id)
-            ->whereNotIn('status', ['canceled', 'issued', 'returned'])
+            ->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_ISSUED, Order::STATUS_REFUSED])
             ->orderBy('created_at', 'desc')
             ->limit(1)
             ->get()
             ->map(function ($order) {
                 $order->frontend_status =
                     match ($order->status) {
-                        'new', 'paid', 'processing' => 'pending',
-                        'in_transit' => 'shipping',
-                        'ready_for_pickup', 'at_pvz' => 'ready',
-                        'issued' => 'completed',
-                        'canceled', 'returned' => 'cancelled',
+                        Order::STATUS_NEW => 'pending',
+                        Order::STATUS_INTRANSIT => 'shipping',
+                        Order::STATUS_DELIVERED => 'ready',
+                        Order::STATUS_ISSUED => 'completed',
+                        Order::STATUS_CANCELED, Order::STATUS_REFUSED => 'cancelled',
                         default => 'pending',
                     };
 
-                if ($order->status === 'ready_for_pickup' || $order->status === 'at_pvz') {
+                if ($order->delivery_method === 'pvz'
+                    && in_array($order->status, [Order::STATUS_INTRANSIT, Order::STATUS_DELIVERED, Order::STATUS_ISSUED], true)) {
                     $order->pickup_code = $order->order_code;
                 }
 
@@ -81,16 +84,78 @@ class ProfileController extends Controller
 
         $myFavorites->each(fn($p) => $p->is_favorite = true);
 
-        return Inertia::render('Profile/Index', [
-            'LikeProducts' => $LikeProducts,
-            'auth' => ['user' => $user],
-            'users' => User::all(),
-            'categories' => Category::all(),
-            'orders' => $orders,
-            'myFavorites' => $myFavorites,
-                    'sellerProfile' => $user->sellerProfile, // ← ДОБАВЬ ЭТУ СТРОКУ
+        $adminUsers = [];
+        if ($user->isStaff()) {
+            $adminUsers = User::withTrashed()
+                ->with('sellerProfile')
+                ->orderByRaw("FIELD(role, 'admin', 'moderator', 'seller', 'user')")
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(fn($u) => [
+                    'id'             => $u->id,
+                    'name'           => $u->name,
+                    'last_name'      => $u->last_name,
+                    'email'          => $u->email,
+                    'phone'          => $u->phone,
+                    'role'           => $u->role,
+                    'is_blocked'     => $u->is_blocked,
+                    'avatar'         => $u->avatar,
+                    'deleted_at'     => $u->deleted_at,
+                    'created_at'     => $u->created_at,
+                    'seller_profile' => $u->sellerProfile ? ['shop_name' => $u->sellerProfile->shop_name] : null,
+                ]);
+        }
 
+        $pickupPoints = PickupPoint::query()
+            ->active()
+            ->with('region')
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get()
+            ->map(fn (PickupPoint $p) => [
+                'id' => $p->id,
+                'label' => $p->title.($p->region ? ' — '.$p->region->name : ''),
+                'title' => $p->title,
+                'address' => $p->address,
+                'region_name' => $p->region?->name,
+            ]);
+
+        return Inertia::render('Profile/Index', [
+            'LikeProducts'  => $LikeProducts,
+            'auth'          => ['user' => $user],
+            'categories'    => Category::all(),
+            'orders'        => $orders,
+            'myFavorites'   => $myFavorites,
+            'sellerProfile' => $user->sellerProfile,
+            'adminUsers'    => $adminUsers,
+            'pickupPoints'  => $pickupPoints,
         ]);
+    }
+
+    public function updateDefaultPickup(Request $request): RedirectResponse
+    {
+        $raw = $request->input('default_pickup_point_id');
+        $request->merge([
+            'default_pickup_point_id' => $raw === '' || $raw === null ? null : (int) $raw,
+        ]);
+
+        $data = $request->validate([
+            'default_pickup_point_id' => 'nullable|integer|exists:pickup_points,id',
+        ]);
+
+        $id = $data['default_pickup_point_id'] ?? null;
+        if ($id !== null) {
+            $exists = PickupPoint::query()->active()->whereKey($id)->exists();
+            if (! $exists) {
+                return back()->withErrors(['default_pickup_point_id' => 'Пункт выдачи недоступен.']);
+            }
+        }
+
+        $request->user()->update([
+            'default_pickup_point_id' => $id,
+        ]);
+
+        return back()->with('success', 'Пункт выдачи сохранён.');
     }
 
 
@@ -167,6 +232,19 @@ class ProfileController extends Controller
             'categories' => Category::all(),
             'nfts' => $myNfts->toArray(),   // ← массив, а не коллекция
             'activeFilter' => $request->filter ?? null,
+            'pickupPoints' => PickupPoint::query()
+                ->active()
+                ->with('region')
+                ->orderBy('sort_order')
+                ->orderBy('title')
+                ->get()
+                ->map(fn (PickupPoint $p) => [
+                    'id' => $p->id,
+                    'label' => $p->title.($p->region ? ' — '.$p->region->name : ''),
+                    'title' => $p->title,
+                    'address' => $p->address,
+                    'region_name' => $p->region?->name,
+                ]),
         ]);
     }
 
@@ -175,19 +253,23 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
-        $myFavorites = Product::select('products.*')
+        $myFavorites = Product::forCatalogPresentation()
+            ->select('products.*')
             ->join('favorites', 'products.id', '=', 'favorites.product_id')
             ->where('favorites.user_id', $user->id)
-            ->with(['category', 'seller'])
             ->orderBy('favorites.created_at', 'desc')
             ->get();
 
-        $myFavorites->each(fn($p) => $p->is_favorite = true);
+        $myFavorites->each(fn ($p) => $p->is_favorite = true);
+        Product::enrichForCatalog($myFavorites);
 
 
         $products = Product::all();
-        $LikeProducts = Product::with('user')
+        $LikeProducts = Product::forCatalogPresentation()
+            ->where('status', 'approved')
+            ->limit(24)
             ->get();
+        Product::enrichForCatalog($LikeProducts);
         if (auth()->check()) {
             $userId = auth()->id();
             $favoriteProductIds = DB::table('favorites')
@@ -239,27 +321,44 @@ class ProfileController extends Controller
 
     public function block(User $user)
     {
-        if ($user->id === auth()->id() || $user->id === 1) {
+        $actor = auth()->user();
+
+        if ($user->id === $actor->id || $user->id === 1) {
             return back()->with('error', 'Вы не можете заблокировать');
-        } else {
-            $user->update([
-                'is_blocked' => !$user->is_blocked,
-            ]);
-            return back()->with('success', 'Статус блокировки пользователя изменен');
         }
+
+        if ($actor->isModerator() && $user->isStaff()) {
+            return back()->with('error', 'Модератор не может блокировать администраторов и других модераторов');
+        }
+
+        $wasBlocked = (bool) $user->is_blocked;
+        $user->update([
+            'is_blocked' => ! $user->is_blocked,
+        ]);
+        $user->refresh();
+        if ($user->is_blocked && ! $wasBlocked) {
+            $user->notify(new MarketplaceAlert(
+                'Аккаунт заблокирован',
+                'Ваш доступ к платформе ограничен. Напишите в поддержку, если это ошибка.',
+                route('messages.index', ['notifications' => 1], false),
+            ));
+        }
+
+        return back()->with('success', 'Статус блокировки пользователя изменен');
     }
     public function update(Request $request)
     {
         $user = $request->user();
 
         $rules = [
-            'name' => 'required|string|max:50',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'name'      => 'nullable|string|max:50',
+            'last_name' => 'nullable|string|max:50',
+            'email'     => 'nullable|email|max:255|unique:users,email,' . $user->id,
             'description' => 'nullable|string|max:500',
             'avatar' => 'nullable|image|max:2048',
             'current_password' => 'nullable|string',
             'password' => 'nullable|string|min:4|confirmed',
-            'phone' => 'nullable|string|regex:/^7\d{10}$/|max:11', // <-- главное правило
+            'phone' => 'nullable|string|regex:/^7\d{10}$/|max:11',
         ];
 
         $validated = $request->validate($rules, [
@@ -268,7 +367,6 @@ class ProfileController extends Controller
             'name.string' => 'Имя должно быть текстом.',
             'name.max' => 'Имя не должно превышать 50 символов.',
 
-            'email.required' => 'Email обязателен для заполнения.',
             'email.email' => 'Введите корректный адрес электронной почты.',
             'email.max' => 'Email не должен превышать 255 символов.',
             'email.unique' => 'Пользователь с таким email уже существует.',
@@ -311,6 +409,14 @@ class ProfileController extends Controller
 
         // Обновляем пользователя
         $user->update($validated);
+
+        if ($request->filled('password')) {
+            $user->notify(new MarketplaceAlert(
+                'Пароль изменён',
+                'Пароль вашего аккаунта был успешно обновлён. Если это были не вы, немедленно свяжитесь с поддержкой.',
+                route('messages.index', ['notifications' => 1], false),
+            ));
+        }
 
         return back()->with('success', 'Профиль успешно обновлён');
     }
@@ -377,18 +483,75 @@ class ProfileController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
+        $user->notify(new MarketplaceAlert(
+            'Пароль изменён',
+            'Пароль вашего аккаунта был успешно обновлён.',
+            route('messages.index', ['notifications' => 1], false),
+        ));
+
         return redirect()->back()->with('success', 'Пароль обновлен');
+    }
+
+    public function changeRole(Request $request, User $user)
+    {
+        $actor = auth()->user();
+        $allowedRoles = $actor->canAssignStaffRoles()
+            ? ['user', 'seller', 'moderator', 'admin']
+            : ['user', 'seller'];
+
+        $request->validate([
+            'role' => 'required|in:'.implode(',', $allowedRoles),
+        ]);
+
+        if ($user->id === $actor->id || $user->id === 1) {
+            return back()->with('error', 'Нельзя изменить роль этого пользователя');
+        }
+
+        if ($actor->isModerator() && $user->isStaff()) {
+            return back()->with('error', 'Недостаточно прав для изменения роли этого пользователя');
+        }
+
+        $user->update(['role' => $request->role]);
+
+        return back()->with('success', 'Роль пользователя изменена');
     }
 
     public function destroy(Request $request, User $user = null): RedirectResponse
     {
         if ($user) {
-            if ($user->role === 'admin') {
-                return back()->with('error', 'Вы не можете удалить себя или админов');
-            } else {
-                $user->delete();
-                return back()->with('success', 'Акк удален');
+            $actor = auth()->user();
+
+            if ($user->id === $actor->id || $user->id === 1) {
+                return back()->with('error', 'Нельзя удалить этого пользователя');
             }
+
+            if ($actor->isModerator() && $user->isStaff()) {
+                return back()->with('error', 'Модератор не может удалять администраторов и других модераторов');
+            }
+
+            if ($user->role === 'admin') {
+                return back()->with('error', 'Нельзя удалить администратора');
+            }
+
+            $hasOrders = \App\Models\Order::where('buyer_id', $user->id)
+                ->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_ISSUED, Order::STATUS_REFUSED])
+                ->exists();
+            if ($hasOrders) {
+                return back()->with('error', 'Нельзя удалить пользователя: есть активные заказы. Дождитесь их завершения.');
+            }
+
+            if ($user->role === 'seller') {
+                $hasProducts = \App\Models\Product::where('seller_id', $user->id)->exists();
+                $hasActiveSales = \App\Models\OrderItem::where('seller_id', $user->id)
+                    ->whereHas('order', fn($q) => $q->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_ISSUED, Order::STATUS_REFUSED]))
+                    ->exists();
+                if ($hasProducts || $hasActiveSales) {
+                    return back()->with('error', 'Нельзя удалить продавца: есть товары или активные продажи');
+                }
+            }
+
+            $user->delete();
+            return back()->with('success', 'Аккаунт деактивирован (можно восстановить)');
         }
         $user = $request->user();
         if ($user) {

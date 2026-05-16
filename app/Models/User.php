@@ -26,10 +26,15 @@ class User extends Authenticatable
         'phone',
         'password',
         'name',
+        'last_name',
         'role',
         'avatar',
         'is_active',
+        'is_blocked',
         'newPassw',
+        'default_pickup_point_id',
+        'daily_pickup_code',
+        'daily_pickup_code_date',
         'email_verified_at',
     ];
 
@@ -62,7 +67,9 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'is_blocked' => 'boolean',
             'newPassw' => 'boolean',
+            'daily_pickup_code_date' => 'date',
         ];
     }
     public function getRememberTokenName()
@@ -108,16 +115,6 @@ class User extends Authenticatable
         return $this->hasMany(Review::class, 'user_id');
     }
 
-    public function sellerReviewsGiven()
-    {
-        return $this->hasMany(SellerReview::class, 'user_id');
-    }
-
-    public function sellerReviewsReceived()
-    {
-        return $this->hasMany(SellerReview::class, 'seller_id');
-    }
-
     public function conversationsAsBuyer()
     {
         return $this->hasMany(Conversation::class, 'buyer_id');
@@ -149,14 +146,29 @@ class User extends Authenticatable
     }
 
     // Хелперы ролей
-    public function isAdmin()
+    public function isAdmin(): bool
     {
         return $this->role === 'admin';
     }
 
-    public function isModerator()
+    public function isModerator(): bool
     {
         return $this->role === 'moderator';
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->isAdmin() || $this->isModerator();
+    }
+
+    public function canAssignStaffRoles(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    public function isStaffRole(string $role): bool
+    {
+        return in_array($role, ['admin', 'moderator'], true);
     }
 
     public function isSeller()
@@ -167,5 +179,41 @@ class User extends Authenticatable
     public function isUser()
     {
         return $this->role === 'user';
+    }
+
+    public function defaultPickupPoint()
+    {
+        return $this->belongsTo(PickupPoint::class, 'default_pickup_point_id');
+    }
+
+    /** Суточный код выдачи — один на все заказы пользователя, обновляется раз в сутки. */
+    public function ensureDailyPickupCode(): string
+    {
+        $today = now()->toDateString();
+
+        if (
+            $this->daily_pickup_code
+            && $this->daily_pickup_code_date
+            && $this->daily_pickup_code_date->toDateString() === $today
+        ) {
+            return $this->daily_pickup_code;
+        }
+
+        do {
+            $code = sprintf('%04d %04d', random_int(1000, 9999), random_int(1000, 9999));
+        } while (
+            static::query()
+                ->where('daily_pickup_code', $code)
+                ->whereDate('daily_pickup_code_date', $today)
+                ->whereKeyNot($this->id)
+                ->exists()
+        );
+
+        $this->forceFill([
+            'daily_pickup_code' => $code,
+            'daily_pickup_code_date' => $today,
+        ])->save();
+
+        return $code;
     }
 }

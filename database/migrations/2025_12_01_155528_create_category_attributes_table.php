@@ -33,6 +33,9 @@ return new class extends Migration
 
     $table->boolean('required')->default(false);
 
+    // 'product' — характеристика товара, 'variant' — определяет вариант (цвет, размер и т.д.)
+    $table->string('applies_to', 20)->default('product');
+
     $table->timestamps();
 });
     }

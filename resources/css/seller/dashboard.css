@@ -9,13 +9,14 @@
 /* Sidebar */
 .seller-sidebar {
     width: 280px;
-    background: #1a1a2e;
-    color: #fff;
+    background: #ffffff;
+    color: #000000;
     transition: var(--trans-3);
     position: fixed;
     height: 100vh;
     overflow-y: auto;
     z-index: 100;
+    border-right: 1px solid var(--border);
 }
 
 .seller-sidebar.closed {
@@ -37,6 +38,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1px solid var(--border);
 }
 
 .sidebar-header h2 {
@@ -49,8 +51,8 @@
 .sidebar-header button {
     background: none;
     border: none;
-    color: #fff;
-    font-size: 20px;
+    color: #000000;
+    font-size: 30px;
     cursor: pointer;
     padding: 5px;
     transition: var(--trans-2);
@@ -62,19 +64,22 @@
 
 .sidebar-nav {
     padding: 20px 0;
+    padding-top: 0;
 }
 
 .sidebar-nav .nav-item {
     display: flex;
     align-items: center;
     padding: 12px 20px;
-    color: rgba(255,255,255,0.8);
+    color: rgba(0, 0, 0, 0.8);
     text-decoration: none;
     transition: var(--trans-3);
     margin: 4px 0;
     font-weight: var(--fw-500);
 }
-
+.sidebar-nav .nav-item:first-child {
+    margin-top: 0;
+}
 .sidebar-nav .nav-item:hover {
     background: rgba(255,46,99,0.2);
     color: var(--background);
@@ -83,7 +88,7 @@
 .sidebar-nav .nav-item.active {
     background: var(--background);
     color: white;
-    border-right: 3px solid #fff;
+    border-right: 3px solid #000000;
 }
 
 .nav-icon {
@@ -286,30 +291,23 @@
     font-weight: var(--fw-600);
 }
 
-.status-new,
-.status-paid,
-.status-processing {
+.status-NEW {
     background: #fff3e0;
     color: #ff9800;
 }
 
-.status-ready_for_pickup,
-.status-at_pvz {
-    background: #e8f5e9;
-    color: #4caf50;
-}
-
-.status-in_transit {
+.status-INTRANSIT {
     background: #e3f2fd;
     color: #2196f3;
 }
 
-.status-issued {
+.status-DELIVERED {
     background: #e8f5e9;
-    color: #4caf50;
+    color: #2e7d32;
 }
 
-.status-canceled {
+.status-CANCELED,
+.status-REFUSED {
     background: #ffebee;
     color: #f44336;
 }
@@ -498,6 +496,137 @@
     padding: 40px;
     color: var(--text-gray);
     font-weight: var(--fw-500);
+}
+
+/* Список товаров продавца */
+.seller-products-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.seller-products-count {
+    margin: 0;
+    color: var(--text-gray);
+    font-weight: var(--fw-600);
+}
+
+.seller-products-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 22px;
+    border-radius: 40px;
+    background: linear-gradient(135deg, var(--background) 0%, var(--backgroundBlack) 100%);
+    color: #fff;
+    font-weight: var(--fw-600);
+    text-decoration: none;
+    transition: var(--trans-2);
+}
+
+.seller-products-add:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 46, 99, 0.3);
+}
+
+.seller-products-empty {
+    background: #fff;
+    border-radius: 20px;
+    padding: 48px 24px;
+    text-align: center;
+    border: 1px dashed var(--border);
+    color: var(--text-gray);
+}
+
+.seller-products-empty p {
+    margin: 0 0 20px;
+}
+
+.seller-products-table-wrap {
+    overflow-x: auto;
+    background: #fff;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.seller-products-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.seller-products-table th,
+.seller-products-table td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.seller-products-table th {
+    font-weight: var(--fw-700);
+    color: #1a1a2e;
+    background: #fafafa;
+}
+
+.seller-products-thumb {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.seller-products-title {
+    font-weight: var(--fw-600);
+    max-width: 280px;
+}
+
+.seller-products-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: var(--fw-600);
+}
+
+.seller-products-status--moderation {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.seller-products-status--approved {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.seller-products-status--rejected {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.seller-products-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.seller-products-link {
+    color: var(--background);
+    font-weight: var(--fw-600);
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.seller-products-link:hover {
+    text-decoration: underline;
+}
+
+.seller-products-link--primary {
+    font-weight: var(--fw-700);
 }
 
 /* Адаптация */

@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import '../../../css/cart/cart.css';
 
-export default function Cart({ cartItems = [] }) {
-    const [cart, setCart] = useState(cartItems);
-    const [selected, setSelected] = useState([]);
+export default function Cart({ cartItems = [], pickupPoints = [] }) {
+    const { auth } = usePage().props;
+    const [cart, setCart]             = useState(cartItems);
+    const [selected, setSelected]     = useState([]);
+    const [promoCode, setPromoCode]   = useState('');
+    const [promoResult, setPromoResult] = useState(null); // { valid, message, discount_amount, code }
+    const [promoLoading, setPromoLoading] = useState(false);
+    const [pickupId, setPickupId] = useState(() => auth?.user?.default_pickup_point_id ?? '');
+
+    useEffect(() => {
+        setPickupId(auth?.user?.default_pickup_point_id ?? '');
+    }, [auth?.user?.default_pickup_point_id]);
 
     // Выбрать товар
     const toggleSelect = (id) => {
@@ -87,9 +96,36 @@ export default function Cart({ cartItems = [] }) {
     };
 
     // Подсчет итогов
-    const selectedItems = cart.filter(i => selected.includes(i.id));
-    const total = selectedItems.reduce((sum, i) => sum + (i.variant?.price || 0) * i.quantity, 0);
-    const totalItems = selectedItems.reduce((sum, i) => sum + i.quantity, 0);
+    const selectedItems  = cart.filter(i => selected.includes(i.id));
+    const subtotal       = selectedItems.reduce((sum, i) => sum + (i.variant?.price || 0) * i.quantity, 0);
+    const totalItems     = selectedItems.reduce((sum, i) => sum + i.quantity, 0);
+    const discountAmount = (promoResult?.valid && promoResult?.discount_amount) ? promoResult.discount_amount : 0;
+    const total          = Math.max(0, subtotal - discountAmount);
+
+    // Apply promo code
+    const applyPromo = () => {
+        if (!promoCode.trim() || selected.length === 0) return;
+        setPromoLoading(true);
+
+        fetch('/promo/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ code: promoCode.trim(), cart_ids: selected }),
+        })
+            .then(r => r.json())
+            .then(data => setPromoResult(data))
+            .catch(() => setPromoResult({ valid: false, message: 'Ошибка при проверке промокода.' }))
+            .finally(() => setPromoLoading(false));
+    };
+
+    const clearPromo = () => {
+        setPromoCode('');
+        setPromoResult(null);
+    };
 
     // Оформление заказа
     const checkout = () => {
@@ -97,20 +133,29 @@ export default function Cart({ cartItems = [] }) {
             alert('Выберите товары для оформления');
             return;
         }
-        
-        router.post('/order/create', { 
+
+        const resolvedPickup = pickupId || auth?.user?.default_pickup_point_id;
+        if (!resolvedPickup) {
+            alert('Выберите пункт выдачи в профиле или в списке ниже.');
+            return;
+        }
+
+        router.post('/order/create', {
             items: selected.map(id => ({
                 cart_id: id,
-                quantity: cart.find(i => i.id === id)?.quantity
-            }))
+                quantity: cart.find(i => i.id === id)?.quantity,
+            })),
+            promo_code: promoResult?.valid ? promoResult.code : null,
+            pickup_point_id: resolvedPickup,
         }, {
             preserveState: true,
             onSuccess: () => {
-                // Удаляем выбранные товары из корзины
                 const remainingItems = cart.filter(i => !selected.includes(i.id));
                 setCart(remainingItems);
                 setSelected([]);
-            }
+                setPromoCode('');
+                setPromoResult(null);
+            },
         });
     };
 
@@ -221,15 +266,84 @@ export default function Cart({ cartItems = [] }) {
                                     {total.toLocaleString()} ₽
                                 </div>
                             </div>
-                            
+
+                            {/* Promo code input */}
+                            <div style={{ margin: '12px 0' }}>
+                                {promoResult?.valid ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#d1fae5', borderRadius: '10px', fontSize: '13px', fontWeight: 600, color: '#065f46' }}>
+                                        <span>🏷️ {promoResult.code} применён</span>
+                                        <button onClick={clearPromo} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#065f46', fontSize: '16px', lineHeight: 1 }}>✕</button>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <input
+                                            type="text"
+                                            value={promoCode}
+                                            onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoResult(null); }}
+                                            placeholder="Промокод"
+                                            style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '13px', fontFamily: 'monospace', letterSpacing: '.5px' }}
+                                            onKeyDown={e => e.key === 'Enter' && applyPromo()}
+                                        />
+                                        <button
+                                            onClick={applyPromo}
+                                            disabled={promoLoading || !promoCode.trim() || selected.length === 0}
+                                            style={{ padding: '9px 16px', background: 'var(--backgroundBlack)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: (promoLoading || !promoCode.trim()) ? .5 : 1 }}
+                                        >
+                                            {promoLoading ? '...' : 'Применить'}
+                                        </button>
+                                    </div>
+                                )}
+                                {promoResult && !promoResult.valid && (
+                                    <div style={{ marginTop: '6px', fontSize: '12px', color: '#dc2626', fontWeight: 500 }}>
+                                        {promoResult.message}
+                                    </div>
+                                )}
+                            </div>
+
+                            {pickupPoints.length > 0 && (
+                                <div style={{ marginBottom: 14 }}>
+                                    <label
+                                        htmlFor="cart-pickup-select"
+                                        style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#334155' }}
+                                    >
+                                        Пункт выдачи
+                                    </label>
+                                    <select
+                                        id="cart-pickup-select"
+                                        value={pickupId === '' || pickupId == null ? '' : String(pickupId)}
+                                        onChange={(e) =>
+                                            setPickupId(e.target.value === '' ? '' : Number(e.target.value))
+                                        }
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            borderRadius: 10,
+                                            border: '1.5px solid #e2e8f0',
+                                            fontSize: 13,
+                                        }}
+                                    >
+                                        {!auth?.user?.default_pickup_point_id ? (
+                                            <option value="">Выберите ПВЗ</option>
+                                        ) : null}
+                                        {pickupPoints.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
                             <div className="summary-details">
                                 <div className="summary-row">
                                     <span>Товары ({totalItems} шт.)</span>
-                                    <span>{total.toLocaleString()} ₽</span>
+                                    <span>{subtotal.toLocaleString()} ₽</span>
                                 </div>
                                 <div className="summary-row">
                                     <span>Скидка</span>
-                                    <span className="discount">0 ₽</span>
+                                    <span className="discount" style={discountAmount > 0 ? { color: '#10b981', fontWeight: 700 } : {}}>
+                                        {discountAmount > 0 ? `−${discountAmount.toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽` : '0 ₽'}
+                                    </span>
                                 </div>
                                 <div className="summary-row total">
                                     <span>Итого к оплате</span>
@@ -237,14 +351,14 @@ export default function Cart({ cartItems = [] }) {
                                 </div>
                             </div>
 
-                            <button 
-                                className="checkout-btn" 
+                            <button
+                                className="checkout-btn"
                                 onClick={checkout}
                                 disabled={selected.length === 0}
                             >
                                 Оформить заказ
                             </button>
-                            
+
                             {selected.length === 0 && (
                                 <div className="checkout-hint">
                                     Выберите хотя бы один товар

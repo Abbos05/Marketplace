@@ -27,6 +27,26 @@ return new class extends Migration
             ['name' => 'Шелехов', 'delivery_hours' => 3],
             ['name' => 'Усолье-Сибирское', 'delivery_hours' => 6],
         ]);
+
+        Schema::create('pickup_points', function (Blueprint $table) {
+            $table->id();
+            $table->string('title', 120);
+            $table->string('address', 500);
+            $table->foreignId('region_id')->nullable()->constrained('regions')->nullOnDelete();
+            $table->boolean('is_active')->default(true);
+            $table->unsignedSmallInteger('sort_order')->default(0);
+            $table->timestamps();
+
+            $table->index(['is_active', 'sort_order']);
+        });
+
+        Schema::table('users', function (Blueprint $table) {
+            $table->foreignId('default_pickup_point_id')
+                ->nullable()
+                ->after('is_blocked')
+                ->constrained('pickup_points')
+                ->nullOnDelete();
+        });
     }
 
     /**
@@ -34,6 +54,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropForeign(['default_pickup_point_id']);
+        });
+        Schema::dropIfExists('pickup_points');
         Schema::dropIfExists('regions');
     }
 };

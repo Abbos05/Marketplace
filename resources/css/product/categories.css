@@ -23,6 +23,23 @@
   color: var(--background);
 }
 
+.category_header__hint {
+  margin: 0 0 0 8px;
+  font-size: 16px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.category--nested .category_header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.category--nested .category_header h2 {
+  margin-bottom: 0;
+}
+
 .category_block {
   border: 1px solid #808d9a7b;
   padding: 20px;

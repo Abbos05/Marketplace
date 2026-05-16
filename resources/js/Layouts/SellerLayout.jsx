@@ -1,17 +1,43 @@
 // resources/js/Layouts/SellerLayout.jsx
 import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import MessagesFloatingWidget from '@/Components/MessagesFloatingWidget';
 import '../../css/seller/dashboard.css';
+import '../../css/messages-widget.css';
+function navItemActive(url, href) {
+    if (href === '/seller/products') {
+        return url === href || /^\/seller\/products\/\d+\/edit/.test(url);
+    }
+    if (href === '/seller/orders') {
+        return url === href || /^\/seller\/orders\/\d+/.test(url);
+    }
+    if (href === '/seller/statistics') {
+        return url.startsWith('/seller/statistics');
+    }
+    if (href === '/seller/promocodes') {
+        return url.startsWith('/seller/promocodes');
+    }
+    if (href === '/seller/settings') {
+        return url.startsWith('/seller/settings');
+    }
+    if (href === '/messages') {
+        return url.startsWith('/messages');
+    }
+    return url === href;
+}
+
 export default function SellerLayout({ children, title }) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const { url } = usePage();
+    const { url, props } = usePage();
     
     const menuItems = [
         { icon: '📊', label: 'Главная', href: '/seller/dashboard' },
         { icon: '📦', label: 'Товары', href: '/seller/products' },
         { icon: '➕', label: 'Добавить товар', href: '/seller/products/create' },
         { icon: '🛒', label: 'Заказы', href: '/seller/orders' },
+        { icon: '💬', label: 'Сообщения', href: '/messages' },
         { icon: '📈', label: 'Статистика', href: '/seller/statistics' },
+        { icon: '🏷️', label: 'Промокоды', href: '/seller/promocodes' },
         { icon: '⚙️', label: 'Настройки', href: '/seller/settings' },
     ];
     
@@ -29,7 +55,7 @@ export default function SellerLayout({ children, title }) {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`nav-item ${url === item.href ? 'active' : ''}`}
+                            className={`nav-item ${navItemActive(url, item.href) ? 'active' : ''}`}
                         >
                             <span className="nav-icon">{item.icon}</span>
                             <span className="nav-label">{item.label}</span>
@@ -43,7 +69,7 @@ export default function SellerLayout({ children, title }) {
                 <div className="seller-header">
                     <h1>{title}</h1>
                     <div className="seller-user">
-                        <span>{usePage().props.auth.user.name}</span>
+                        <span>{props.auth.user.name}</span>
                         <Link href="/profile" className="back-to-site">На сайт</Link>
                     </div>
                 </div>
@@ -52,6 +78,7 @@ export default function SellerLayout({ children, title }) {
                     {children}
                 </div>
             </main>
+            {props.auth?.user && <MessagesFloatingWidget />}
         </div>
     );
 }

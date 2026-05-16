@@ -605,6 +605,45 @@
   transform: none;
 }
 
+.products__title-text {
+  cursor: pointer;
+}
+
+.products__variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+
+.products__variant-chip {
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.products__variant-chip:hover {
+  border-color: #94a3b8;
+  background: #fff;
+}
+
+.products__variant-chip--active {
+  border-color: #0ea5e9;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  font-weight: 600;
+}
+
 .showMore__btn--active {
   transform: translate(141px);
 }

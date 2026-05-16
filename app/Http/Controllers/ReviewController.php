@@ -34,7 +34,7 @@ class ReviewController extends Controller
         }
 
         // можно оставить отзыв ТОЛЬКО если заказ получен
-        if ($order->status !== 'issued') {
+        if ($order->status !== Order::STATUS_ISSUED) {
             return back()->with('error', 'Можно оставить отзыв только после получения заказа');
         }
 

@@ -10,12 +10,88 @@ class Order extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * Статусы заказа = только доставка / исход заказа (без «оплачен» — это payment_status).
+     * NEW → INTRANSIT → DELIVERED (в ПВЗ) → ISSUED (выдан покупателю);
+     * CANCELED — отмена до выдачи; REFUSED — отказ в пункте выдачи.
+     */
+    public const STATUS_NEW = 'NEW';
+
+    public const STATUS_INTRANSIT = 'INTRANSIT';
+
+    public const STATUS_DELIVERED = 'DELIVERED';
+
+    public const STATUS_ISSUED = 'ISSUED';
+
+    public const STATUS_CANCELED = 'CANCELED';
+
+    public const STATUS_REFUSED = 'REFUSED';
+
+    /**
+     * @return list<string>
+     */
+    public static function allStatuses(): array
+    {
+        return [
+            self::STATUS_NEW,
+            self::STATUS_INTRANSIT,
+            self::STATUS_DELIVERED,
+            self::STATUS_ISSUED,
+            self::STATUS_CANCELED,
+            self::STATUS_REFUSED,
+        ];
+    }
+
+    /** Статусы доставки / выдачи — только после оплаты. */
+    public static function deliveryStatuses(): array
+    {
+        return [
+            self::STATUS_INTRANSIT,
+            self::STATUS_DELIVERED,
+            self::STATUS_ISSUED,
+            self::STATUS_REFUSED,
+        ];
+    }
+
+    /** Для неоплаченного заказа админ/продавец могут выставить только эти статусы. */
+    public static function statusesAllowedWhenUnpaid(): array
+    {
+        return [
+            self::STATUS_NEW,
+            self::STATUS_CANCELED,
+        ];
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->payment_status === 'paid';
+    }
+
+    public function canSetDeliveryStatus(string $status): bool
+    {
+        if (in_array($status, self::deliveryStatuses(), true)) {
+            return $this->isPaid();
+        }
+
+        if ($this->isPaid()) {
+            return in_array($status, self::allStatuses(), true);
+        }
+
+        return in_array($status, self::statusesAllowedWhenUnpaid(), true);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'order_id');
+    }
+
     protected $table = 'orders';
 
     protected $fillable = [
         'number',
         'order_code',
         'buyer_id',
+        'pickup_point_id',
         'status',
         'total',
         'discount',
@@ -42,6 +118,11 @@ class Order extends Model
         return $this->belongsTo(Region::class, 'region_id');
     }
 
+    public function pickupPoint()
+    {
+        return $this->belongsTo(PickupPoint::class, 'pickup_point_id');
+    }
+
     public function items()
     {
         return $this->hasMany(OrderItem::class, 'order_id');
@@ -58,11 +139,6 @@ class Order extends Model
     public function reviews()
     {
         return $this->hasMany(Review::class, 'order_id');
-    }
-
-    public function sellerReviews()
-    {
-        return $this->hasMany(SellerReview::class, 'order_id');
     }
 
     public function conversation()

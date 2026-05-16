@@ -5,7 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\PickupPoint;
+use App\Models\Promocode;
+use App\Models\PromocodeUsage;
+use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Transaction;
+use App\Services\OrderLedgerService;
+use App\Services\StripeRefundService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -14,12 +22,16 @@ class OrderController extends Controller
 {
     public function index()
     {
+        $user = auth()->user();
+        $dailyPickupCode = $user->ensureDailyPickupCode();
+
         $orders = Order::with('items.variant.product')
-            ->where('buyer_id', auth()->id())
+            ->where('buyer_id', $user->id)
             ->latest()
             ->get();
 
         return Inertia::render('Profile/Orders', [
+            'dailyPickupCode' => $dailyPickupCode,
             'orders' => $orders->map(function ($order) {
                 return [
                     'id' => $order->id,
@@ -62,6 +74,16 @@ class OrderController extends Controller
             return back()->with('error', 'Нет товаров');
         }
 
+        $pickupPointId = $request->input('pickup_point_id') ?? $user->default_pickup_point_id;
+        if (! $pickupPointId) {
+            return back()->with('error', 'Укажите пункт выдачи в профиле или при оформлении заказа.');
+        }
+
+        $pickup = PickupPoint::query()->active()->whereKey($pickupPointId)->first();
+        if (! $pickup) {
+            return back()->with('error', 'Выбранный пункт выдачи недоступен. Выберите другой.');
+        }
+
         DB::beginTransaction();
 
         // Генерация номера заказа
@@ -72,40 +94,80 @@ class OrderController extends Controller
             'number' => $number,
             'order_code' => $orderCode,
             'buyer_id' => $user->id,
-            'status' => 'new',
+            'pickup_point_id' => $pickup->id,
+            'region_id' => $pickup->region_id,
+            'delivery_address' => $pickup->snapshotAddress(),
+            'status' => Order::STATUS_NEW,
             'total' => 0,
             'payment_status' => 'pending',
             'delivery_method' => 'pvz',
         ]);
 
         $total = 0;
+        $orderItemsData = [];
 
         foreach ($items as $item) {
-            // Если есть cart_id - берем из корзины
+            $cartItem = null;
+            $quantity = 0;
+
             if (isset($item['cart_id'])) {
                 $cartItem = Cart::with('variant.product')
                     ->where('id', $item['cart_id'])
                     ->where('user_id', $user->id)
                     ->first();
 
-                $price = $cartItem->variant->price;
-                $variantId = $cartItem->variant_id;
-                $sellerId = $cartItem->variant->product->seller_id;
-                $quantity = $item['quantity'];
+                if (! $cartItem) {
+                    DB::rollBack();
 
-                $cartItem->delete();
-            }
-            // Если нет cart_id, но есть variant_id - прямой заказ
-            else {
-                $variant = ProductVariant::with('product')->find($item['variant_id']);
+                    return back()->with('error', 'Позиция корзины не найдена или уже оформлена.');
+                }
 
-                $price = $variant->price;
-                $variantId = $variant->id;
-                $sellerId = $variant->product->seller_id;
-                $quantity = $item['quantity'] ?? 1;
+                $quantity = (int) ($item['quantity'] ?? $cartItem->quantity);
+                if ($quantity < 1) {
+                    $quantity = $cartItem->quantity;
+                }
+
+                $variant = ProductVariant::query()
+                    ->with('product')
+                    ->whereKey($cartItem->variant_id)
+                    ->lockForUpdate()
+                    ->first();
+            } else {
+                $quantity = (int) ($item['quantity'] ?? 1);
+                if ($quantity < 1) {
+                    $quantity = 1;
+                }
+
+                $variant = ProductVariant::query()
+                    ->with('product')
+                    ->whereKey($item['variant_id'])
+                    ->lockForUpdate()
+                    ->first();
             }
+
+            if (! $variant || ! $variant->is_active) {
+                DB::rollBack();
+
+                return back()->with('error', 'Товар недоступен для заказа.');
+            }
+
+            if ($variant->stock < $quantity) {
+                DB::rollBack();
+
+                return back()->with('error', 'Недостаточно товара на складе: «'.($variant->product->title ?? 'Товар').'». Доступно: '.$variant->stock.' шт.');
+            }
+
+            $price = (float) $variant->price;
+            $variantId = $variant->id;
+            $sellerId = $variant->product->seller_id;
 
             $total += $price * $quantity;
+
+            $orderItemsData[] = [
+                'seller_id' => $sellerId,
+                'price' => $price,
+                'quantity' => $quantity,
+            ];
 
             OrderItem::create([
                 'order_id' => $order->id,
@@ -115,29 +177,264 @@ class OrderController extends Controller
                 'price_at_purchase' => $price,
                 'commission_percent' => 0,
             ]);
+
+            $variant->decrement('stock', $quantity);
+
+            $productModel = Product::query()->whereKey($variant->product_id)->lockForUpdate()->first();
+            if ($productModel) {
+                $productModel->increment('sales_count', $quantity);
+            }
+
+            if ($cartItem) {
+                $cartItem->delete();
+            }
         }
 
-        $order->update(['total' => $total]);
+        // Apply promo code if provided
+        $discount = 0;
+        $promoCode = $request->input('promo_code');
+
+        if ($promoCode) {
+            $promo = Promocode::where('code', strtoupper(trim($promoCode)))->first();
+
+            if ($promo && $promo->isValid()) {
+                $usedCount     = $promo->usages()->count();
+                $userUsedCount = $promo->usages()->where('user_id', $user->id)->count();
+
+                $limitOk    = $promo->usage_limit    === null || $usedCount     < $promo->usage_limit;
+                $perUserOk  = $promo->usage_per_user === null || $userUsedCount < $promo->usage_per_user;
+
+                if ($limitOk && $perUserOk) {
+                    // Sum seller's items subtotal for discount calculation
+                    $sellerSubtotal = collect($orderItemsData ?? [])
+                        ->where('seller_id', $promo->seller_id)
+                        ->sum(fn($i) => $i['price'] * $i['quantity']);
+
+                    $minOk = $promo->min_order_amount === null || $sellerSubtotal >= $promo->min_order_amount;
+
+                    if ($minOk && $sellerSubtotal > 0) {
+                        if ($promo->discount_type === 'percent') {
+                            $discount = round($sellerSubtotal * $promo->discount_value / 100, 2);
+                        } else {
+                            $discount = min((float) $promo->discount_value, $sellerSubtotal);
+                        }
+
+                        PromocodeUsage::create([
+                            'promocode_id'    => $promo->id,
+                            'user_id'         => $user->id,
+                            'order_id'        => $order->id,
+                            'discount_applied'=> $discount,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        $order->update([
+            'total'    => max(0, $total - $discount),
+            'discount' => $discount,
+        ]);
 
         DB::commit();
 
         return redirect()->route('profile.orders')->with('success', 'Заказ оформлен!');
     }
     public function show(Order $order)
-{
-    if ($order->buyer_id !== auth()->id()) {
-        abort(403);
+    {
+        if ($order->buyer_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $order->load([
+            'items.variant.product.seller',
+            'items.review',
+            'pickupPoint.region',
+            'region',
+        ]);
+
+        return Inertia::render('Profile/OrderShow', [
+            'order' => $order,
+            'deliveryTrack' => $this->buildDeliveryTrackPayload($order),
+            'documents' => $this->buildOrderDocumentsPayload($order),
+        ]);
     }
 
-    $order->load([
-        'items.variant.product',
-        'items.review' // 👈 ВОТ ЭТО ДОБАВИЛ
-    ]);
+    /**
+     * @return array{receipt: string, payment: ?string, refund: ?string, cancel: ?string}
+     */
+    private function buildOrderDocumentsPayload(Order $order): array
+    {
+        $hasType = static fn (string $type) => Transaction::query()
+            ->where('order_id', $order->id)
+            ->where('type', $type)
+            ->exists();
 
-    return Inertia::render('Profile/OrderShow', [
-        'order' => $order
-    ]);
-}
+        return [
+            'receipt' => route('order.receipt', $order),
+            'payment' => ($hasType('payment') || $order->payment_status === 'paid')
+                ? route('order.document', [$order, 'payment'])
+                : null,
+            'refund' => ($hasType('refund') || $order->payment_status === 'refunded')
+                ? route('order.document', [$order, 'refund'])
+                : null,
+            'cancel' => ($hasType('cancel') || $order->status === Order::STATUS_CANCELED)
+                ? route('order.document', [$order, 'cancel'])
+                : null,
+        ];
+    }
+
+    /**
+     * Данные для блока «Детали доставки» (таймлайн в духе маркетплейсов).
+     *
+     * @return array{summary: string, destination: string, region: ?string, method_label: string, eta_hint: string, steps: list<array<string, mixed>>}
+     */
+    private function buildDeliveryTrackPayload(Order $order): array
+    {
+        $fmt = static function ($value): ?string {
+            if ($value === null) {
+                return null;
+            }
+
+            return Carbon::parse($value)->locale('ru')->translatedFormat('d MMMM yyyy, HH:mm');
+        };
+
+        $destination = trim((string) ($order->delivery_address ?: '')) ?: 'Адрес доставки уточняется';
+        $regionName = $order->pickupPoint?->region?->name
+            ?? $order->region?->name;
+        $methodLabel = match ($order->delivery_method) {
+            'courier' => 'Курьер',
+            'post' => 'Почта',
+            default => 'Пункт выдачи',
+        };
+
+        $sellers = $order->items
+            ->map(fn (OrderItem $i) => $i->variant?->product?->seller?->name)
+            ->filter()
+            ->unique()
+            ->values()
+            ->implode(', ');
+        $originDetail = $sellers !== ''
+            ? 'Продавец: '.$sellers
+            : 'Заказ сформирован на маркетплейсе';
+
+        $paid = $order->payment_status === 'paid';
+        $st = $order->status;
+
+        $summary = match ($st) {
+            Order::STATUS_CANCELED => 'Заказ отменён — доставка не выполняется',
+            Order::STATUS_REFUSED => 'Отказ от получения в пункте выдачи',
+            Order::STATUS_DELIVERED => 'В пункте выдачи — можно забирать',
+            Order::STATUS_ISSUED => 'Выдан покупателю',
+            Order::STATUS_INTRANSIT => 'В пути в пункт выдачи',
+            Order::STATUS_NEW => $paid
+                ? 'Продавец готовит заказ к отправке'
+                : 'Ожидаем оплату — после оплаты заказ перейдёт к продавцу',
+            default => 'Статус доставки обновляется',
+        };
+
+        $etaHint = match ($st) {
+            Order::STATUS_DELIVERED => 'Заберите заказ в пункте выдачи по коду.',
+            Order::STATUS_ISSUED => 'Заказ получен. Можно оставить отзыв в течение 90 дней.',
+            Order::STATUS_INTRANSIT => 'Точная дата прибытия в пункт зависит от продавца и службы доставки — следите за статусом.',
+            Order::STATUS_NEW => $paid
+                ? 'Обычно отправка в течение 1–3 рабочих дней после оплаты (зависит от продавца).'
+                : 'После оплаты продавец получит заказ в работу.',
+            Order::STATUS_CANCELED => '',
+            Order::STATUS_REFUSED => '',
+            default => '',
+        };
+
+        $steps = [];
+
+        $push = static function (array &$steps, string $id, string $title, string $detail, ?string $meta, string $state): void {
+            $steps[] = [
+                'id' => $id,
+                'title' => $title,
+                'detail' => $detail,
+                'meta' => $meta,
+                'state' => $state,
+            ];
+        };
+
+        if ($st === Order::STATUS_CANCELED) {
+            $push($steps, 'placed', 'Заказ оформлен', $originDetail, $fmt($order->created_at), 'done');
+            $push($steps, 'cancel', 'Заказ отменён', 'Отмена до отправки или по решению сервиса', $fmt($order->updated_at), 'active');
+
+            return [
+                'summary' => $summary,
+                'destination' => $destination,
+                'region' => $regionName,
+                'method_label' => $methodLabel,
+                'eta_hint' => $etaHint,
+                'steps' => $steps,
+            ];
+        }
+
+        if ($st === Order::STATUS_REFUSED) {
+            $push($steps, 'placed', 'Заказ оформлен', $originDetail, $fmt($order->created_at), 'done');
+            if ($paid) {
+                $push($steps, 'confirm', 'Оплата и сборка', 'Заказ подтверждён продавцом', $fmt($order->created_at), 'done');
+            }
+            $push($steps, 'ship', 'Доставка в пункт выдачи', $destination, $fmt($order->updated_at), 'done');
+            $push($steps, 'refuse', 'Отказ от получения', 'Покупатель не забрал заказ в пункте выдачи', $fmt($order->updated_at), 'active');
+
+            return [
+                'summary' => $summary,
+                'destination' => $destination,
+                'region' => $regionName,
+                'method_label' => $methodLabel,
+                'eta_hint' => $etaHint,
+                'steps' => $steps,
+            ];
+        }
+
+        // Нормальный поток NEW → INTRANSIT → DELIVERED
+        $push($steps, 'placed', 'Заказ оформлен', $originDetail, $fmt($order->created_at), 'done');
+
+        if ($paid) {
+            $paidAt = $order->updated_at && $order->created_at
+                && $order->updated_at->gt($order->created_at->copy()->addMinute())
+                ? $fmt($order->updated_at)
+                : $fmt($order->created_at);
+            $push($steps, 'confirm', 'Оплата получена', 'Продавец собирает заказ', $paidAt, 'done');
+        } else {
+            $push($steps, 'pay_wait', 'Ожидание оплаты', 'После оплаты продавец начнёт сборку', null, $st === Order::STATUS_NEW ? 'active' : 'pending');
+        }
+
+        if ($st === Order::STATUS_NEW && $paid) {
+            $push($steps, 'prep', 'Сборка и отправка', 'Заказ у продавца, ожидается передача в доставку', $fmt($order->updated_at), 'active');
+            $push($steps, 'transit', 'В пути в пункт выдачи', $destination, null, 'pending');
+            $push($steps, 'pvz', 'Пункт выдачи', 'Прибытие и выдача по коду', null, 'pending');
+        } elseif ($st === Order::STATUS_NEW && ! $paid) {
+            $push($steps, 'prep', 'Сборка и отправка', 'Начнётся после оплаты', null, 'pending');
+            $push($steps, 'transit', 'В пути в пункт выдачи', $destination, null, 'pending');
+            $push($steps, 'pvz', 'Пункт выдачи', 'Прибытие и выдача по коду', null, 'pending');
+        } elseif ($st === Order::STATUS_INTRANSIT) {
+            $push($steps, 'prep', 'Сборка завершена', 'Заказ передан в доставку', $fmt($order->updated_at), 'done');
+            $push($steps, 'transit', 'В пути в пункт выдачи', $destination, $fmt($order->updated_at), 'active');
+            $push($steps, 'pvz', 'В пункте выдачи', 'Ожидаем поступление', null, 'pending');
+            $push($steps, 'issued', 'Выдан покупателю', 'Получение по коду', null, 'pending');
+        } elseif ($st === Order::STATUS_DELIVERED) {
+            $push($steps, 'prep', 'Сборка и отправка', 'Заказ передан в доставку', $fmt($order->created_at), 'done');
+            $push($steps, 'transit', 'В пути в пункт выдачи', $destination, $fmt($order->updated_at), 'done');
+            $push($steps, 'pvz', 'В пункте выдачи', 'Можно забрать по коду получения', $fmt($order->updated_at), 'active');
+            $push($steps, 'issued', 'Выдан покупателю', 'Подтверждение выдачи', null, 'pending');
+        } else { // ISSUED
+            $push($steps, 'prep', 'Сборка и отправка', 'Заказ передан в доставку', $fmt($order->created_at), 'done');
+            $push($steps, 'transit', 'В пути в пункт выдачи', $destination, $fmt($order->updated_at), 'done');
+            $push($steps, 'pvz', 'В пункте выдачи', 'Заказ поступил в пункт', $fmt($order->updated_at), 'done');
+            $push($steps, 'issued', 'Выдан покупателю', 'Товар получен', $fmt($order->updated_at), 'active');
+        }
+
+        return [
+            'summary' => $summary,
+            'destination' => $destination,
+            'region' => $regionName,
+            'method_label' => $methodLabel,
+            'eta_hint' => $etaHint,
+            'steps' => $steps,
+        ];
+    }
 
     public function cancel(Order $order)
     {
@@ -145,10 +442,124 @@ class OrderController extends Controller
             abort(403);
         }
 
-        if ($order->status === 'new') {
-            $order->update(['status' => 'canceled', 'payment_status' => 'failed']);
+        if ($order->status === Order::STATUS_NEW) {
+            $order->load('items.variant.product');
+
+            foreach ($order->items as $item) {
+                $variant = $item->variant;
+                if (! $variant) {
+                    continue;
+                }
+
+                $variant->increment('stock', $item->quantity);
+
+                $productModel = $variant->product;
+                if ($productModel && $productModel->sales_count > 0) {
+                    $decrementBy = min((int) $item->quantity, (int) $productModel->sales_count);
+                    $productModel->decrement('sales_count', $decrementBy);
+                }
+            }
+
+            $order->update(['status' => Order::STATUS_CANCELED]);
+
+            $refund = app(StripeRefundService::class)->handleOrderCanceledOrRefused($order, 'buyer_cancel');
+
+            if ($order->payment_status === 'pending') {
+                $order->update(['payment_status' => 'failed']);
+                app(OrderLedgerService::class)->recordCancel($order);
+            }
+
+            if ($refund['refunded']) {
+                return back()->with('success', 'Заказ отменён. '.$refund['message']);
+            }
+
+            if ($order->payment_status === 'paid' && ! $refund['ok']) {
+                return back()->with('error', 'Заказ отменён, но возврат не выполнен: '.$refund['message']);
+            }
+
+            return back()->with('success', 'Заказ отменён');
         }
 
-        return back()->with('success', 'Заказ отменён');
+        return back()->with('error', 'Отменить можно только новый заказ');
+    }
+
+    /**
+     * Страница подтверждения возврата (как окно оплаты Stripe; в демо — без реального API).
+     */
+    public function refundCheckout(Order $order)
+    {
+        if ($order->buyer_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($order->payment_status === 'refunded') {
+            return redirect()->route('order.show', $order)
+                ->with('success', 'Возврат по этому заказу уже оформлен.');
+        }
+
+        if ($order->payment_status !== 'paid') {
+            return redirect()->route('order.show', $order)
+                ->with('error', 'Возврат доступен только для оплаченных заказов.');
+        }
+
+        if (! in_array($order->status, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true)) {
+            return redirect()->route('order.show', $order)
+                ->with('error', 'Сначала отмените заказ или оформите отказ от получения.');
+        }
+
+        $refundService = app(StripeRefundService::class);
+
+        return Inertia::render('Profile/RefundCheckout', [
+            'order' => [
+                'id' => $order->id,
+                'number' => $order->number,
+                'total' => (float) $order->total,
+                'status' => $order->status,
+                'payment_status' => $order->payment_status,
+            ],
+            'isDemo' => $refundService->shouldUseDemoRefund($order),
+        ]);
+    }
+
+    /**
+     * Подтверждение возврата со страницы checkout.
+     */
+    public function refundComplete(Order $order)
+    {
+        if ($order->buyer_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($order->payment_status === 'refunded') {
+            return redirect()->route('order.show', $order)
+                ->with('success', 'Возврат уже был оформлен ранее.');
+        }
+
+        if ($order->payment_status !== 'paid') {
+            return redirect()->route('order.show', $order)
+                ->with('error', 'Заказ не оплачен — возврат не требуется.');
+        }
+
+        if (! in_array($order->status, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true)) {
+            return redirect()->route('order.show', $order)
+                ->with('error', 'Возврат недоступен для текущего статуса заказа.');
+        }
+
+        $result = app(StripeRefundService::class)->refundOrder($order, 'buyer_refund_checkout');
+
+        return redirect()->route('order.show', $order)
+            ->with($result['ok'] ? 'success' : 'error', $result['message']);
+    }
+
+    /**
+     * Прямой возврат (редирект на страницу подтверждения).
+     */
+    public function refund(Order $order)
+    {
+        if ($order->buyer_id !== auth()->id()) {
+            abort(403);
+        }
+
+        return redirect()->route('order.refund.checkout', $order);
     }
 }

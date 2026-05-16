@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
-use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\PickupPoint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class CartController extends Controller
@@ -21,11 +23,12 @@ class CartController extends Controller
             return Inertia::render('Profile/Cart', [
                 'cartItems' => [],
                 'total' => 0,
+                'pickupPoints' => [],
             ]);
         }
         
         // Получаем товары из корзины с правильными связями
-        $cartItems = Cart::with(['variant.product'])
+        $cartItems = Cart::with(['variant.product.images'])
             ->where('user_id', $user->id)
             ->get()
             ->map(function ($cartItem) {
@@ -35,19 +38,34 @@ class CartController extends Controller
                     'product' => [
                         'id' => $cartItem->variant->product->id,
                         'title' => $cartItem->variant->product->title,
-                        'image' => $cartItem->variant->product->images->first()->url ?? '/img/default.jpg',
+                        'image' => optional($cartItem->variant->product->images->first())->url ?? '/img/default.jpg',
                     ],
                     'variant' => [
                         'id' => $cartItem->variant->id,
                         'price' => $cartItem->variant->price,
                         'old_price' => $cartItem->variant->old_price,
                         'stock' => $cartItem->variant->stock,
-                    ]
+                        'options' => is_array($cartItem->variant->options)
+                            ? json_encode($cartItem->variant->options)
+                            : ($cartItem->variant->options ?? null),
+                    ],
                 ];
             });
         
+        $pickupPoints = PickupPoint::query()
+            ->active()
+            ->with('region')
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get()
+            ->map(fn (PickupPoint $p) => [
+                'id' => $p->id,
+                'label' => $p->title.($p->region ? ' — '.$p->region->name : ''),
+            ]);
+
         return Inertia::render('Profile/Cart', [
             'cartItems' => $cartItems,
+            'pickupPoints' => $pickupPoints,
         ]);
     }
     
@@ -56,18 +74,35 @@ class CartController extends Controller
     public function update(Request $request, $id)
     {
         $user = Auth::user();
-        
-        $cartItem = Cart::where('id', $id)
+
+        $cartItem = Cart::with('variant')
+            ->where('id', $id)
             ->where('user_id', $user->id)
             ->first();
-            
-        if ($cartItem) {
-            $cartItem->update([
-                'quantity' => $request->quantity
-            ]);
+
+        if (! $cartItem) {
+            return back();
         }
-        
-        return back();
+
+        $qty = (int) $request->quantity;
+        if ($qty < 1) {
+            return back();
+        }
+
+        return DB::transaction(function () use ($cartItem, $qty) {
+            $variant = ProductVariant::query()
+                ->whereKey($cartItem->variant_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $variant || $qty > $variant->stock) {
+                return back()->with('error', 'Недостаточно товара на складе.');
+            }
+
+            $cartItem->update(['quantity' => $qty]);
+
+            return back();
+        });
     }
     
     public function remove($id)
@@ -81,17 +116,6 @@ class CartController extends Controller
         return back();
     }
     
-    public function create(Request $request)
-    {
-        $user = Auth::user();
-        $selectedIds = $request->items;
-        
-        // Логика создания заказа из выбранных товаров
-        
-        return back();
-    }
-
-
     /**
      * Store a newly created resource in storage.
      */
@@ -103,34 +127,52 @@ class CartController extends Controller
     
     $userId = auth()->id();
     $variantId = $request->variant_id;
-    $quantity = $request->quantity ?? 1;
-    
-    // Проверка существования
-    $exists = Cart::where('user_id', $userId)
-        ->where('variant_id', $variantId)
-        ->exists();
-    
-    if ($exists) {
-        Cart::where('user_id', $userId)
-            ->where('variant_id', $variantId)
-            ->increment('quantity', $quantity);
-        
-        return back()->with([
-            'success' => 'Количество обновлено',
-            'in_cart' => true
-        ]);
+    $quantity = (int) ($request->quantity ?? 1);
+    if ($quantity < 1) {
+        $quantity = 1;
     }
-    
-    Cart::create([
-        'user_id' => $userId,
-        'variant_id' => $variantId,
-        'quantity' => $quantity,
-    ]);
-    
-    return back()->with([
-        'success' => 'Добавлено в корзину',
-        'in_cart' => true
-    ]);
+
+    return DB::transaction(function () use ($userId, $variantId, $quantity) {
+        $variant = ProductVariant::query()
+            ->whereKey($variantId)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if (! $variant->is_active) {
+            return back()->with('error', 'Этот вариант сейчас недоступен.');
+        }
+
+        $existing = Cart::query()
+            ->where('user_id', $userId)
+            ->where('variant_id', $variantId)
+            ->lockForUpdate()
+            ->first();
+
+        $currentQty = $existing ? (int) $existing->quantity : 0;
+        if ($currentQty + $quantity > $variant->stock) {
+            return back()->with('error', 'На складе только '.$variant->stock.' шт.');
+        }
+
+        if ($existing) {
+            $existing->increment('quantity', $quantity);
+
+            return back()->with([
+                'success' => 'Количество обновлено',
+                'in_cart' => true,
+            ]);
+        }
+
+        Cart::create([
+            'user_id' => $userId,
+            'variant_id' => $variantId,
+            'quantity' => $quantity,
+        ]);
+
+        return back()->with([
+            'success' => 'Добавлено в корзину',
+            'in_cart' => true,
+        ]);
+    });
 }
 
 public function destroy($variantId)

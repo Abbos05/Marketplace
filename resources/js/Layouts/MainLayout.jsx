@@ -1,12 +1,17 @@
 // src/layouts/MainLayout.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { usePage } from '@inertiajs/react';
 import Header from '@/Components/HeaderFooter/Header';
 import Footer from '@/Components/HeaderFooter/Footer';
-import AuthModal from '@/Components/AuthModal'; // ← новый компонент
+import PhoneAuthModal from '@/Components/PhoneAuthModal';
+import MessagesFloatingWidget from '@/Components/MessagesFloatingWidget';
 import '../../css/MainLayout.css';
+import '../../css/messages-widget.css';
 
 const MainLayout = ({
   children, auth, flash, showModal = null, }) => {
+  const { props } = usePage();
+  const authedUser = props.auth?.user;
   // Ping для поддержания сессии
   useEffect(() => {
     const pingInterval = setInterval(() => {
@@ -18,12 +23,8 @@ const MainLayout = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   useEffect(() => {
-    if (showModal === 'login') {
+    if (showModal === 'login' || showModal === 'register' || showModal === 'phone_auth') {
       setIsModalOpen(true);
-      setIsLogin(true);
-    } else if (showModal === 'register') {
-      setIsModalOpen(true);
-      setIsLogin(false);
     }
   }, [showModal]);
 
@@ -57,7 +58,6 @@ const MainLayout = ({
     <div className="main-layout container">
       <Header
         setIsModalOpen={setIsModalOpen}
-        setIsLogin={setIsLogin}
         flash={flash}
       />
       <div
@@ -70,22 +70,15 @@ const MainLayout = ({
       </div>
       {children}
 
-      <AuthModal
+      <PhoneAuthModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        isLogin={isLogin}
-        setIsLogin={setIsLogin}
-        onLoginSuccess={() => {
-          setIsModalOpen(false);
-        }}
-        onRegisterSuccess={() => {
-          setIsModalOpen(false);
-        }}
       />
 
 
     </div>
       <Footer />
+      {authedUser && <MessagesFloatingWidget />}
    </>
 
   );

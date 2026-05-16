@@ -42,6 +42,7 @@ main {
   padding: 12px 25px;
   z-index: 999;
   position: fixed;
+  overflow: visible;
   width: 1440px;
   background-color: #fff;
   border-radius: 0 0 20px 20px;
@@ -113,7 +114,7 @@ main {
 
 .header-search {
   border-radius: 10px;
-  min-width: 590px;
+  min-width: 535px;
   flex-grow: 1;
   padding-left: 0;
   background-color: var(--background);
@@ -151,6 +152,7 @@ padding: 2px;
   display: flex;
   align-items: center;
   gap: 10px;
+  overflow: visible;
 }
 
 
@@ -183,94 +185,227 @@ padding: 2px;
   opacity: 0.8;
 }
 
-/* Выпадающее меню */
-/* ===================== HEADER MENU ===================== */
+/* ===================== HEADER MENU / PROFILE ===================== */
 .header-menu {
   position: relative;
   list-style: none;
-  z-index: 20;
+  z-index: 10001;
 }
 
-.header-menu-icon {
+/* Кнопка профиля в шапке */
+.header-profile-trigger {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  max-width: 190px;
+  padding:  8px ;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: #fff;
+  color: #1a1a1a;
   cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition:
+    border-color var(--trans-2),
+    box-shadow var(--trans-2),
+    background var(--trans-2);
 }
 
-.header-menu-icon img {
-  width: auto;
-  height: auto;
-  transform: translateY(20%);
+.header-profile-trigger:hover,
+.header-profile-trigger.is-open {
+  opacity: 0.8;
+  background: rgba(255, 46, 99, 0.08);
 }
 
-.header-menu-icon img {
+.header-profile-trigger__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--background);
+}
+
+.header-profile-trigger__icon {
   width: 28px;
   height: 28px;
-  filter: drop-shadow(0 0 8px rgba(255, 212, 56, 0.5));
+  flex-shrink: 0;
+  color: var(--background);
 }
 
-/* Дропдаун меню */
+.header-profile-trigger__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+  text-transform: none;
+  font-size: 14px;
+}
 
+.header-profile-trigger__chevron {
+  flex-shrink: 0;
+  color: var(--text-gray);
+  transition: transform var(--trans-2);
+}
+
+.header-profile-trigger__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+/* Выпадающее меню */
 .header-menu-dropdown {
   position: absolute;
-  top: calc(100% + 16px);
+  top: calc(100% + 10px);
   right: 0;
-  min-width: 310px;
-  background: linear-gradient(145deg, #0e1424 0%, #111826 100%);
-  border: 2px solid #ffd438;
-  border-radius: 24px;
-  padding: 0px 0;
-  color: #fff;
-  z-index: 9999;
-
-  backdrop-filter: blur(16px);
-  animation: menuAppear 0.4s ease-out;
+  min-width: 280px;
+  max-width: min(320px, calc(100vw - 24px));
+  margin: 0;
+  padding: 8px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: #1a1a1a;
+  z-index: 10002;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.14);
+  animation: menuAppear 0.22s ease-out;
   overflow: hidden;
 }
 
 @keyframes menuAppear {
   from {
     opacity: 0;
-    transform: translateY(-20px) scale(0.95);
+    transform: translateY(-8px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
-/* Профиль пользователя */
-.header-menu-profile-item {
-  padding: 0 !important;
-}
-
-.header-menu-profile {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 18px 28px !important;
-  transition: all 0.3s ease;
-  border-bottom: 1px solid rgba(255, 212, 56, 0.15);
-}
-
-.header-menu-profile:hover {
-  background: rgba(255, 212, 56, 0.08);
-}
-
-.header-menu-avatar {
-  width: 48px;
-  height: 48px;
+.header-menu-dropdown-avatar {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #ffd438;
-  box-sizing: content-box;
+  flex-shrink: 0;
+  border: 2px solid var(--background);
 }
 
-.header-menu-profile-info {
+.header-menu-dropdown-user {
   display: flex;
+  flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  text-transform: none !important;
+}
+
+.header-menu-dropdown-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-menu-dropdown-meta {
+  font-size: 12px;
+  color: var(--text-gray);
+  font-weight: 500;
+}
+
+.header-menu-item {
+  padding: 0;
+  cursor: pointer;
+  transition: background var(--trans-2), color var(--trans-2);
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.header-menu-item--profile a {
+  padding: 12px 16px;
+}
+
+.header-menu-item a,
+.header-menu-item.theme-toggle-item .theme-toggle {
+  color: inherit;
+  text-decoration: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  box-sizing: border-box;
+}
+
+.header-menu-item:hover,
+.theme-toggle-item:hover {
+  background: rgba(255, 46, 99, 0.08);
+  color: var(--background);
+}
+
+.header-menu-item:hover svg {
+  stroke: var(--background);
+}
+
+.header-menu-item svg,
+.theme-toggle svg,
+.header-menu-item .header-profile-trigger__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.header-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 12px;
+  list-style: none;
+}
+
+.theme-toggle-item {
+  cursor: pointer;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  font-weight: 500;
+}
+
+.logout-item {
+  color: #dc2626 !important;
+  font-weight: 600;
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logout-item:hover {
+  background: rgba(220, 38, 38, 0.08) !important;
+  color: #b91c1c !important;
+}
+
+.logout-item svg {
+  stroke: #dc2626;
+  width: 20px;
+  height: 20px;
+}
+
+.light-theme .header-menu-dropdown {
+  background: #fff;
+  border-color: var(--border);
+  color: #1a1a1a;
 }
 
 .ruler {
@@ -278,144 +413,10 @@ padding: 2px;
   margin: 20px;
 }
 
-.header-menu-username {
-  font-weight: 700;
-  font-size: 17px;
-  color: #ffd438;
-  text-transform: capitalize;
-}
-
 .verified-check {
   width: 22px;
   height: 22px;
   margin-left: 6px;
-}
-
-/* Пункты меню */
-.header-menu-item {
-  padding: 14px 28px;
-  cursor: pointer;
-  transition: all 0.35s ease;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.header-menu-dropdown li:first-child {
-  padding-top: 24px;
-}
-
-.header-menu-item a {
-  color: inherit;
-  text-decoration: none;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.header-menu-item:hover {
-  background: rgba(255, 212, 56, 0.12);
-  padding-left: 36px !important;
-  color: #ffd438;
-}
-
-.header-menu-item:hover svg {
-  stroke: #ffd438;
-  transform: translateX(4px);
-}
-
-/* Иконки */
-.header-menu-item svg,
-.theme-toggle svg {
-  width: 20px;
-  height: 20px;
-  stroke: currentColor;
-  opacity: 0.8;
-  transition: all 0.3s ease;
-}
-
-/* Разделитель */
-.header-menu-divider {
-  height: 1px;
-  background: linear-gradient(to right, transparent, rgba(255, 212, 56, 0.3), transparent);
-  margin: 12px 24px;
-}
-
-/* Переключатель темы */
-.theme-toggle-item {
-  padding: 14px 28px !important;
-  cursor: pointer;
-}
-
-.header-menu-dropdown li:last-child {
-  padding-bottom: 24px !important;
-}
-
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  font-weight: 500;
-}
-
-
-/* Выход */
-.logout-item {
-  color: #ff6b6b !important;
-  font-weight: 600;
-}
-
-.logout-item {
-  padding-bottom: 30px;
-}
-
-.logout-item:hover {
-  background: rgba(255, 107, 107, 0.15) !important;
-  color: #ffa5a5 !important;
-  padding-left: 36px !important;
-}
-
-.logout-item svg {
-  stroke: #ff6b6b;
-}
-
-.logout-item:hover svg {
-  stroke: #ffa5a5;
-  transform: translateX(4px);
-}
-
-/* Светлая тема — переопределение */
-.light-theme .header-menu-dropdown {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: #f59e0b;
-  color: #0f172a;
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.15),
-    0 0 40px rgba(245, 158, 11, 0.2);
-}
-
-.light-theme .header-menu-item:hover,
-.light-theme .header-menu-profile:hover,
-.light-theme .theme-toggle-item:hover,
-.light-theme .logout-item:hover {
-  background: rgba(245, 158, 11, 0.12);
-  color: black;
-}
-
-.light-theme .header-menu-divider {
-  background: linear-gradient(to right, transparent, rgba(245, 158, 11, 0.25), transparent);
-}
-
-.light-theme .header-menu-username {
-  color: #f59e0b;
-}
-
-.light-theme .header-menu-avatar {
-  border-color: #f59e0b;
 }
 
 /* Выпадающее меню категорий */
@@ -428,8 +429,8 @@ padding: 2px;
   position: absolute;
   top: 110%;
   left: 0;
-  background: #111826;
-  border: 1px solid #1c2533;
+  background: white;
+  border: 1px solid var(--border);
   border-radius: 10px;
   width: 250px;
   padding: 10px;
@@ -445,14 +446,14 @@ padding: 2px;
 }
 
 .header-store-menu-item:hover {
-  background: #050b1c;
+  background: var(--background);
 }
 
 .header-store-menu-link {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #fff;
+  color: #000000;
   text-decoration: none;
   font-size: 16px;
 }
@@ -468,201 +469,6 @@ padding: 2px;
 }
 
 /* // Выпадающее меню категорий */
-
-/* Подвал */
-.footer {
-  margin-top: 50px;
-  border-top: 1px solid #1c2533;
-  padding-top: 25px;
-  color: #000;
-}
-
-.footer-block {
-  display: flex;
-  align-items: start;
-  justify-content: center;
-  gap: 100px;
-  margin-bottom: 75px;
-}
-
-.footer-info {
-  max-width: 500px;
-}
-
-.footer-logo {
-  display: flex;
-  gap: 17px;
-  align-items: center;
-  font-weight: 700;
-  font-size: 30px;
-  margin-bottom: 40px;
-}
-
-.footer-logo img {
-  width: auto;
-  height: auto;
-}
-
-.footer-info-item {
-  padding-right: 40px;
-}
-
-.footer-info-course {
-  font-weight: 500;
-  font-size: 20px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-bottom: 20px;
-}
-
-.footer-info-course-info {
-  font-weight: 500;
-  font-size: 18px;
-  line-height: 156%;
-  text-transform: capitalize;
-  color: #848a9c;
-  margin-bottom: 30px;
-}
-
-.footer-form-course {
-  width: 411px;
-  height: 62px;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #111927;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 50px;
-}
-
-.footer-form-course img {
-  padding-left: 12px;
-  padding-right: 2px;
-  width: auto;
-  height: auto;
-}
-
-.footer-form-course input {
-  height: 100%;
-  padding: 10px;
-  width: 60%;
-  outline: none;
-  border: none;
-  background-color: transparent;
-  font-weight: 500;
-  font-size: 16px;
-  color: #848a9c;
-}
-
-.footer-form-course button {
-  border-radius: 0 8px 8px 0;
-  width: 120px;
-  height: 100%;
-  background: linear-gradient(270deg, #ffda55 0%, #ffcd18 100%);
-  cursor: pointer;
-  outline: none;
-  border: none;
-  font-size: 16px;
-  color: #050b1c;
-  transition: opacity 0.2s;
-}
-
-.footer-form-course button:hover {
-  opacity: 0.9;
-}
-
-.footer-form-course button:active {
-  opacity: 0.7;
-}
-
-.footer-social {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.footer-social img {
-  width: auto;
-  height: auto;
-}
-
-.footer-link {
-  padding-top: 11px;
-}
-
-.footer-link-category {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 140px;
-}
-
-.footer-link-category-item {
-  display: flex;
-  flex-direction: column;
-  align-items: start;
-  gap: 15px;
-}
-
-.footer-link-category-item p {
-  font-weight: 500;
-  font-size: 18px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  text-align: center;
-  color: #000;
-}
-
-.footer-link-category a {
-  font-weight: 500;
-  font-size: 18px;
-  text-transform: capitalize;
-  color: #848a9c;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.footer-link-category a:hover {
-  color: #fff;
-  transform: translateY(-1px);
-}
-
-.footer-security {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-weight: 500;
-  font-size: 18px;
-  line-height: 156%;
-  text-transform: capitalize;
-  color: #848a9c;
-  padding-bottom: 25px;
-}
-
-.footer-security-link {
-  display: flex;
-  align-items: center;
-  justify-content: end;
-  gap: 15px;
-  flex-wrap: wrap;
-  width: 70%;
-}
-
-.footer-security-link a {
-  font-weight: 500;
-  font-size: 18px;
-  line-height: 156%;
-  text-transform: capitalize;
-  text-decoration: underline;
-  text-decoration-skip-ink: none;
-  color: #848a9c;
-  transition: color 0.2s;
-}
-
-.footer-security-link a:hover {
-  color: #ffd438;
-}
 
 /* Модальное окно */
 .modal-overlay {
@@ -873,7 +679,7 @@ padding: 2px;
 
 .modal-form-divider {
   text-align: center;
-  margin: 20px 0;
+  margin: 0;
   position: relative;
 }
 
@@ -967,22 +773,6 @@ padding: 2px;
     max-width: 600px;
   }
 
-  .footer-block {
-    gap: 50px;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .footer-link-category {
-    gap: 50px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .footer-form-course {
-    width: 100%;
-    max-width: 411px;
-  }
 }
 
 @media (max-width: 768px) {
@@ -1011,10 +801,6 @@ padding: 2px;
   }
 
 
-  .footer-link-category {
-    flex-direction: column;
-    align-items: center;
-  }
 }
 
 
@@ -1531,31 +1317,18 @@ padding: 2px;
     left: -70px;
   }
 
-  /* Выпадающее меню профиля — чуть уже */
   .header-menu-dropdown {
-    min-width: 280px;
-    right: -111px;
+    min-width: 260px;
+    right: 0;
   }
 
-  /* Футер — чтобы не было огромных пустых мест */
-  .footer-block {
-    gap: 40px;
-    padding: 0 10px;
+  .header-profile-trigger {
+    max-width: 140px;
+    padding: 6px 8px;
   }
 
-  .footer-form-course {
-    width: 100%;
-    max-width: 380px;
-    height: 56px;
-  }
-
-  .footer-info-course {
-    font-size: 17px;
-  }
-
-  .footer-link-category {
-    gap: 40px;
-    padding: 0 10px;
+  .header-profile-trigger__name {
+    font-size: 11px;
   }
 
   /* Модалки — не вылезают за экран */
@@ -1609,67 +1382,7 @@ padding: 2px;
 /* ==== ФИКС ДЛЯ САМЫХ УЗКИХ ЭКРАНОВ 320–480px (особенно 360px) ==== */
 @media (max-width: 480px) {
 
-  /* 1. Блок .footer-info — теперь влезает на 100% */
-  .footer-info {
-    max-width: 100%;
-    padding: 0 12px;
-    /* убираем слишком широкие внутренние отступы */
-    box-sizing: border-box;
-  }
-
-  .footer-info-course {
-    font-size: 18px;
-    /* чуть меньше, чтобы не переносилось криво */
-    line-height: 1.4;
-  }
-
-  .footer-info-course-info {
-    font-size: 16px;
-    /* было 18px → теперь точно влезает */
-    line-height: 1.5;
-  }
-
-  .footer-logo {
-    font-size: 26px;
-    margin-bottom: 24px;
-  }
-
-  .footer-logo img {
-    width: 48px;
-    height: 48px;
-  }
-
-  /* Форма подписки в футере */
-  .footer-form-course {
-    width: 100%;
-    max-width: none;
-    height: 54px;
-    flex-direction: column;
-    /* на самых узких — кнопка под полем */
-    padding: 6px;
-  }
-
-  .footer-form-course input {
-    width: 100%;
-    padding: 12px;
-    font-size: 15px;
-  }
-
-  .footer-form-course button {
-    width: 100%;
-    border-radius: 8px;
-    margin-top: 8px;
-    padding: 12px;
-  }
-
-  /* Соцсети под логотипом */
-  .footer-social {
-    justify-content: center;
-  }
-
-
-
-  /* 2. Поисковая строка в шапке — 100% гарантия что влезает */
+  /* Поисковая строка в шапке — 100% гарантия что влезает */
   .header-search {
     width: 100%;
     max-width: none;
@@ -1703,14 +1416,6 @@ padding: 2px;
 /* Дополнительно для совсем крошечных экранов типа iPhone SE (320–375px) */
 @media (max-width: 375px) {
 
-  .footer-info-course {
-    font-size: 17px;
-  }
-
-  .footer-info-course-info {
-    font-size: 15.5px;
-  }
-
   .header-logo-name p {
     font-size: 24px;
   }
@@ -1720,4 +1425,262 @@ padding: 2px;
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHONE AUTH MODAL
+   ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ── Phone-auth modal: светлая тема ──────────────────────────────────────── */
+
+.phone-auth-modal {
+  max-width: 460px;
+  width: 90%;
+  /* Переопределяем тёмный фон базового .modal-content */
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* Кнопка закрытия */
+.phone-auth-modal .modal-close {
+  color: #475569;
+}
+.phone-auth-modal .modal-close:hover {
+  color: #FF2E63;
+}
+
+/* Инпуты */
+.phone-auth-modal .modal-input {
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  color: #1e293b;
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+}
+.phone-auth-modal .modal-input:focus {
+  border-color: #FF2E63;
+  box-shadow: 0 0 0 3px rgba(255, 46, 99, 0.08);
+}
+.phone-auth-modal .modal-input::placeholder {
+  color: #94a3b8;
+}
+
+/* Разделитель "или" */
+.phone-auth-modal .modal-form-divider span {
+  background: #ffffff;
+  color: #94a3b8;
+}
+.phone-auth-modal .modal-form-divider::before {
+  background: #e2e8f0;
+}
+
+/* Кнопки провайдеров */
+.phone-auth-modal .modal-google-btn {
+  background: #f8fafc;
+  color: #1e293b;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-family: inherit;
+  transition: border-color 0.2s, background 0.2s;
+}
+.phone-auth-modal .modal-google-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* Индикатор шагов */
+.phone-auth-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 28px;
+}
+
+.phone-auth-step {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.phone-auth-step.active {
+  background: #FF2E63;
+  border-color: #FF2E63;
+  color: #fff;
+}
+
+.phone-auth-step-line {
+  flex: 1;
+  height: 2px;
+  background: #e2e8f0;
+  max-width: 60px;
+}
+
+/* Заголовки */
+.phone-auth-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.phone-auth-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0 0 24px;
+  text-align: center;
+}
+
+.phone-auth-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Бейдж нового аккаунта */
+.phone-auth-new-badge {
+  display: inline-block;
+  background: rgba(255, 46, 99, 0.08);
+  color: #FF2E63;
+  border: 1px solid rgba(255, 46, 99, 0.25);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 14px;
+  margin: -8px auto 16px;
+  text-align: center;
+}
+
+/* Кнопка продолжить / войти */
+.phone-auth-btn {
+  width: 100%;
+  background: #FF2E63;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 13px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s, opacity 0.2s;
+  font-family: inherit;
+}
+
+.phone-auth-btn:hover:not(:disabled) {
+  background: #d30035;
+  transform: translateY(-1px);
+}
+
+.phone-auth-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Кнопка назад */
+.phone-auth-back {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 0 16px;
+  display: block;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+
+.phone-auth-back:hover { color: #FF2E63; }
+
+/* Карточки выбора метода */
+.phone-auth-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.phone-auth-method-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  width: 100%;
+  font-family: inherit;
+}
+
+.phone-auth-method-btn:hover {
+  border-color: #FF2E63;
+  background: rgba(255, 46, 99, 0.04);
+  transform: translateY(-1px);
+}
+
+.phone-auth-method-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.phone-auth-method-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 3px;
+}
+
+.phone-auth-method-desc {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+/* Поле ввода кода — крупный центрированный шрифт */
+.phone-auth-code-input {
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  letter-spacing: 12px !important;
+  text-align: center !important;
+  padding: 14px !important;
+  color: #1e293b !important;
+}
+
+/* Кнопка "Отправить снова" */
+.phone-auth-resend {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 0 0;
+  text-align: center;
+  width: 100%;
+  text-decoration: underline;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+
+.phone-auth-resend:hover:not(:disabled) { color: #FF2E63; }
+.phone-auth-resend:disabled {
+  color: #94a3b8;
+  cursor: default;
+  text-decoration: none;
+}

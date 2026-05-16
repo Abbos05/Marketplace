@@ -11,10 +11,20 @@ class Message extends Model
 
     protected $table = 'messages';
 
-    protected $fillable = ['conversation_id', 'sender_id', 'message', 'is_read'];
+    protected $fillable = [
+        'conversation_id',
+        'sender_id',
+        'message',
+        'attachment_path',
+        'attachment_mime',
+        'attachment_original_name',
+        'is_read',
+        'edited_at',
+    ];
 
     protected $casts = [
         'is_read' => 'boolean',
+        'edited_at' => 'datetime',
     ];
 
     public function conversation()

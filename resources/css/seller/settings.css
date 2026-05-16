@@ -1,0 +1,392 @@
+/* ============================================================
+   Seller — Settings page
+   ============================================================ */
+
+/* ---------- Tab bar ---------- */
+.set-tabs {
+    display: flex;
+    gap: 4px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 24px;
+    width: fit-content;
+}
+
+.set-tab {
+    padding: 9px 22px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: background .15s, color .15s, box-shadow .15s;
+    white-space: nowrap;
+}
+.set-tab:hover { color: #1e293b; }
+.set-tab--active {
+    background: #fff;
+    color: var(--backgroundBlack);
+    box-shadow: 0 1px 4px rgba(0,0,0,.1);
+}
+
+/* ---------- Page layout ---------- */
+.set-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 860px) {
+    .set-layout { grid-template-columns: 1fr; }
+}
+
+/* ---------- Card ---------- */
+.set-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    overflow: hidden;
+}
+
+.set-card__header {
+    padding: 18px 24px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.set-card__title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.set-card__sub {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-top: 3px;
+}
+
+.set-card__body { padding: 24px; }
+
+/* ---------- Form ---------- */
+.set-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.set-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.set-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.set-label--optional::after {
+    content: ' (необязательно)';
+    font-weight: 400;
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.set-input,
+.set-textarea {
+    padding: 10px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #1e293b;
+    background: #fff;
+    transition: border-color .15s;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.set-input:focus,
+.set-textarea:focus { outline: none; border-color: var(--backgroundBlack); }
+.set-input.has-error,
+.set-textarea.has-error { border-color: #f43f5e; }
+.set-input[readonly] {
+    background: #f8fafc;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+.set-textarea { resize: vertical; min-height: 90px; }
+
+.set-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.4;
+}
+
+.set-error {
+    font-size: 12px;
+    color: #f43f5e;
+    font-weight: 500;
+}
+
+/* ---------- Two-col row ---------- */
+.set-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+@media (max-width: 600px) {
+    .set-row-2 { grid-template-columns: 1fr; }
+}
+
+/* ---------- Avatar block ---------- */
+.set-avatar-block {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1.5px dashed #e2e8f0;
+}
+
+.set-avatar-img {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #e2e8f0;
+    flex-shrink: 0;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,.1);
+}
+
+.set-avatar-placeholder {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--backgroundBlack), #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.set-avatar-info { flex: 1; }
+.set-avatar-info h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 4px;
+}
+.set-avatar-info p {
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.set-avatar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    margin-top: 8px;
+}
+.set-avatar-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+/* ---------- Working hours grid ---------- */
+.set-working-hours {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1.5px solid #f1f5f9;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.set-wh-row {
+    display: grid;
+    grid-template-columns: 90px 40px 1fr 1fr;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-bottom: 1px solid #f8fafc;
+    transition: background .1s;
+}
+.set-wh-row:last-child { border-bottom: none; }
+.set-wh-row--closed { background: #fafafa; }
+
+.set-wh-day {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+.set-wh-day--closed { color: #94a3b8; }
+
+.set-wh-check {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--backgroundBlack);
+    cursor: pointer;
+}
+
+.set-wh-time {
+    padding: 6px 10px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #1e293b;
+    background: #fff;
+    transition: border-color .15s;
+    width: 100%;
+    box-sizing: border-box;
+}
+.set-wh-time:focus { outline: none; border-color: var(--backgroundBlack); }
+.set-wh-time:disabled {
+    background: #f8fafc;
+    color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+.set-wh-sep {
+    font-size: 12px;
+    color: #94a3b8;
+    text-align: center;
+}
+
+/* ---------- Save button ---------- */
+.set-save-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 28px;
+    background: var(--backgroundBlack);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+    margin-top: 4px;
+    align-self: flex-start;
+}
+.set-save-btn:hover { background: var(--background); }
+.set-save-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ---------- Password strength ---------- */
+.set-password-rules {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #f1f5f9;
+}
+
+.set-password-rule {
+    font-size: 12px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.set-password-rule::before {
+    content: '○';
+    color: #cbd5e1;
+    font-size: 10px;
+}
+.set-password-rule--met { color: #10b981; }
+.set-password-rule--met::before { content: '●'; color: #10b981; }
+
+/* ---------- Flash / info panel ---------- */
+.set-flash {
+    padding: 13px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.set-flash--success { background: #d1fae5; color: #065f46; }
+.set-flash--error   { background: #fee2e2; color: #991b1b; }
+
+/* ---------- Info card (right column) ---------- */
+.set-info-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.set-info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.set-info-row__label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: #94a3b8;
+}
+
+.set-info-row__value {
+    font-size: 14px;
+    color: #1e293b;
+    font-weight: 500;
+}
+
+.set-info-divider {
+    height: 1px;
+    background: #f1f5f9;
+}
+
+/* ---------- Danger zone ---------- */
+.set-danger-zone {
+    border: 1.5px solid #fee2e2;
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-top: 8px;
+}
+
+.set-danger-zone__title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #dc2626;
+    margin-bottom: 6px;
+}
+
+.set-danger-zone__text {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}

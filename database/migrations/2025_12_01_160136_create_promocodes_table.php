@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('promocodes', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('seller_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('code', 50)->unique();
             $table->enum('discount_type', ['percent', 'fixed']);
             $table->decimal('discount_value', 10, 2);
@@ -23,6 +24,8 @@ return new class extends Migration
             $table->dateTime('expires_at')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->index('seller_id');
         });
         
         Schema::create('promocode_usages', function (Blueprint $table) {

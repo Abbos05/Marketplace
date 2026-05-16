@@ -5,90 +5,334 @@ namespace App\Http\Controllers;
 use App\Models\Cart;
 use App\Models\Category;
 use App\Models\OrderItem;
+use App\Models\Order;
+use App\Models\PickupPoint;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\ReviewVote;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
 
 class ProductController extends Controller
 {
+    /**
+     * Товары текущего продавца (кабинет).
+     */
+    public function index(Request $request)
+    {
+        $status = $request->query('status', 'all');
+        $sort   = $request->query('sort', 'newest');
 
-    // ProductController.php
+        $query = Product::query()
+            ->where('seller_id', Auth::id())
+            ->with(['category', 'images' => fn ($q) => $q->whereNull('variant_id')]);
+
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        match ($sort) {
+            'oldest'     => $query->orderBy('id'),
+            'price_asc'  => $query->orderBy('min_price'),
+            'price_desc' => $query->orderByDesc('min_price'),
+            'title'      => $query->orderBy('title'),
+            default      => $query->orderByDesc('id'),
+        };
+
+        $products = $query->withCount('variants')->get()->map(function (Product $p) {
+            $totalStock = $p->variants()->sum('stock');
+            $mainImage  = $p->images->firstWhere('is_main', true) ?? $p->images->first();
+
+            return [
+                'id'             => $p->id,
+                'title'          => $p->title,
+                'category'       => ['name' => $p->category?->name],
+                'min_price'      => (float) $p->min_price,
+                'status'         => $p->status,
+                'variants_count' => (int) $p->variants_count,
+                'total_stock'    => (int) $totalStock,
+                'main_image'     => $mainImage?->url ?? null,
+                'created_at'     => $p->created_at?->format('d.m.Y'),
+            ];
+        });
+
+        $counts = Product::where('seller_id', Auth::id())
+            ->selectRaw('status, count(*) as cnt')
+            ->groupBy('status')
+            ->pluck('cnt', 'status')
+            ->toArray();
+
+        return Inertia::render('Seller/Products/Index', [
+            'products'    => $products,
+            'statusCounts'=> $counts,
+            'filters'     => ['status' => $status, 'sort' => $sort],
+        ]);
+    }
+
     public function show(Product $product, Request $request)
     {
-        $product->load('user');
-        $user = User::find(Auth::user()->id);
+        $product->load([
+            'seller.sellerProfile',
+            'images' => fn ($q) => $q->whereNull('variant_id')->orderByDesc('is_main')->orderBy('sort_order'),
+            'attributeValues.attribute',
+        ]);
 
-        if (!$user) {
-            return redirect()->route('login');
-        }
-
-        // Получаем первый активный вариант товара
-        $variant = $product->variants()
+        $variants = $product->variants()
             ->where('is_active', true)
-            ->first();
+            ->with(['images' => fn ($q) => $q->orderByDesc('is_main')->orderBy('sort_order')])
+            ->orderBy('price')
+            ->get();
 
-        // Если вариантов нет - создаем базовый вариант
-        if (!$variant) {
-            $variant = $product->variants()->create([
-                'sku' => 'default-' . $product->id,
-                'options' => json_encode(['default' => 'standard']),
+        if ($variants->isEmpty()) {
+            $created = $product->variants()->create([
+                'sku' => 'default-'.$product->id,
+                'options' => ['Вариант' => 'Стандарт'],
                 'price' => $product->min_price,
-                'stock' => 999,
-                'is_active' => true
+                'stock' => 0,
+                'is_active' => true,
             ]);
+            $created->load(['images' => fn ($q) => $q->orderByDesc('is_main')->orderBy('sort_order')]);
+            $variants = collect([$created]);
         }
 
-        // Проверяем в корзине ли этот вариант
-        $inCart = Cart::where('user_id', $user->id)
-            ->where('variant_id', $variant->id)
-            ->exists();
+        $galleryUrls = $product->images
+            ->map(fn ($img) => Product::normalizeListingUrl($img->url))
+            ->filter()
+            ->values()
+            ->all();
 
-        // Добавляем данные варианта в объект продукта
-        $product->variant_id = $variant->id;
-        $product->variant_price = $variant->price;
-        $product->in_cart = $inCart;
-        $product->is_favorite = $user->favorites()->where('product_id', $product->id)->exists();
+        if ($galleryUrls === []) {
+            $galleryUrls = ['/img/products/default.png'];
+        }
 
-        $seller = User::find($product->seller_id);
+        $buildGalleryForVariant = function (ProductVariant $v) use ($galleryUrls): array {
+            $fromVariant = $v->images
+                ->map(fn ($img) => Product::normalizeListingUrl($img->url))
+                ->filter()
+                ->values()
+                ->all();
 
-        // Проверяем, заказывал ли пользователь этот товар
-        $hasOrdered = OrderItem::where('variant_id', $variant->id)
-            ->whereHas('order', function ($query) use ($user) {
-                $query->where('buyer_id', $user->id)
-                    ->whereIn('status', ['new', 'processing']); // Только активные статусы
-            })
-            ->exists();
+            $merged = array_values(array_unique(array_merge($fromVariant, $galleryUrls)));
 
-        $existingOrderId = OrderItem::where('variant_id', $variant->id)
-            ->whereHas('order', function ($query) use ($user) {
-                $query->where('buyer_id', $user->id)
-                    ->whereIn('status', ['new', 'processing']);
-            })
-            ->value('order_id');
+            return $merged !== [] ? $merged : ['/img/products/default.png'];
+        };
+
+        $user = Auth::user();
+
+        $platformCommissionPercent = 10.0;
+
+        $rows = [];
+        foreach ($variants as $v) {
+            $variantGallery = $buildGalleryForVariant($v);
+            $variantPrice = (float) $v->price;
+            $variantOld = $v->old_price !== null ? (float) $v->old_price : null;
+            $showOld = $variantOld !== null && $variantOld > $variantPrice;
+            $commissionFromSeller = round($variantPrice * $platformCommissionPercent / 100, 2);
+
+            $inCart = false;
+            $hasOrdered = false;
+            $existingOrderId = null;
+            if ($user) {
+                $inCart = Cart::where('user_id', $user->id)
+                    ->where('variant_id', $v->id)
+                    ->exists();
+                $hasOrdered = OrderItem::where('variant_id', $v->id)
+                    ->whereHas('order', function ($query) use ($user) {
+                        $query->where('buyer_id', $user->id)
+                            ->whereNotIn('status', [Order::STATUS_ISSUED, Order::STATUS_CANCELED, Order::STATUS_REFUSED]);
+                    })
+                    ->exists();
+                $existingOrderId = OrderItem::where('variant_id', $v->id)
+                    ->whereHas('order', function ($query) use ($user) {
+                        $query->where('buyer_id', $user->id)
+                            ->whereNotIn('status', [Order::STATUS_ISSUED, Order::STATUS_CANCELED, Order::STATUS_REFUSED]);
+                    })
+                    ->value('order_id');
+            }
+
+            $rows[] = [
+                'id' => $v->id,
+                'label' => $v->displayLabel(),
+                'sku' => $v->sku,
+                'price' => $variantPrice,
+                'old_price' => $showOld ? $variantOld : null,
+                'discount_label_percent' => $showOld
+                    ? (int) round((($variantOld - $variantPrice) / $variantOld) * 100)
+                    : null,
+                'stock' => (int) $v->stock,
+                'gallery' => $variantGallery,
+                'image' => $variantGallery[0] ?? null,
+                'in_cart' => $inCart,
+                'has_ordered' => $hasOrdered,
+                'existing_order_id' => $existingOrderId,
+                'purchase_breakdown' => [
+                    'quantity' => 1,
+                    'item_price' => $variantPrice,
+                    'payable_total' => $variantPrice,
+                    'buyer_service_fee' => 0.0,
+                    'platform_commission_percent' => $platformCommissionPercent,
+                    'platform_keeps_from_seller' => $commissionFromSeller,
+                ],
+            ];
+        }
+
+        $requestedVariantId = (int) $request->query('variant', 0);
+        $selectedRow = collect($rows)->firstWhere('id', $requestedVariantId) ?? $rows[0];
+        $selectedVariant = $variants->firstWhere('id', $selectedRow['id']);
+
+        $mainImage = $selectedRow['image'] ?? null;
+
+        $baseSpecs = $product->attributeValues
+            ->map(fn ($av) => [
+                'name' => $av->attribute?->name ?? 'Характеристика',
+                'value' => (string) ($av->value ?? ''),
+            ])
+            ->filter(fn ($row) => $row['value'] !== '')
+            ->values()
+            ->all();
+
+        $variantOptions = [];
+        if ($selectedVariant) {
+            $opts = $selectedVariant->options;
+            if (is_array($opts)) {
+                foreach ($opts as $key => $val) {
+                    if (is_string($val) && $val !== '') {
+                        $variantOptions[] = [
+                            'name' => is_string($key) ? $key : 'Параметр',
+                            'value' => $val,
+                        ];
+                    }
+                }
+            }
+        }
+
+        $specs = array_merge($baseSpecs, $variantOptions);
+
+        $variantLabel = $selectedVariant?->displayLabel() ?? '';
+        $displayTitle = $product->title;
+        if ($variantLabel !== '' && $variantLabel !== 'Вариант #'.$selectedRow['id']) {
+            $displayTitle = $product->title.' — '.$variantLabel;
+        }
+
+        $reviews = $product->reviews()
+            ->where('is_moderated', true)
+            ->with('user:id,name,avatar')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        $userVotes = [];
+        if ($user) {
+            $userVotes = ReviewVote::query()
+                ->where('user_id', $user->id)
+                ->whereIn('review_id', $reviews->pluck('id'))
+                ->pluck('vote', 'review_id')
+                ->all();
+        }
+
+        $reviewsAvg = $product->reviews()->where('is_moderated', true)->avg('rating');
+        $reviewsCount = $product->reviews()->where('is_moderated', true)->count();
+
+        $reviewsList = $reviews->map(fn ($r) => [
+            'id' => $r->id,
+            'rating' => (int) $r->rating,
+            'comment' => $r->comment,
+            'created_at' => $r->created_at?->format('d.m.Y'),
+            'likes_count' => (int) ($r->likes_count ?? 0),
+            'dislikes_count' => (int) ($r->dislikes_count ?? 0),
+            'user_vote' => $userVotes[$r->id] ?? null,
+            'user_name' => $r->user?->name ?? 'Покупатель',
+            'user_avatar' => $r->user?->avatar ? Product::normalizeListingUrl($r->user->avatar) : null,
+        ])->values()->all();
+
+        $isFavorite = false;
+        if ($user) {
+            $isFavorite = $user->favorites()->where('product_id', $product->id)->exists();
+        }
+
+        $seller = $product->seller;
+
+        $product->variant_id = $selectedRow['id'];
+        $product->variant_price = $selectedRow['price'];
+        $product->variant_old_price = $selectedRow['old_price'];
+        $product->variant_stock = $selectedRow['stock'];
+        $product->in_cart = $selectedRow['in_cart'];
+        $product->is_favorite = $isFavorite;
+        $product->image = $mainImage;
+        $product->gallery = $selectedRow['gallery'];
+        $product->specs = $specs;
+        $product->display_title = $displayTitle;
+        $product->variant_label = $variantLabel;
+        $product->variant_options = $variantOptions;
+        $product->reviews_list = $reviewsList;
+        $product->reviews_avg_rating = $reviewsAvg !== null ? round((float) $reviewsAvg, 1) : null;
+        $product->reviews_total = (int) $reviewsCount;
+        $product->discount_label_percent = $selectedRow['discount_label_percent'];
+        $product->purchase_breakdown = $selectedRow['purchase_breakdown'];
+        $product->variants_catalog = $rows;
+        $product->selected_variant_id = $selectedRow['id'];
+
+        $lead = trim((string) ($product->short_description ?? ''));
+        if ($lead === '') {
+            $plain = trim(strip_tags((string) ($product->description ?? '')));
+            $lead = $plain !== '' ? Str::limit($plain, 720, '…') : '';
+        }
+        $product->setAttribute('lead_text', $lead);
+
+        $sellerPayload = $seller ? [
+            'id' => $seller->id,
+            'name' => $seller->sellerProfile?->shop_name ?? $seller->name,
+            'avatar' => $seller->avatar ? Product::normalizeListingUrl($seller->avatar) : null,
+            'rating' => $seller->sellerProfile ? (float) $seller->sellerProfile->rating : null,
+            'total_sales' => (int) ($seller->sellerProfile?->total_sales ?? 0),
+            'verified' => (bool) $seller->sellerProfile,
+        ] : null;
+
+        $product->unsetRelation('images');
+        $product->unsetRelation('attributeValues');
+        $product->unsetRelation('seller');
+
+        $pickupPoints = PickupPoint::query()
+            ->active()
+            ->with('region')
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get()
+            ->map(fn (PickupPoint $p) => [
+                'id' => $p->id,
+                'label' => $p->title.($p->region ? ' — '.$p->region->name : ''),
+            ]);
 
         return Inertia::render('Product/Show', [
             'nftUser' => [
-                'owner_name' => $product->user->name ?? 'Аноним',
-                'owner_avatar' => $product->user->avatar ?? null,
+                'owner_name' => ($sellerPayload ?? [])['name'] ?? 'Продавец',
+                'owner_avatar' => ($sellerPayload ?? [])['avatar'] ?? null,
             ],
             'product' => $product,
-            'seller' => $seller,
-            'canPayWithWallet' => $user->balance >= $variant->price,
-            'walletBalance' => $user->balance,
+            'seller' => $sellerPayload,
+            'canPayWithWallet' => $user !== null && (float) $user->balance >= (float) $selectedRow['price'],
+            'walletBalance' => $user ? (float) $user->balance : 0,
             'auth' => ['user' => $user],
-            'hasOrdered' => $hasOrdered,
-            'existingOrderId' => $existingOrderId,
+            'hasOrdered' => $selectedRow['has_ordered'],
+            'existingOrderId' => $selectedRow['existing_order_id'],
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error'),
             ],
+            'pickupPoints' => $pickupPoints,
         ]);
+    }
+
+    protected function normalizePublicUrl(?string $url): ?string
+    {
+        return Product::normalizeListingUrl($url);
     }
     public function create()
     {

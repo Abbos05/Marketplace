@@ -9,12 +9,13 @@ export default function Category({
     auth,
     categoryData,
     showModal,
+    homeSlides = [],
 }) {
     return (
         <MainLayout auth={auth} categories={categoryData} showModal={showModal}>
             <Head title="Каталог" />
             <Categories categories={categoryData} />
-            <Slider />
+            <Slider slides={homeSlides} />
 
         </MainLayout>
     );

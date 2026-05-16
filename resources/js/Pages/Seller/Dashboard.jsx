@@ -119,12 +119,12 @@ export default function Dashboard({ stats, recentOrders, popularProducts, salesC
                                         <td>{order.total.toLocaleString()} ₽</td>
                                         <td>
                                             <span className={`status-badge status-${order.status}`}>
-                                                {order.status === 'new' && 'Новый'}
-                                                {order.status === 'paid' && 'Оплачен'}
-                                                {order.status === 'processing' && 'В обработке'}
-                                                {order.status === 'ready_for_pickup' && 'Готов к выдаче'}
-                                                {order.status === 'in_transit' && 'В пути'}
-                                                {order.status === 'issued' && 'Получен'}
+                                                {order.status === 'NEW' && 'Новый заказ'}
+                                                {order.status === 'INTRANSIT' && 'В пути'}
+                                                {order.status === 'DELIVERED' && 'В пункте выдачи'}
+                                                {order.status === 'ISSUED' && 'Выдан'}
+                                                {order.status === 'CANCELED' && 'Отменён'}
+                                                {order.status === 'REFUSED' && 'Отказ от получения'}
                                             </span>
                                         </td>
                                     </tr>

@@ -5,48 +5,26 @@ import PaymentModal from '@/Components/PaymentModal';
 import Barcode from 'react-barcode';
 import '../../../css/profile/orders.css';
 
-export default function Orders({ auth, orders = [] }) {
+export default function Orders({ auth, orders = [], dailyPickupCode = '' }) {
     const [paymentModal, setPaymentModal] = useState({ isOpen: false, order: null });
     const [barcodeOpen, setBarcodeOpen] = useState(false);
 
-    // 🔥 код на сутки
-    const getDailyCode = () => {
-        const today = new Date().toDateString();
-        const saved = localStorage.getItem('pickup_code');
-
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            if (parsed.date === today) return parsed.code;
-        }
-
-        const newCode = `${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`;
-
-        localStorage.setItem('pickup_code', JSON.stringify({
-            date: today,
-            code: newCode
-        }));
-
-        return newCode;
-    };
-
-    const code = getDailyCode();
+    const code = dailyPickupCode;
 
 
     const canPay = (o) =>
         o.payment_status !== 'paid' &&
-        !['canceled', 'returned'].includes(o.status);
+        !['CANCELED', 'REFUSED'].includes(o.status);
 
-    // статус текст
+    // статус доставки (оплата — отдельно payment_status)
     const statusText = (status) => {
         switch (status) {
-            case 'new': return 'Заказ оформлен';
-            case 'paid': return 'Оплачен';
-            case 'processing': return 'Собирается';
-            case 'in_transit': return 'В пути';
-            case 'at_pvz': return 'Готов к выдаче';
-            case 'issued': return 'Получен';
-            case 'canceled': return 'Отменён';
-            case 'returned': return 'Возврат';
+            case 'NEW': return 'Заказ оформлен';
+            case 'INTRANSIT': return 'В пути';
+            case 'DELIVERED': return 'В пункте выдачи';
+            case 'ISSUED': return 'Выдан';
+            case 'CANCELED': return 'Отменён';
+            case 'REFUSED': return 'Отказ от получения';
             default: return status;
         }
     };
@@ -54,15 +32,14 @@ export default function Orders({ auth, orders = [] }) {
     // цвет статуса
     const statusClass = (status) => {
         switch (status) {
-            case 'new': return 'status-yellow';
-            case 'processing':
-            case 'in_transit':
+            case 'NEW': return 'status-yellow';
+            case 'INTRANSIT':
                 return 'status-blue';
-            case 'paid':
-            case 'issued':
+            case 'DELIVERED':
+            case 'ISSUED':
                 return 'status-green';
-            case 'canceled':
-            case 'returned':
+            case 'CANCELED':
+            case 'REFUSED':
                 return 'status-red';
             default:
                 return '';
@@ -75,11 +52,11 @@ export default function Orders({ auth, orders = [] }) {
     };
 
     const activeOrders = orders.filter(o =>
-        !['issued', 'canceled', 'returned'].includes(o.status)
+        !['DELIVERED', 'CANCELED', 'REFUSED'].includes(o.status)
     );
 
     const completedOrders = orders.filter(o =>
-        ['issued', 'canceled', 'returned'].includes(o.status)
+        ['DELIVERED', 'CANCELED', 'REFUSED'].includes(o.status)
     );
 
     const [tab, setTab] = useState('active');
@@ -92,12 +69,12 @@ export default function Orders({ auth, orders = [] }) {
             <div className="orders-page">
 
                 {/* КОД */}
-                {orders.length > 0 && (
+                {orders.length > 0 && code && (
                     <div className="pickup-block" onClick={() => setBarcodeOpen(true)}>
                         <div className=""><div className="pickup-title">Код получения</div>
 
                             <div className="pickup-code">{code}</div>
-                            <div className="pickup-hint">Нажмите, чтобы открыть штрихкод</div>
+                            <div className="pickup-hint">Действует сутки на все ваши заказы · нажмите для штрихкода</div>
                         </div>
                         <div className="">
                             <div className="barcode-box-pink" onClick={() => setBarcodeOpen(false)}>
@@ -124,24 +101,24 @@ export default function Orders({ auth, orders = [] }) {
                 </div>
                 {/* СПИСОК */}
                 <div className="order-items order-card" >
-        
 
-                    {currentOrders.map(order => {
+
+                    {currentOrders.length > 0 ? currentOrders.map(order => {
 
                         return (
-                            <div className="order-main"  key={order.id} onClick={() => router.visit(route('order.show', order.id))}>
+                            <div className="order-main" key={order.id} onClick={() => router.visit(route('order.show', order.id))}>
 
                                 {/* ЛЕВАЯ ЧАСТЬ */}
                                 <div className="order-main-left">
 
                                     <div className="order-title">
-                                        {order.status === 'at_pvz' ? 'Можно забрать' : statusText(order.status)}
+                                        {order.status === 'INTRANSIT' ? 'В пути к вам' : statusText(order.status)}
                                     </div>
 
                                     <div className="order-date">
-                                        {order.status === 'at_pvz'
-                                            ? `До ${new Date(order.updated_at).toLocaleDateString('ru-RU')}`
-                                            : `Ожидается ${new Date(order.created_at).toLocaleDateString('ru-RU')}`
+                                        {order.status === 'INTRANSIT'
+                                            ? `Обновлено ${new Date(order.updated_at).toLocaleDateString('ru-RU')}`
+                                            : `Оформлен ${new Date(order.created_at).toLocaleDateString('ru-RU')}`
                                         }
                                     </div>
 
@@ -161,11 +138,19 @@ export default function Orders({ auth, orders = [] }) {
 
                             </div>
                         );
-                    })}
+                    }) : (
+                        <div className="NoCart">
+                            <img className='NoCart__image' src="https://ir-3.ozone.ru/s3/cms/82/t5b/wc1200/box-open-empty_yellow.png" alt="NoCart" />
+                            <p className='NoCart__title'>У вас пока нет актуальных заказов
+                            </p>
+                            <p className="NoCart__text">Когда появятся, будут отображаться здесь. Остальные заказы находятся в завершённых
+                            </p>
+                            <button className='NoCart__button' onClick={() => router.visit('/')}>К покупкам</button>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* 🔥 МОДАЛКА ШТРИХКОДА */}
             {barcodeOpen && (
                 <div className="barcode-modal" onClick={() => setBarcodeOpen(false)}>
                     <div className="barcode-box" onClick={(e) => e.stopPropagation()}>

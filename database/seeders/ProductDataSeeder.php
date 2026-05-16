@@ -197,7 +197,6 @@ class ProductDataSeeder extends Seeder
                 return ['size' => $sizes[array_rand($sizes)]];
             default: // универсальные опции
                 return [
-                    'option' => "Вариант {$variantNum}",
                     'color' => $colors[array_rand($colors)]
                 ];
         }

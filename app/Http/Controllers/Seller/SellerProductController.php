@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 
 use App\Models\Category;
+use App\Models\CategoryAttribute;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
@@ -14,11 +15,52 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 use Inertia\Inertia;
 
 class SellerProductController extends Controller
 {
+    /**
+     * Из multipart FormData вложенные массивы часто не доходят до PHP — мёрджим JSON-поля до валидации.
+     * Используется при создании и обновлении товара.
+     */
+    private function mergeSellerProductEditPayload(Request $request): void
+    {
+        $rawVariants = $request->input('variants_json');
+        if (is_string($rawVariants)) {
+            $rawVariants = trim($rawVariants);
+            if ($rawVariants !== '') {
+                $decoded = json_decode($rawVariants, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $request->merge(['variants' => $decoded]);
+                }
+            }
+        }
+
+        $rawAttrs = $request->input('attributes_json');
+        if (is_string($rawAttrs)) {
+            $rawAttrs = trim($rawAttrs);
+            if ($rawAttrs !== '') {
+                $decoded = json_decode($rawAttrs, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $request->merge(['attributes' => $decoded]);
+                }
+            }
+        }
+
+        $rawRemove = $request->input('remove_image_ids_json');
+        if (is_string($rawRemove)) {
+            $rawRemove = trim($rawRemove);
+            if ($rawRemove !== '') {
+                $decoded = json_decode($rawRemove, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $request->merge(['remove_image_ids' => $decoded]);
+                }
+            }
+        }
+    }
+
     public function create()
     {
         $categories = Category::where('is_active', true)
@@ -35,74 +77,49 @@ class SellerProductController extends Controller
 
     public function store(Request $request)
     {
+        $this->mergeSellerProductEditPayload($request);
+
         $request->validate([
-
-            'title' => 'required|max:200',
-
+            'title' => 'required|string|max:200',
+            'short_description' => 'required|string|max:500',
+            'description' => 'required|string|max:20000',
             'category_id' => 'required|exists:categories,id',
-
-            'main_image' => 'required|image',
-
+            'main_image' => 'required|image|max:10240',
+            'images' => 'nullable|array|max:10',
+            'images.*' => 'nullable|image|max:10240',
             'variants' => 'required|array|min:1',
-
-            'variants.*.price' => 'required|numeric',
-
-            'variants.*.stock' => 'required|numeric',
+            'variants.*.price' => 'required|numeric|min:0.01',
+            'variants.*.stock' => 'required|integer|min:0',
         ]);
 
-        DB::beginTransaction();
+        $user = Auth::user();
+
+        $allowedAttributeIds = CategoryAttribute::query()
+            ->where('category_id', (int) $request->category_id)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
         try {
+            DB::beginTransaction();
 
-            $user = Auth::user();
-
-            /*
-            |--------------------------------------------------------------------------
-            | Product
-            |--------------------------------------------------------------------------
-            */
-
-            $minPrice = collect($request->variants)
-                ->min('price');
+            $minPrice = (float) collect($request->variants)->min(
+                fn ($v) => (float) ($v['price'] ?? 0)
+            );
 
             $product = Product::create([
-
                 'seller_id' => $user->id,
-
                 'category_id' => $request->category_id,
-
                 'title' => $request->title,
-
                 'description' => $request->description,
-
                 'short_description' => $request->short_description,
-
                 'min_price' => $minPrice,
-
                 'status' => 'moderation',
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Attributes
-            |--------------------------------------------------------------------------
-            */
-
-            if ($request->attributes) {
-
-                foreach ($request->attributes as $attributeId => $value) {
-
-                    ProductAttributeValue::create([
-
-                        'product_id' => $product->id,
-
-                        'attribute_id' => $attributeId,
-
-                        'value' => is_array($value)
-                            ? json_encode($value)
-                            : $value
-                    ]);
-                }
+            $folder = public_path('img/products/'.$user->id);
+            if (! file_exists($folder)) {
+                mkdir($folder, 0777, true);
             }
 
             /*
@@ -111,134 +128,518 @@ class SellerProductController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            foreach ($request->variants as $variant) {
+            foreach ($request->variants as $variantIndex => $variant) {
+                $options = $variant['options'] ?? [];
+                if (is_string($options)) {
+                    $decoded = json_decode($options, true);
+                    $options = is_array($decoded) ? $decoded : [];
+                }
+                if (! is_array($options)) {
+                    $options = [];
+                }
 
-                ProductVariant::create([
-
-                    'product_id' => $product->id,
-
-                    'sku' => strtoupper(Str::random(12)),
-
-                    'options' => json_encode(
-                        $variant['options'] ?? []
-                    ),
-
-                    'price' => $variant['price'],
-
-                    'old_price' => $variant['old_price'] ?? null,
-
-                    'stock' => $variant['stock'],
-
-                    'weight_grams' => $variant['weight_grams'] ?? null,
-
-                    'is_active' => true,
+                $pv = ProductVariant::create([
+                    'product_id'   => $product->id,
+                    'sku'          => 'P'.$product->id.'-'.strtoupper(Str::random(10)),
+                    'options'      => $options,
+                    'price'        => $variant['price'],
+                    'old_price'    => null,
+                    'stock'        => (int) $variant['stock'],
+                    'weight_grams' => isset($variant['weight_grams']) ? (int) $variant['weight_grams'] : null,
+                    'is_active'    => true,
                 ]);
+
+                $variantImageKey = 'variant_image_'.$variantIndex;
+                if ($request->hasFile($variantImageKey)) {
+                    $vImg     = $request->file($variantImageKey);
+                    $vImgName = time().'_v'.$variantIndex.'_'.Str::random(5).'.'.$vImg->extension();
+                    $vImg->move($folder, $vImgName);
+                    ProductImage::create([
+                        'product_id' => $product->id,
+                        'variant_id' => $pv->id,
+                        'url'        => '/img/products/'.$user->id.'/'.$vImgName,
+                        'sort_order' => 0,
+                        'is_main'    => false,
+                    ]);
+                }
             }
 
             /*
             |--------------------------------------------------------------------------
-            | Images
-            |--------------------------------------------------------------------------
-            */
-
-            $folder = public_path(
-                'img/products/' . $user->id
-            );
-
-            if (!file_exists($folder)) {
-
-                mkdir($folder, 0777, true);
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Main image
+            | Images (product-level: main + gallery)
             |--------------------------------------------------------------------------
             */
 
             if ($request->hasFile('main_image')) {
-
                 $mainImage = $request->file('main_image');
-
-                $mainName =
-                    time() .
-                    '_main_' .
-                    Str::random(5) .
-                    '.' .
-                    $mainImage->extension();
-
+                $mainName = time().'_main_'.Str::random(5).'.'.$mainImage->extension();
                 $mainImage->move($folder, $mainName);
-
+                $relPath = 'img/products/'.$user->id.'/'.$mainName;
                 ProductImage::create([
-
                     'product_id' => $product->id,
-
-                    'url' =>
-                        '/img/products/' .
-                        $user->id .
-                        '/' .
-                        $mainName,
-
+                    'url' => '/'.$relPath,
                     'sort_order' => 0,
-
                     'is_main' => true,
                 ]);
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Gallery images
-            |--------------------------------------------------------------------------
-            */
-
             if ($request->hasFile('images')) {
-
                 foreach ($request->file('images') as $index => $image) {
-
-                    $imageName =
-                        time() .
-                        '_' .
-                        $index .
-                        '_' .
-                        Str::random(5) .
-                        '.' .
-                        $image->extension();
-
+                    $imageName = time().'_'.$index.'_'.Str::random(5).'.'.$image->extension();
                     $image->move($folder, $imageName);
-
+                    $relPath = 'img/products/'.$user->id.'/'.$imageName;
                     ProductImage::create([
-
                         'product_id' => $product->id,
-
-                        'url' =>
-                            '/img/products/' .
-                            $user->id .
-                            '/' .
-                            $imageName,
-
+                        'url' => '/'.$relPath,
                         'sort_order' => $index + 1,
-
                         'is_main' => false,
                     ]);
                 }
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Attributes (только id из выбранной категории — иначе FK и откат транзакции)
+            |--------------------------------------------------------------------------
+            */
+
+            foreach ($request->attributes ?? [] as $attributeId => $value) {
+                $aid = (int) $attributeId;
+                if ($aid < 1 || ! in_array($aid, $allowedAttributeIds, true)) {
+                    continue;
+                }
+                if ($value === '' || $value === null) {
+                    continue;
+                }
+
+                ProductAttributeValue::create([
+                    'product_id' => $product->id,
+                    'attribute_id' => $aid,
+                    'value' => is_array($value) ? json_encode($value) : $value,
+                ]);
+            }
+
             DB::commit();
 
             return redirect()
-                ->route('seller.dashboard')
-                ->with(
-                    'success',
-                    'Товар успешно создан'
-                );
-
-        } catch (\Exception $e) {
-
+                ->route('seller.products')
+                ->with('success', 'Товар успешно создан');
+        } catch (\Throwable $e) {
             DB::rollBack();
 
             return back()->withErrors([
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    public function edit(Product $product)
+    {
+        $user = Auth::user();
+
+        if ($product->seller_id !== $user->id) {
+            abort(403);
+        }
+
+        $product->load([
+            'category.parent',
+            'category.attributes',
+            'attributeValues',
+            'variants' => fn ($q) => $q->with(['images' => fn ($qi) => $qi->orderBy('sort_order')])->orderBy('id'),
+            'images' => fn ($q) => $q->whereNull('variant_id')->orderBy('sort_order'),
+        ]);
+
+        $categories = Category::where('is_active', true)
+            ->whereNull('parent_id')
+            ->with(['children.attributes'])
+            ->get();
+
+        $attributesPayload = [];
+        foreach ($product->attributeValues as $pav) {
+            $attributesPayload[$pav->attribute_id] = $pav->value;
+        }
+
+        $variantsPayload = $product->variants->map(function (ProductVariant $v) {
+            $opts = $v->options;
+            if (is_string($opts)) {
+                $decoded = json_decode($opts, true);
+                $opts = is_array($decoded) ? $decoded : [];
+            }
+
+            $variantImage = $v->images->first();
+
+            return [
+                'id'        => $v->id,
+                'options'   => $opts,
+                'price'     => (string) $v->price,
+                'old_price' => $v->old_price !== null ? (string) $v->old_price : '',
+                'stock'     => (string) $v->stock,
+                'image_url' => $variantImage?->url ?? null,
+                'image_id'  => $variantImage?->id ?? null,
+            ];
+        })->values()->all();
+
+        return Inertia::render('Seller/Products/Edit', [
+            'product' => [
+                'id' => $product->id,
+                'status' => $product->status,
+            ],
+            'leafCategory' => $product->category,
+            'parentCategory' => $product->category->parent,
+            'categories' => $categories,
+            'initial' => [
+                'title' => $product->title,
+                'short_description' => $product->short_description ?? '',
+                'description' => $product->description ?? '',
+                'category_id' => $product->category_id,
+                'attributes' => $attributesPayload,
+                'variants' => $variantsPayload,
+            ],
+            'existingImages' => $product->images->map(fn ($img) => [
+                'id' => $img->id,
+                'url' => $img->url,
+                'is_main' => (bool) $img->is_main,
+                'sort_order' => $img->sort_order,
+            ]),
+        ]);
+    }
+
+    public function update(Request $request, Product $product)
+    {
+        $user = Auth::user();
+
+        if ($product->seller_id !== $user->id) {
+            abort(403);
+        }
+
+        $this->mergeSellerProductEditPayload($request);
+
+        $request->validate([
+            'title' => 'required|string|max:200',
+            'short_description' => 'required|string|max:500',
+            'description' => 'required|string|max:20000',
+            'variants' => 'required|array|min:1',
+            'variants.*.id' => [
+                'nullable',
+                'integer',
+                Rule::exists('product_variants', 'id')->where('product_id', $product->id),
+            ],
+            'variants.*.price' => 'required|numeric|min:0.01',
+            'variants.*.stock' => 'required|integer|min:0',
+            'main_image' => 'nullable|image|max:10240',
+            'images' => 'nullable|array|max:10',
+            'images.*' => 'nullable|image|max:10240',
+            'remove_image_ids' => 'nullable|array',
+            'remove_image_ids.*' => [
+                'integer',
+                Rule::exists('product_images', 'id')->where('product_id', $product->id),
+            ],
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $minPrice = (float) collect($request->variants)->min(
+                fn ($v) => (float) ($v['price'] ?? 0)
+            );
+
+            $product->update([
+                'title' => $request->title,
+                'short_description' => $request->short_description,
+                'description' => $request->description,
+                'min_price' => $minPrice,
+                'status' => 'moderation',
+            ]);
+
+            $allowedAttributeIds = CategoryAttribute::query()
+                ->where('category_id', $product->category_id)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $submittedVariantIds = collect($request->variants)->pluck('id')->filter()->map(fn ($id) => (int) $id)->values()->all();
+
+            if ($submittedVariantIds !== []) {
+                $product->variants()
+                    ->whereNotIn('id', $submittedVariantIds)
+                    ->get()
+                    ->each(fn ($v) => $v->delete());
+            } else {
+                $product->variants()->get()->each(fn ($v) => $v->delete());
+            }
+
+            $folder = public_path('img/products/'.$user->id);
+            if (! file_exists($folder)) {
+                mkdir($folder, 0777, true);
+            }
+
+            foreach ($request->variants as $variantIndex => $variant) {
+                $options = $variant['options'] ?? [];
+                if (is_string($options)) {
+                    $decoded = json_decode($options, true);
+                    $options = is_array($decoded) ? $decoded : [];
+                }
+                if (! is_array($options)) {
+                    $options = [];
+                }
+
+                $newPrice        = (float) $variant['price'];
+                $variantImageKey = 'variant_image_'.$variantIndex;
+
+                if (! empty($variant['id'])) {
+                    $pv = ProductVariant::where('product_id', $product->id)->find($variant['id']);
+                    if ($pv) {
+                        $autoOldPrice = ((float) $pv->price !== $newPrice)
+                            ? $pv->price
+                            : $pv->old_price;
+
+                        $pv->update([
+                            'options'   => $options,
+                            'price'     => $newPrice,
+                            'old_price' => $autoOldPrice,
+                            'stock'     => (int) $variant['stock'],
+                        ]);
+
+                        if ($request->hasFile($variantImageKey)) {
+                            ProductImage::where('product_id', $product->id)
+                                ->where('variant_id', $pv->id)
+                                ->each(fn ($img) => $img->delete());
+
+                            $vImg     = $request->file($variantImageKey);
+                            $vImgName = time().'_v'.$variantIndex.'_'.Str::random(5).'.'.$vImg->extension();
+                            $vImg->move($folder, $vImgName);
+                            ProductImage::create([
+                                'product_id' => $product->id,
+                                'variant_id' => $pv->id,
+                                'url'        => '/img/products/'.$user->id.'/'.$vImgName,
+                                'sort_order' => 0,
+                                'is_main'    => false,
+                            ]);
+                        }
+
+                        continue;
+                    }
+                }
+
+                $pv = ProductVariant::create([
+                    'product_id' => $product->id,
+                    'sku'        => 'P'.$product->id.'-'.strtoupper(Str::random(10)),
+                    'options'    => $options,
+                    'price'      => $newPrice,
+                    'old_price'  => null,
+                    'stock'      => (int) $variant['stock'],
+                    'is_active'  => true,
+                ]);
+
+                if ($request->hasFile($variantImageKey)) {
+                    $vImg     = $request->file($variantImageKey);
+                    $vImgName = time().'_v'.$variantIndex.'_'.Str::random(5).'.'.$vImg->extension();
+                    $vImg->move($folder, $vImgName);
+                    ProductImage::create([
+                        'product_id' => $product->id,
+                        'variant_id' => $pv->id,
+                        'url'        => '/img/products/'.$user->id.'/'.$vImgName,
+                        'sort_order' => 0,
+                        'is_main'    => false,
+                    ]);
+                }
+            }
+
+            foreach ($request->remove_image_ids ?? [] as $imgId) {
+                $img = ProductImage::where('product_id', $product->id)
+                    ->whereNull('variant_id')
+                    ->find($imgId);
+                if ($img) {
+                    $img->delete();
+                }
+            }
+
+            if ($request->hasFile('main_image')) {
+                ProductImage::where('product_id', $product->id)->update(['is_main' => false]);
+
+                $mainImage = $request->file('main_image');
+                $mainName = time().'_main_'.Str::random(5).'.'.$mainImage->extension();
+                $mainImage->move($folder, $mainName);
+
+                $relPath = 'img/products/'.$user->id.'/'.$mainName;
+
+                ProductImage::create([
+                    'product_id' => $product->id,
+                    'url' => '/'.$relPath,
+                    'sort_order' => 0,
+                    'is_main' => true,
+                ]);
+            }
+
+            if ($request->hasFile('images')) {
+                $maxSort = (int) ProductImage::where('product_id', $product->id)->max('sort_order');
+
+                foreach ($request->file('images') as $index => $image) {
+                    $imageName = time().'_'.$index.'_'.Str::random(5).'.'.$image->extension();
+                    $image->move($folder, $imageName);
+
+                    $relPath = 'img/products/'.$user->id.'/'.$imageName;
+
+                    ProductImage::create([
+                        'product_id' => $product->id,
+                        'url' => '/'.$relPath,
+                        'sort_order' => $maxSort + $index + 1,
+                        'is_main' => false,
+                    ]);
+                }
+            }
+
+            foreach ($request->attributes ?? [] as $attributeId => $value) {
+                $aid = (int) $attributeId;
+                if ($aid < 1 || ! in_array($aid, $allowedAttributeIds, true)) {
+                    continue;
+                }
+                if ($value === '' || $value === null) {
+                    continue;
+                }
+
+                ProductAttributeValue::updateOrCreate(
+                    [
+                        'product_id' => $product->id,
+                        'attribute_id' => $aid,
+                    ],
+                    [
+                        'value' => is_array($value) ? json_encode($value) : $value,
+                    ]
+                );
+            }
+
+            DB::commit();
+
+            return redirect()
+                ->route('seller.products')
+                ->with('success', 'Товар обновлён и снова отправлен на модерацию');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return back()->withErrors([
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Управление товаром (страница «Управление»)
+    // -------------------------------------------------------------------------
+
+    public function manage(Product $product)
+    {
+        $user = Auth::user();
+
+        if ($product->seller_id !== $user->id) {
+            abort(403);
+        }
+
+        $product->load([
+            'category',
+            'variants' => fn ($q) => $q->orderBy('id'),
+            'variants.images',
+            'images' => fn ($q) => $q->whereNull('variant_id')->orderBy('sort_order'),
+        ]);
+
+        $liveVariants  = $product->variants->filter(fn ($v) => ! $v->trashed());
+        $totalStock    = $liveVariants->sum('stock');
+        $activeCount   = $liveVariants->where('is_active', true)->count();
+        $hiddenCount   = $liveVariants->where('is_active', false)->count();
+
+        $mainImage = $product->images->firstWhere('is_main', true) ?? $product->images->first();
+
+        return Inertia::render('Seller/Products/Manage', [
+            'product' => [
+                'id'             => $product->id,
+                'title'          => $product->title,
+                'status'         => $product->status,
+                'category'       => $product->category?->name ?? '—',
+                'min_price'      => (float) $product->min_price,
+                'views_count'    => (int) ($product->views_count ?? 0),
+                'sales_count'    => (int) ($product->sales_count ?? 0),
+                'created_at'     => $product->created_at?->format('d.m.Y') ?? '',
+                'main_image'     => $mainImage?->url ?? null,
+                'total_stock'    => $totalStock,
+                'active_variants'=> $activeCount,
+                'hidden_variants'=> $hiddenCount,
+            ],
+            'variants' => $liveVariants->map(function (ProductVariant $v) {
+                $opts = $v->options;
+                if (is_string($opts)) {
+                    $opts = json_decode($opts, true) ?? [];
+                }
+
+                return [
+                    'id'        => $v->id,
+                    'options'   => is_array($opts) ? $opts : [],
+                    'price'     => (float) $v->price,
+                    'old_price' => $v->old_price ? (float) $v->old_price : null,
+                    'stock'     => (int) $v->stock,
+                    'is_active' => (bool) $v->is_active,
+                    'sku'       => $v->sku,
+                    'image_url' => $v->images->first()?->url ?? null,
+                ];
+            })->values()->all(),
+        ]);
+    }
+
+    public function toggleVisibility(Product $product)
+    {
+        $user = Auth::user();
+
+        if ($product->seller_id !== $user->id) {
+            abort(403);
+        }
+
+        if ($product->status === 'hidden') {
+            $product->update(['status' => 'approved']);
+        } elseif ($product->status === 'approved') {
+            $product->update(['status' => 'hidden']);
+        }
+
+        return back()->with('success', 'Видимость товара обновлена');
+    }
+
+    public function toggleVariant(Product $product, ProductVariant $variant)
+    {
+        $user = Auth::user();
+
+        if ($product->seller_id !== $user->id || $variant->product_id !== $product->id) {
+            abort(403);
+        }
+
+        $variant->update(['is_active' => ! $variant->is_active]);
+
+        return back()->with('success', 'Статус варианта обновлён');
+    }
+
+    public function updateVariantStock(Request $request, Product $product, ProductVariant $variant)
+    {
+        $user = Auth::user();
+
+        if ($product->seller_id !== $user->id || $variant->product_id !== $product->id) {
+            abort(403);
+        }
+
+        $request->validate(['stock' => 'required|integer|min:0']);
+
+        $variant->update(['stock' => (int) $request->stock]);
+
+        return back()->with('success', 'Остаток обновлён');
+    }
+
+    public function setMainImage(Product $product, ProductImage $image)
+    {
+        $user = Auth::user();
+
+        if ($product->seller_id !== $user->id || $image->product_id !== $product->id) {
+            abort(403);
+        }
+
+        ProductImage::where('product_id', $product->id)->update(['is_main' => false]);
+        $image->update(['is_main' => true]);
+
+        return back()->with('success', 'Главное фото изменено');
     }
 }

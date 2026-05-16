@@ -34,7 +34,7 @@ class DashboardController extends Controller
             })->sum('total'),
             'pending_orders' => Order::whereHas('items.variant.product', function ($q) use ($user) {
                 $q->where('seller_id', $user->id);
-            })->whereIn('status', ['new', 'paid', 'processing'])->count(),
+            })->whereIn('status', [Order::STATUS_NEW, Order::STATUS_INTRANSIT])->count(),
         ];
 
         // Последние заказы

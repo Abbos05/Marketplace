@@ -3,17 +3,28 @@
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\HomeSlideController;
+use App\Http\Controllers\Admin\PickupPointController;
+use App\Http\Controllers\Admin\ReviewModerationController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ReviewVoteController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\SellerProfileController;
 use App\Http\Controllers\Seller\DashboardController;
+use App\Http\Controllers\Seller\SellerOrderController;
+use App\Http\Controllers\Seller\SellerStatisticsController;
+use App\Http\Controllers\Seller\SellerPromocodesController;
+use App\Http\Controllers\Seller\SellerSettingsController;
+use App\Http\Controllers\PromocodeController;
 use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\SellerController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Middleware\CheckRole;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +41,6 @@ Route::middleware('auth')->group(function () {
     Route::resource('product', ProductController::class);
 });
 Route::get('/product/{product}', [ProductController::class, 'show'])->name('product.show');
-Route::get('/product/{product}', [ProductController::class, 'show'])->name('product.show');
 
 // о нас
 Route::get('/about', function () {
@@ -40,6 +50,12 @@ Route::get('/about', function () {
 Route::get('/contacts', function () {
     return Inertia::render('Contacts');
 })->name('contacts');
+
+Route::get('/help', fn () => Inertia::render('Info/Help'))->name('help');
+Route::get('/delivery', fn () => Inertia::render('Info/Delivery'))->name('delivery');
+Route::get('/returns', fn () => Inertia::render('Info/Returns'))->name('returns');
+Route::get('/privacy', fn () => Inertia::render('Info/Privacy'))->name('privacy');
+Route::get('/terms', fn () => Inertia::render('Info/Terms'))->name('terms');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/ping', function () {
@@ -57,7 +73,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
         Route::post('/cart/update/{id}', [CartController::class, 'update'])->name('cart.update');
         Route::delete('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
-        Route::post('/order/create', [CartController::class, 'create'])->name('order.create');
         Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
         Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.destroy');
     });
@@ -73,14 +88,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/orders', [OrderController::class, 'index'])->name('profile.orders');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('order.show');
-    Route::post('/order/create', [OrderController::class, 'create']);
-
-    // Создание заказов
-    Route::post('/order/create-from-product', [OrderController::class, 'createFromProduct'])->name('order.create.from.product');
-    Route::post('/order/create-from-cart', [OrderController::class, 'createFromCart'])->name('order.create.from.cart');
+    Route::get('/order/{order}/receipt', [\App\Http\Controllers\OrderDocumentController::class, 'receipt'])->name('order.receipt');
+    Route::get('/order/{order}/document/{docType}', [\App\Http\Controllers\OrderDocumentController::class, 'financial'])->name('order.document');
+    Route::post('/order/create', [OrderController::class, 'create'])->name('order.create');
 
     // Действия с заказом
+    Route::post('/promo/validate', [PromocodeController::class, 'validate'])->name('promo.validate');
+
     Route::post('/order/{order}/cancel', [OrderController::class, 'cancel'])->name('order.cancel');
+    Route::get('/order/{order}/refund/checkout', [OrderController::class, 'refundCheckout'])->name('order.refund.checkout');
+    Route::post('/order/{order}/refund/complete', [OrderController::class, 'refundComplete'])->name('order.refund.complete');
+    Route::post('/order/{order}/refund', [OrderController::class, 'refund'])->name('order.refund');
     Route::post('/order/{order}/repeat', [OrderController::class, 'repeat'])->name('order.repeat');
 
     // Оплата
@@ -93,19 +111,66 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/stripe/checkout', [StripePaymentController::class, 'createCheckoutSession']);
     Route::post('/stripe/order-checkout', [StripePaymentController::class, 'createOrderCheckoutSession']);
     Route::get('/stripe/success', [StripePaymentController::class, 'success'])->name('stripe.success');
+
+    Route::get('/messages', [ChatController::class, 'index'])->name('messages.index');
+    Route::get('/messages/embed', [ChatController::class, 'embed'])->name('messages.embed');
+    Route::post('/messages/open', [ChatController::class, 'open'])->name('messages.open');
+    Route::get('/messages/poll', [ChatController::class, 'poll'])->middleware('throttle:120,1')->name('messages.poll');
+    Route::post('/messages/{conversation}/messages', [ChatController::class, 'storeMessage'])->name('messages.messages.store');
+    Route::patch('/messages/{conversation}/messages/{message}', [ChatController::class, 'updateMessage'])->name('messages.messages.update');
+    Route::delete('/messages/{conversation}/messages/{message}', [ChatController::class, 'destroyMessage'])->name('messages.messages.destroy');
+    Route::post('/messages/{conversation}/hide', [ChatController::class, 'hide'])->name('messages.hide');
+
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 });
 
-Route::middleware(['auth', CheckRole::class . ':admin'])->group(function () {
+Route::middleware(['auth', CheckRole::class . ':admin,moderator'])->group(function () {
     Route::get('/admins', [AdminController::class, 'index'])->name('admins');
+    Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/admin/users/{user}/detail', [AdminController::class, 'userDetail'])->name('admin.users.detail');
+    Route::post('/admin/sellers/{user}/approve', [AdminController::class, 'approveSeller'])->name('admin.sellers.approve');
+    Route::post('/admin/sellers/{user}/reject', [AdminController::class, 'rejectSeller'])->name('admin.sellers.reject');
+    Route::post('/admin/products/{product}/status', [AdminController::class, 'updateProductStatus'])->name('admin.products.status');
+    Route::post('/admin/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('admin.orders.status');
+    Route::post('/admin/users/{userId}/restore', [AdminController::class, 'restoreUser'])->name('admin.users.restore');
+    Route::get('/admin/products', [AdminController::class, 'products'])->name('admin.products.index');
+
+    Route::get('/admin/home-slides', [HomeSlideController::class, 'index'])->name('admin.home-slides.index');
+    Route::post('/admin/home-slides', [HomeSlideController::class, 'store'])->name('admin.home-slides.store');
+    Route::patch('/admin/home-slides/{homeSlide}', [HomeSlideController::class, 'update'])->name('admin.home-slides.update');
+    Route::delete('/admin/home-slides/{homeSlide}', [HomeSlideController::class, 'destroy'])->name('admin.home-slides.destroy');
+
+    Route::get('/admin/pickup-points', [PickupPointController::class, 'index'])->name('admin.pickup-points.index');
+    Route::post('/admin/pickup-points', [PickupPointController::class, 'store'])->name('admin.pickup-points.store');
+    Route::patch('/admin/pickup-points/{pickupPoint}', [PickupPointController::class, 'update'])->name('admin.pickup-points.update');
+    Route::delete('/admin/pickup-points/{pickupPoint}', [PickupPointController::class, 'destroy'])->name('admin.pickup-points.destroy');
+
+    Route::get('/admin/reviews', [ReviewModerationController::class, 'index'])->name('admin.reviews.index');
+    Route::post('/admin/reviews/{review}/approve', [ReviewModerationController::class, 'approve'])->name('admin.reviews.approve');
+    Route::post('/admin/reviews/{review}/reject', [ReviewModerationController::class, 'reject'])->name('admin.reviews.reject');
+
+    Route::get('/admin/reports/revenue',        [AdminController::class, 'exportRevenue'])->name('admin.reports.revenue');
+    Route::get('/admin/reports/user/{userId}',  [AdminController::class, 'exportUserReport'])->name('admin.reports.user');
+    Route::get('/admin/reports/order/{order}',  [AdminController::class, 'exportOrderReceipt'])->name('admin.reports.order');
+
     Route::delete('/admin/users/{user}', [ProfileController::class, 'destroy'])->name('admin.users.destroy');
     Route::put('/admin/users/{user}/block', [ProfileController::class, 'block'])->name('admin.users.block');
     Route::delete('/admin/sessions/{session}', [AdminController::class, 'destroy'])
         ->name('admin.sessions.destroy');
     Route::get('/users/{user}', [AdminController::class, 'showUser'])->name('admin.users.show');
 
+    Route::patch('/admin/users/{user}/role', [ProfileController::class, 'changeRole'])->name('admin.users.role');
+
     Route::post('/admin/nft/buy', [AdminController::class, 'nftbuy'])->name('admin.nft.buy');
     Route::post('/admin/nft/stop', [AdminController::class, 'nftstop'])->name('admin.nft.stop');
     Route::post('/admin/nft/sold', [AdminController::class, 'nftsold'])->name('admin.nft.sold');
+
+    Route::get('/admin/support', [ChatController::class, 'adminSupport'])->name('admin.support');
+    Route::get('/admin/support/embed', [ChatController::class, 'adminSupportEmbed'])->name('admin.support.embed');
+    Route::post('/admin/support/{conversation}/assign', [ChatController::class, 'assignSupport'])->name('admin.support.assign');
+    Route::post('/admin/support/{conversation}/transfer', [ChatController::class, 'transferSupport'])->name('admin.support.transfer');
 });
 
 // Страница продавца
@@ -120,20 +185,58 @@ Route::middleware(['auth'])->group(function () {
 });
 // routes/web.php
 Route::middleware(['auth', 'seller'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('seller.dashboard');
-    Route::get('/products', [ProductController::class, 'index'])->name('seller.products');
+    Route::get('/seller/dashboard', [DashboardController::class, 'index'])->name('seller.dashboard');
+    Route::get('/seller/products', [ProductController::class, 'index'])->name('seller.products');
     // Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
 
-    Route::get('/products/create', [SellerProductController::class, 'create'])->name('seller.products.create');
+    Route::get('/seller/products/create', [SellerProductController::class, 'create'])->name('seller.products.create');
 
-    Route::post('/products/store', [SellerProductController::class, 'store'])->name('seller.products.store');
+    Route::post('/seller/products/store', [SellerProductController::class, 'store'])->name('seller.products.store');
 
-    Route::get('/orders', [OrderController::class, 'index'])->name('orders');
-    // Route::get('/statistics', [StatisticsController::class, 'index'])->name('statistics');
+    Route::get('/seller/products/{product}/edit', [SellerProductController::class, 'edit'])
+        ->name('seller.products.edit');
+
+    Route::get('/seller/products/{product}/manage', [SellerProductController::class, 'manage'])
+        ->name('seller.products.manage');
+
+    Route::post('/seller/products/{product}/visibility', [SellerProductController::class, 'toggleVisibility'])
+        ->name('seller.products.visibility');
+
+    Route::post('/seller/products/{product}/variants/{variant}/toggle', [SellerProductController::class, 'toggleVariant'])
+        ->name('seller.products.variant.toggle');
+
+    Route::post('/seller/products/{product}/variants/{variant}/stock', [SellerProductController::class, 'updateVariantStock'])
+        ->name('seller.products.variant.stock');
+
+    Route::post('/seller/products/{product}/images/{image}/set-main', [SellerProductController::class, 'setMainImage'])
+        ->name('seller.products.image.set-main');
+
+    /* POST: multipart + файлы надёжнее, чем PUT (PHP не всегда парсит multipart для PUT) */
+    Route::post('/seller/products/{product}', [SellerProductController::class, 'update'])
+        ->name('seller.products.update');
+
+    Route::get('/seller/orders', [SellerOrderController::class, 'index'])->name('seller.orders');
+    Route::get('/seller/orders/export', [SellerOrderController::class, 'export'])->name('seller.orders.export');
+    Route::get('/seller/orders/{order}', [SellerOrderController::class, 'show'])->name('seller.orders.show');
+    Route::post('/seller/orders/{order}/status', [SellerOrderController::class, 'updateStatus'])->name('seller.orders.status');
+    Route::get('/seller/statistics', [SellerStatisticsController::class, 'index'])->name('seller.statistics');
+
+    Route::get('/seller/settings', [SellerSettingsController::class, 'index'])->name('seller.settings');
+    Route::post('/seller/settings/shop', [SellerSettingsController::class, 'updateShop'])->name('seller.settings.shop');
+    Route::post('/seller/settings/account', [SellerSettingsController::class, 'updateAccount'])->name('seller.settings.account');
+    Route::post('/seller/settings/password', [SellerSettingsController::class, 'updatePassword'])->name('seller.settings.password');
+
+    Route::get('/seller/promocodes', [SellerPromocodesController::class, 'index'])->name('seller.promocodes');
+    Route::post('/seller/promocodes', [SellerPromocodesController::class, 'store'])->name('seller.promocodes.store');
+    Route::post('/seller/promocodes/{promo}/toggle', [SellerPromocodesController::class, 'toggle'])->name('seller.promocodes.toggle');
+    Route::delete('/seller/promocodes/{promo}', [SellerPromocodesController::class, 'destroy'])->name('seller.promocodes.destroy');
 });
 // Отзыв
 Route::post('/reviews', [ReviewController::class, 'store'])
     ->name('reviews.store')
+    ->middleware('auth');
+Route::post('/reviews/{review}/vote', [ReviewVoteController::class, 'store'])
+    ->name('reviews.vote')
     ->middleware('auth');
 Route::put('/reviews/{review}', [ReviewController::class, 'update'])
     ->middleware('auth');

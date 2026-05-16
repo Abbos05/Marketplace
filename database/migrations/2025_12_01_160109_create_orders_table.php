@@ -13,10 +13,11 @@ return new class extends Migration
             $table->string('number', 30)->unique();
             $table->string('order_code', 10)->unique();
             $table->foreignId('buyer_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('pickup_point_id')->nullable()->constrained('pickup_points')->nullOnDelete();
+            // Только этапы доставки / исхода. Оплата — в payment_status.
             $table->enum('status', [
-                'new', 'paid', 'processing', 'ready_for_pickup', 'in_transit',
-                'at_pvz', 'issued', 'canceled', 'returned'
-            ])->default('new');
+                'NEW', 'INTRANSIT', 'DELIVERED', 'ISSUED', 'CANCELED', 'REFUSED',
+            ])->default('NEW');
             $table->decimal('total', 12, 2);
             $table->decimal('discount', 12, 2)->default(0);
             $table->string('delivery_address', 400)->nullable();

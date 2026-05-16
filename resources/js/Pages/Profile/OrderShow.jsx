@@ -1,16 +1,31 @@
 import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import PaymentModal from '@/Components/PaymentModal';
+import Barcode from 'react-barcode';
 import '../../../css/profile/order-show.css';
 
-export default function OrderShow({ auth, order }) {
+const PAYMENT_STATUS_LABELS = {
+    pending: 'Ожидает оплаты',
+    paid: 'Оплачен',
+    failed: 'Ошибка оплаты',
+    refunded: 'Деньги возвращены на карту',
+};
+
+export default function OrderShow({ auth, order, deliveryTrack = null, documents = null }) {
+    const { flash } = usePage().props;
+    const code = order?.order_code || '123456789';
+
+    const [barcodeOpen, setBarcodeOpen] = useState(false);
+
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [deliveryDetailsOpen, setDeliveryDetailsOpen] = useState(false);
+    const [refundSubmitting, setRefundSubmitting] = useState(false);
 
 
     // время для написание отзыва
     const canReview = (() => {
-        if (order.status !== 'issued') return false;
+        if (order.status !== 'ISSUED') return false;
 
         const issuedDate = new Date(order.updated_at);
         const now = new Date();
@@ -21,21 +36,35 @@ export default function OrderShow({ auth, order }) {
     })();
     const total = parseFloat(order?.total || 0);
 
-    const isUnpaid =
+    const needsPayment =
         order?.payment_status !== 'paid' &&
-        !['canceled', 'returned', 'issued'].includes(order?.status);
+        order?.payment_status !== 'refunded' &&
+        !['CANCELED', 'REFUSED'].includes(order?.status);
 
-    const statusMap = {
-        new: 'Новый заказ',
-        processing: 'Собирается',
-        ready_for_pickup: 'Готов к выдаче',
-        at_pvz: 'Можно забирать',
-        issued: 'Получен',
-        canceled: 'Отменён',
-        returned: 'Возврат',
+    const canRequestRefund =
+        order?.payment_status === 'paid' &&
+        ['CANCELED', 'REFUSED'].includes(order?.status);
+
+    const isRefunded = order?.payment_status === 'refunded';
+
+    const handleRefund = () => {
+        if (refundSubmitting) return;
+        setRefundSubmitting(true);
+        router.visit(route('order.refund.checkout', order.id), {
+            onFinish: () => setRefundSubmitting(false),
+        });
     };
 
-    const statusText = statusMap[order?.status] || 'Ожидает подстверждение';
+    const statusMap = {
+        NEW: 'Новый заказ',
+        INTRANSIT: 'В пути',
+        DELIVERED: 'В пункте выдачи',
+        ISSUED: 'Выдан',
+        CANCELED: 'Отменён',
+        REFUSED: 'Отказ от получения',
+    };
+
+    const statusText = statusMap[order?.status] || 'Ожидает подтверждение';
 
     if (!order) {
         return (
@@ -50,8 +79,11 @@ export default function OrderShow({ auth, order }) {
     return (
         <MainLayout auth={auth}>
             <Head title={`Заказ ${order.number}`} />
-            
+
             <div className="order-page">
+
+                {flash?.success && <div className="order-flash order-flash--success">{flash.success}</div>}
+                {flash?.error && <div className="order-flash order-flash--error">{flash.error}</div>}
 
                 <a href="/orders" className="order-back">
                     ← К списку заказов
@@ -65,28 +97,36 @@ export default function OrderShow({ auth, order }) {
                                 month: 'long',
                             })}
                         </h1>
+                        <button
+                            type="button"
+                            className="order-back"
+                            style={{ marginTop: 8, border: '1px solid #cbd5e1', borderRadius: 8, padding: '6px 12px', background: '#fff', cursor: 'pointer' }}
+                            onClick={() => router.post(route('messages.open'), { type: 'order', order_id: order.id })}
+                        >
+                            Чат по заказу
+                        </button>
                     </div>
 
                     <div className="order-stroke">
                         <div className="order-number">
-                        № {order.number}
-                    </div>
-                    <div className="order-number">
-                                                <div className="order-storder-blockatus">{statusText}</div>
+                            № {order.number}
+                        </div>
+                        <div className="order-number">
+                            <div className="order-storder-blockatus">{statusText}</div>
 
-                    </div>
+                        </div>
                     </div>
                 </div>
 
                 <div className="order-grid">
 
                     {/* ЛЕВАЯ КОЛОНКА */}
-                    <div className="order-left">
+                    <div className="order-left ">
 
                         {/* доставка */}
-                        <div className="order-block">
+                        <div className="order-block ">
                             <h3 className="green-title">
-                                {order.status === 'at_pvz' ? 'Можно забирать' : statusText}
+                                {order.status === 'INTRANSIT' ? 'В пути к вам' : statusText}
                             </h3>
 
                             <p className="muted">
@@ -108,7 +148,7 @@ export default function OrderShow({ auth, order }) {
                         </div>
 
                         {/* товары */}
-                        <div className="order-block">
+                        <div className="order-block order-blockSc">
                             <h3>Товары</h3>
 
                             {order.items?.map((item) => {
@@ -197,7 +237,7 @@ export default function OrderShow({ auth, order }) {
                                                                     className={`star star-public ${existingReview.rating >= star ? 'active' : ''}`}
                                                                 >
                                                                     ★
-                                                                </span> 
+                                                                </span>
                                                             ))}
                                                         </div>
 
@@ -311,7 +351,7 @@ export default function OrderShow({ auth, order }) {
 
                             <div className="summary-row">
                                 <span>Доставка</span>
-                                <span>Без доплат</span>
+                                <span>0 ₽</span>
                             </div>
 
                             <div className="summary-row total">
@@ -319,20 +359,53 @@ export default function OrderShow({ auth, order }) {
                                 <strong>{total.toLocaleString()} ₽</strong>
                             </div>
 
-                            {isUnpaid && (
-                                <button
-                                    className="pay-btn"
-                                    onClick={() => setPaymentModalOpen(true)}
-                                >
-                                    Оплатить
-                                </button>
+                            <div className={`order-payment-status order-payment-status--${order.payment_status}`}>
+                                <span>Оплата:</span>
+                                <strong>{PAYMENT_STATUS_LABELS[order.payment_status] ?? order.payment_status}</strong>
+                            </div>
+
+                            {isRefunded && (
+                                <p className="order-refund-hint muted">
+                                    Возврат оформлен через Stripe. Срок зачисления зависит от банка (обычно 3–10 рабочих дней).
+                                </p>
                             )}
-                            {/* отмена */}
-                            {['new', 'processing'].includes(order.status) && (
+
+                            {canRequestRefund && (
+                                <>
+                                    <p className="order-refund-hint muted">
+                                        Откроется страница подтверждения возврата (как при оплате картой).
+                                    </p>
+                                    <button
+                                        type="button"
+                                        className="refund-btn"
+                                        disabled={refundSubmitting}
+                                        onClick={handleRefund}
+                                    >
+                                        {refundSubmitting ? 'Открываем…' : 'Вернуть деньги на карту'}
+                                    </button>
+                                </>
+                            )}
+
+                            {needsPayment && (
+                                <>
+
+                                    <button
+                                        type="button"
+                                        className="pay-btn"
+                                        onClick={() => setPaymentModalOpen(true)}
+                                    >
+                                        Оплатить заказ
+                                    </button>
+                                </>
+                            )}
+                            {order.status === 'NEW' && (
                                 <button
                                     className="cancel-btn"
                                     onClick={() => {
-                                        if (confirm('Отменить заказ?')) {
+                                        const msg = order.payment_status === 'paid'
+                                            ? 'Отменить заказ? Оплата будет возвращена на карту через Stripe (3–10 рабочих дней).'
+                                            : 'Отменить заказ?';
+                                        if (confirm(msg)) {
                                             router.post(`/order/${order.id}/cancel`);
                                         }
                                     }}
@@ -342,25 +415,131 @@ export default function OrderShow({ auth, order }) {
                             )}
                         </div>
 
+                        {deliveryTrack?.steps?.length > 0 && (
+                            <div className="order-block order-track-card">
+                                <button
+                                    type="button"
+                                    className="order-track-toggle"
+                                    onClick={() => setDeliveryDetailsOpen((v) => !v)}
+                                    aria-expanded={deliveryDetailsOpen}
+                                >
+                                    <span className="order-track-toggle__main">
+                                        <span className="order-track-toggle__title">Детали доставки</span>
+                                        <span className="order-track-toggle__summary">{deliveryTrack.summary}</span>
+                                    </span>
+                                    <span className={`order-track-toggle__chevron ${deliveryDetailsOpen ? 'is-open' : ''}`} aria-hidden />
+                                </button>
+
+                                {deliveryDetailsOpen && (
+                                    <div className="order-track-body">
+                                        <div className="order-track-chips">
+                                            <span className="order-track-chip">{deliveryTrack.method_label}</span>
+                                            {deliveryTrack.region && (
+                                                <span className="order-track-chip order-track-chip--muted">{deliveryTrack.region}</span>
+                                            )}
+                                        </div>
+                                        <p className="order-track-destination">
+                                            <span className="order-track-destination__label">Куда везём</span>
+                                            <span className="order-track-destination__value">{deliveryTrack.destination}</span>
+                                        </p>
+                                        {deliveryTrack.eta_hint ? (
+                                            <p className="order-track-eta">{deliveryTrack.eta_hint}</p>
+                                        ) : null}
+
+                                        <div className="order-track-timeline" role="list">
+                                            {deliveryTrack.steps.map((step, idx) => (
+                                                <div
+                                                    key={step.id}
+                                                    className={`order-track-step order-track-step--${step.state}`}
+                                                    role="listitem"
+                                                >
+                                                    <div className="order-track-step__rail">
+                                                        <span className="order-track-step__dot" />
+                                                        {idx < deliveryTrack.steps.length - 1 ? (
+                                                            <span className="order-track-step__line" aria-hidden />
+                                                        ) : null}
+                                                    </div>
+                                                    <div className="order-track-step__content">
+                                                        <div className="order-track-step__title">{step.title}</div>
+                                                        <div className="order-track-step__detail">{step.detail}</div>
+                                                        {step.meta ? (
+                                                            <div className="order-track-step__meta">{step.meta}</div>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+
                         {/* код получения */}
                         <div className="order-block">
                             <h3>Получите товары по коду</h3>
 
-                            <div className="pickup-code">
-                                {order.order_code || '1409 3864 3907'}
+                            <div className="barcode-container">
+                                <div className="barcode-box-pink" onClick={() => setBarcodeOpen(true)}>
+                                    <Barcode value={code.replace(/\s/g, '')} />
+                                </div>
+                               
                             </div>
-
-                            <p className="muted">
-                                Один код действует на весь заказ
-                            </p>
-
+                            <div className="pickup-code">
+                                {code}
+                            </div>
+                            <p className="muted-barcode-box-pink-container">
+                                    Один код действует на весь заказ
+                                </p>
                         </div>
+                        {documents && (
+                            <div className="order-block order-documents">
+                                <h3>Документы</h3>
+                                <ul className="order-documents__list">
+                                    {documents.receipt && (
+                                        <li>
+                                            <a href={documents.receipt} className="order-documents__link" target="_blank" rel="noopener noreferrer">
+                                                Чек по заказу (PDF)
+                                            </a>
+                                        </li>
+                                    )}
+                                    {documents.payment && (
+                                        <li>
+                                            <a href={documents.payment} className="order-documents__link" target="_blank" rel="noopener noreferrer">
+                                                Документ об оплате (PDF)
+                                            </a>
+                                        </li>
+                                    )}
+                                    {documents.refund && (
+                                        <li>
+                                            <a href={documents.refund} className="order-documents__link" target="_blank" rel="noopener noreferrer">
+                                                Документ о возврате (PDF)
+                                            </a>
+                                        </li>
+                                    )}
+                                    {documents.cancel && (
+                                        <li>
+                                            <a href={documents.cancel} className="order-documents__link" target="_blank" rel="noopener noreferrer">
+                                                Документ об отмене (PDF)
+                                            </a>
+                                        </li>
+                                    )}
+                                </ul>
+                            </div>
+                        )}
 
 
 
                     </div>
                 </div>
+                {barcodeOpen && (
 
+                    <div className="barcode-modal" onClick={() => setBarcodeOpen(false)}>
+                        <div className="barcode-box" onClick={(e) => e.stopPropagation()}>
+                            <Barcode value={code.replace(/\s/g, '')} />
+                        </div>
+                    </div>
+                )}
                 <PaymentModal
                     isOpen={paymentModalOpen}
                     onClose={() => setPaymentModalOpen(false)}

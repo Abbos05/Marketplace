@@ -18,7 +18,7 @@ return new class extends Migration
             $table->decimal('min_price', 12, 2);
             $table->unsignedBigInteger('views_count')->default(0);
             $table->unsignedBigInteger('sales_count')->default(0);
-            $table->enum('status', ['draft', 'moderation', 'approved', 'rejected', 'archived'])->default('moderation');
+            $table->enum('status', ['draft', 'moderation', 'approved', 'rejected', 'archived', 'hidden'])->default('moderation');
             $table->text('moderation_comment')->nullable();
             $table->boolean('is_on_action')->default(false);
             $table->softDeletes();

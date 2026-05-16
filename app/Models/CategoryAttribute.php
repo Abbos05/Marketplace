@@ -11,12 +11,13 @@ class CategoryAttribute extends Model
         'name',
         'type',
         'options',
-        'required'
+        'required',
+        'applies_to',
     ];
 
     protected $casts = [
         'options' => 'array',
-        'required' => 'boolean'
+        'required' => 'boolean',
     ];
 
     public function category()

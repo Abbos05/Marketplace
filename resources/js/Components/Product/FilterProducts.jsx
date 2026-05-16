@@ -1,226 +1,249 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import ProductCard from '@/Components/Product/ProductCard';
+import CatalogFilterSidebar from '@/Components/Catalog/CatalogFilterSidebar';
+import ActiveFilterChips, { buildFilterChips } from '@/Components/Catalog/ActiveFilterChips';
+import { expandCatalogProductRows } from '@/lib/catalogListing';
+import {
+    buildCatalogParams,
+    filtersToState,
+    getCatalogRoute,
+    getCatalogOnlyKeys,
+} from '@/lib/catalogFilters';
 import '../../../css/product/ShopPage.css';
 
 export default function ProductsCatalog({
     dataProduct,
     category,
-    seller = [],
+    seller = null,
     filters = {},
+    facets = {},
+    total = null,
     isHomePage = false,
     isCategoryPage = false,
-    isSellerProfile = false
+    isSellerProfile = false,
 }) {
     const initialProducts = dataProduct || [];
+    const listingRows = useMemo(() => expandCatalogProductRows(initialProducts), [initialProducts]);
     const categoryName = category?.name || 'категории';
     const categoryId = category?.id;
-    const sellerId = seller[0]?.user_id;
-    const [searchTerm, setSearchTerm] = useState(filters?.search || '');
-    const [sort, setSort] = useState(filters?.sort || 'new');
-    const [priceFrom, setPriceFrom] = useState(filters?.price_from || '');
-    const [priceTo, setPriceTo] = useState(filters?.price_to || '');
+    const sellerId = seller?.id;
+
+    const filterContext = isHomePage ? 'home' : isSellerProfile ? 'seller' : 'category';
+
+    const [filterState, setFilterState] = useState(() => filtersToState(filters));
+    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+    const [displayCount, setDisplayCount] = useState(24);
 
     const timeoutRef = useRef(null);
+    const skipDebounceRef = useRef(false);
 
-    // Синхронизация с пропсами
     useEffect(() => {
-        setSearchTerm(filters?.search || '');
-        setSort(filters?.sort || 'new');
-        setPriceFrom(filters?.price_from || '');
-        setPriceTo(filters?.price_to || '');
+        setFilterState(filtersToState(filters));
+        setDisplayCount(24);
     }, [filters]);
 
-    //  Исправленная функция applyFilters
-    const applyFilters = () => {
-        const params = {};
+    const applyFilters = useCallback(
+        (nextState, immediate = false) => {
+            const params = buildCatalogParams(nextState);
+            const url = getCatalogRoute(filterContext, { categoryId, sellerId });
 
-        if (searchTerm) params.search = searchTerm;
-        if (sort && sort !== 'new') params.sort = sort;
-        if (priceFrom && priceFrom !== '') params.price_from = priceFrom;
-        if (priceTo && priceTo !== '') params.price_to = priceTo;
-
-        //  Определяем маршрут в зависимости от страницы
-        console.log("главная:" + isHomePage);
-        console.log("isCategoryPage:" + isCategoryPage);
-        console.log("isSellerProfile:" + isSellerProfile);
-        if (isHomePage) {
-            console.log("катайди: " + categoryId);
-            // Главная страница
-            router.get(
-                '/',
-                params,
-                {
+            const run = () => {
+                router.get(url, params, {
                     preserveState: true,
                     replace: true,
                     preserveScroll: true,
-                    only: ['mysqlNftsData', 'search', 'sort', 'filters']
+                    only: getCatalogOnlyKeys(filterContext),
+                });
+            };
+
+            if (immediate) {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                run();
+                return;
+            }
+
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            timeoutRef.current = setTimeout(run, 400);
+        },
+        [filterContext, categoryId, sellerId]
+    );
+
+    const updateState = useCallback(
+        (patch, immediate = false) => {
+            setFilterState((prev) => {
+                const next = { ...prev, ...patch };
+                if (!skipDebounceRef.current) {
+                    applyFilters(next, immediate);
                 }
-            );
-        } else if (isCategoryPage) {
-            // Страница категории
-            router.get(
-                route('category.show', categoryId),
-                params,
-                {
-                    preserveState: true,
-                    replace: true,
-                    preserveScroll: true,
-                    only: ['products', 'filters'],
-                }
-            );
+                return next;
+            });
+        },
+        [applyFilters]
+    );
+
+    const chips = useMemo(() => buildFilterChips(filterState, facets), [filterState, facets]);
+
+    const handleChipRemove = (chip) => {
+        if (chip.type === 'price_from') updateState({ priceFrom: '' }, true);
+        else if (chip.type === 'price_to') updateState({ priceTo: '' }, true);
+        else if (chip.type === 'category_id') updateState({ categoryId: null, attributes: {} }, true);
+        else if (chip.type === 'sort') updateState({ sort: 'new' }, true);
+        else if (chip.type === 'attribute_value') {
+            const attrs = { ...filterState.attributes };
+            attrs[chip.attrId] = (attrs[chip.attrId] || []).filter((v) => v !== chip.value);
+            if (attrs[chip.attrId]?.length === 0) delete attrs[chip.attrId];
+            updateState({ attributes: attrs }, true);
+        } else if (chip.type === 'attribute_range') {
+            const attrs = { ...filterState.attributes };
+            delete attrs[chip.attrId];
+            updateState({ attributes: attrs }, true);
         }
-        else if (isSellerProfile) {
-            // Страница Продавца
-            console.log(1112121212);
-            router.get(
-                route('seller.index', sellerId),
-                params,
-                {
-                    preserveState: true,
-                    replace: true,
-                    preserveScroll: true,
+    };
 
-                    only: ['products', 'filters'],
-                }
-            );
-        }
+    const clearAllFilters = () => {
+        const empty = {
+            search: filterState.search,
+            sort: 'new',
+            priceFrom: '',
+            priceTo: '',
+            categoryId: null,
+            attributes: {},
+        };
+        skipDebounceRef.current = true;
+        setFilterState(empty);
+        skipDebounceRef.current = false;
+        applyFilters(empty, true);
     };
 
     const clearSearch = () => {
-        setSearchTerm('');
+        updateState({ search: '' }, true);
     };
 
-    // Debounce для фильтров
-    useEffect(() => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-        timeoutRef.current = setTimeout(() => {
-            applyFilters();
-        }, 500);
-
-        return () => clearTimeout(timeoutRef.current);
-    }, [sort, priceFrom, priceTo, searchTerm]);
-
-    const clearAllFilters = () => {
-        setSort('new');
-        setPriceFrom('');
-        setPriceTo('');
-        setSearchTerm('');
-
-        if (isHomePage) {
-            router.get(
-                '/',
-                {},
-                {
-                    preserveState: true,
-                    replace: true,
-                    preserveScroll: true,
-                }
-            );
-        } else if (isCategoryPage && !categoryId) {
-            router.get(
-                route('category.show', categoryId),
-                {},
-                {
-                    preserveState: true,
-                    replace: true,
-                    preserveScroll: true,
-                }
-            );
-        }
-        else if (isSellerProfile && !sellerId) {
-            // Страница Продавца
-            router.get(
-                route('sellerProfile', sellerId),
-                params,
-                {
-                    preserveState: true,
-                    replace: true,
-                    preserveScroll: true,
-                }
-            );
-        }
+    const onAttributeValuesChange = (attrId, vals) => {
+        const attrs = { ...filterState.attributes, [attrId]: vals };
+        if (vals.length === 0) delete attrs[attrId];
+        updateState({ attributes: attrs }, true);
     };
+
+    const onAttributeRangeChange = (attrId, bound, value) => {
+        const current = filterState.attributes[attrId] || { min: '', max: '' };
+        const attrs = {
+            ...filterState.attributes,
+            [attrId]: { ...current, [bound]: value },
+        };
+        updateState({ attributes: attrs });
+    };
+
+    const onCategoryToggle = (id) => {
+        const changed = filterState.categoryId !== id;
+        updateState({
+            categoryId: id,
+            attributes: changed ? {} : filterState.attributes,
+        }, true);
+    };
+
+    const visibleRows = listingRows.slice(0, displayCount);
+    const hasMore = listingRows.length > displayCount;
+    const resultTotal = total ?? listingRows.length;
+
+    const sidebar = (
+        <CatalogFilterSidebar
+            facets={facets}
+            filterState={filterState}
+            onSortChange={(sort) => updateState({ sort }, true)}
+            onPriceChange={(field, value) =>
+                updateState({ [field]: value }, false)
+            }
+            onCategoryToggle={onCategoryToggle}
+            onAttributeValuesChange={onAttributeValuesChange}
+            onAttributeRangeChange={onAttributeRangeChange}
+            onReset={clearAllFilters}
+            showCategoryFacet={filterContext === 'seller' || filterContext === 'home'}
+        />
+    );
 
     return (
         <div className="category-page">
             <div className="shop-layout">
                 <div className="shop-layout__inner">
-                    <aside className="shop-sidebar">
-                        <div className="shop-sidebar__content">
-                            <div className="shop-sidebar__header">
-                                <h2 className="shop-sidebar__title">Фильтры</h2>
-                            </div>
-
-                            <div className="shop-sidebar__filter-group">
-                                <label className="shop-sidebar__filter-label">Сортировка</label>
-                                <select
-                                    value={sort}
-                                    onChange={(e) => setSort(e.target.value)}
-                                    className="shop-sidebar__select"
-                                >
-                                    <option value="new">Новинки</option>
-                                    <option value="cheap">Сначала дешевле</option>
-                                    <option value="expensive">Сначала дороже</option>
-                                </select>
-                            </div>
-
-                            <div className="shop-sidebar__filter-group">
-                                <label className="shop-sidebar__filter-label">Цена</label>
-                                <div className="shop-sidebar__price-range">
-                                    <input
-                                        type="number"
-                                        placeholder="От"
-                                        value={priceFrom}
-                                        onChange={(e) => setPriceFrom(e.target.value)}
-                                        min="0"
-                                        className="shop-sidebar__price-input"
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="До"
-                                        value={priceTo}
-                                        onChange={(e) => setPriceTo(e.target.value)}
-                                        min="0"
-                                        className="shop-sidebar__price-input"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </aside>
+                    <div className="shop-sidebar-desktop">{sidebar}</div>
 
                     <main className="shop-products">
-                        {searchTerm && (
+                        <div className="shop-products__toolbar">
+                            <button
+                                type="button"
+                                className="shop-filters-mobile-btn"
+                                onClick={() => setMobileFiltersOpen(true)}
+                            >
+                                Фильтры
+                                {chips.length > 0 && (
+                                    <span className="shop-filters-mobile-btn__badge">{chips.length}</span>
+                                )}
+                            </button>
+                            <p className="shop-products__count">
+                                Найдено: <strong>{resultTotal}</strong>
+                            </p>
+                        </div>
+
+                        <ActiveFilterChips
+                            chips={chips}
+                            onRemove={handleChipRemove}
+                            onClearAll={clearAllFilters}
+                        />
+
+                        {filterState.search && (
                             <div className="shop-products__search-info">
                                 <span>
-                                    Результат поиска: <strong>"{searchTerm}"</strong>
-                                    {initialProducts.length > 0 && ` — найдено ${initialProducts.length} товаров`}
+                                    Результат поиска: <strong>"{filterState.search}"</strong>
+                                    {listingRows.length > 0 &&
+                                        ` — показано ${visibleRows.length} из ${resultTotal}`}
                                 </span>
-                                <button onClick={clearSearch} className="shop-products__search-clear">
+                                <button
+                                    type="button"
+                                    onClick={clearSearch}
+                                    className="shop-products__search-clear"
+                                >
                                     Очистить поиск
                                 </button>
                             </div>
                         )}
 
-                        {initialProducts.length > 0 ? (
-                            <section className="Category_product">
-                                <div className="products__grid">
-                                    {initialProducts.map(product => (
-                                        <ProductCard key={product.id} product={product} />
-                                    ))}
-                                </div>
-                            </section>
+                        {visibleRows.length > 0 ? (
+                            <>
+                                <section className="Category_product">
+                                    <div className="products__grid">
+                                        {visibleRows.map((product) => (
+                                            <ProductCard
+                                                key={product.listing_key}
+                                                product={product}
+                                            />
+                                        ))}
+                                    </div>
+                                </section>
+                                {hasMore && (
+                                    <button
+                                        type="button"
+                                        className="showMore__btn showMore__btn--active shop-products__load-more"
+                                        onClick={() => setDisplayCount((c) => c + 24)}
+                                    >
+                                        Показать ещё
+                                    </button>
+                                )}
+                            </>
                         ) : (
                             <div className="shop-products__empty">
                                 <p>
-                                    {searchTerm
-                                        ? `Товаров по запросу "${searchTerm}" не найдено`
-                                        : `Пока нет товаров в категории ${categoryName}`
-                                    }
+                                    {filterState.search
+                                        ? `Товаров по запросу "${filterState.search}" не найдено`
+                                        : `Пока нет товаров в категории ${categoryName}`}
                                 </p>
-                                {(searchTerm || sort !== 'new' || priceFrom || priceTo) && (
-                                    <button onClick={clearAllFilters} className="shop-products__reset-btn">
+                                {(chips.length > 0 || filterState.search) && (
+                                    <button
+                                        type="button"
+                                        onClick={clearAllFilters}
+                                        className="shop-products__reset-btn"
+                                    >
                                         Сбросить фильтры
                                     </button>
                                 )}
@@ -229,6 +252,37 @@ export default function ProductsCatalog({
                     </main>
                 </div>
             </div>
+
+            {mobileFiltersOpen && (
+                <div className="shop-filters-drawer" role="dialog" aria-modal="true">
+                    <div
+                        className="shop-filters-drawer__backdrop"
+                        onClick={() => setMobileFiltersOpen(false)}
+                    />
+                    <div className="shop-filters-drawer__panel">
+                        <div className="shop-filters-drawer__head">
+                            <h3>Фильтры</h3>
+                            <button
+                                type="button"
+                                className="shop-filters-drawer__close"
+                                onClick={() => setMobileFiltersOpen(false)}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="shop-filters-drawer__body">{sidebar}</div>
+                        <div className="shop-filters-drawer__foot">
+                            <button
+                                type="button"
+                                className="shop-filters-drawer__apply"
+                                onClick={() => setMobileFiltersOpen(false)}
+                            >
+                                Показать {resultTotal} товаров
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
