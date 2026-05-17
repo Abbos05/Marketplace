@@ -15,7 +15,7 @@
 
 .notif-title {
   font-size: 1.35rem;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   margin: 0;
   color: #0f172a;
 }
@@ -64,7 +64,7 @@
 }
 
 .notif-item-title {
-  font-weight: 600;
+  font-weight: var(--fw-600);
   color: #0f172a;
   margin-bottom: 0.35rem;
 }

@@ -20,7 +20,7 @@
 
 .msg-admin-inbox-hint a {
   color: #fff;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   text-decoration: underline;
 }
 
@@ -58,7 +58,7 @@
 
 .msg-sidebar-title {
   font-size: 1.05rem;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   color: #0f172a;
   margin: 0;
 }
@@ -67,7 +67,7 @@
   background: #dbeafe;
   color: #021034;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
   min-width: 1.5rem;
@@ -139,7 +139,7 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-weight: 700;
+  font-weight: var(--fw-700);
   font-size: 0.85rem;
 }
 
@@ -153,7 +153,7 @@
   align-items: center;
   gap: 0.35rem;
   flex-wrap: wrap;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   font-size: 0.9rem;
   color: #0f172a;
   margin-bottom: 0.15rem;
@@ -205,7 +205,7 @@
 }
 
 .msg-topbar-title {
-  font-weight: 600;
+  font-weight: var(--fw-600);
   font-size: 1rem;
   color: #0f172a;
   white-space: nowrap;
@@ -248,7 +248,7 @@
   background:  var(--background);
   color: #fff;
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   padding: 0.45rem 0.85rem;
   border-radius: 10px;
   cursor: pointer;
@@ -273,7 +273,7 @@
   background: #16a34a;
   color: #fff;
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   padding: 0.45rem 0.85rem;
   border-radius: 10px;
   cursor: pointer;
@@ -304,7 +304,7 @@
   background: #2563eb;
   color: #fff;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   padding: 0.4rem 0.7rem;
   border-radius: 8px;
   cursor: pointer;
@@ -326,7 +326,7 @@
 
 .msg-thread-tag {
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: var(--fw-700);
   text-transform: uppercase;
   letter-spacing: 0.02em;
   padding: 0.1rem 0.35rem;
@@ -363,7 +363,7 @@
   background: #fff;
   color: #475569;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   padding: 0.3rem 0.55rem;
   border-radius: 999px;
   cursor: pointer;
@@ -445,7 +445,7 @@
   align-items: center;
   justify-content: center;
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: var(--fw-700);
   color: #475569;
 }
 
@@ -573,13 +573,13 @@
 
 .msg-sender-label-text {
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: var(--fw-700);
   line-height: 1.2;
 }
 
 .msg-sender-label-sub {
   font-size: 0.7rem;
-  font-weight: 500;
+  font-weight: var(--fw-500);
   opacity: 0.85;
 }
 
@@ -591,7 +591,7 @@
   height: 1.05rem;
   border-radius: 50%;
   font-size: 0.62rem;
-  font-weight: 800;
+  font-weight: var(--fw-800);
   line-height: 1;
   flex-shrink: 0;
 }
@@ -656,7 +656,7 @@
 .msg-bubble-edited {
   font-size: 0.62rem;
   color: #94a3b8;
-  font-weight: 500;
+  font-weight: var(--fw-500);
 }
 
 .msg-bubble-time {
@@ -795,7 +795,7 @@
   border-radius: 10px;
   color: #1e40af;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   text-decoration: none;
   max-width: 100%;
 }
@@ -870,7 +870,7 @@
   background: #ef4444;
   color: #fff;
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: var(--fw-700);
   min-width: 1.1rem;
   height: 1.1rem;
   border-radius: 999px;
@@ -962,7 +962,7 @@
     display: inline-flex;
     align-items: center;
     flex-shrink: 0;
-    font-weight: 600;
+    font-weight: var(--fw-600);
   }
 
   .msg-topbar {
@@ -1048,7 +1048,7 @@
 .msg-notif-sub {
   font-size: 0.75rem;
   color: #64748b;
-  font-weight: 400;
+  font-weight: var(--fw-400);
   margin-top: 2px;
 }
 
@@ -1102,7 +1102,7 @@
 .msg-notif-link {
   margin-left: 0.65rem;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   color: #2563eb;
   text-decoration: underline;
 }

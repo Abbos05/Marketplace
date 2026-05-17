@@ -25,9 +25,9 @@
 
 .category_header__hint {
   margin: 0 0 0 8px;
-  font-size: 16px;
+  font-size: var(--size-base);
   color: #64748b;
-  font-weight: 400;
+  font-weight: var(--fw-400);
 }
 
 .category--nested .category_header {
@@ -91,7 +91,7 @@
   font-weight: var(--fw-500);
   letter-spacing: 0.06em;
   text-align: center;
-  font-size: 20px;
+  font-size: var(--size-lg);
   color: #000;
   display: -webkit-box;
   /* Включает flex-модель */
@@ -153,7 +153,7 @@
   }
 
   .category_header h2 {
-    font-weight: 600;
+    font-weight: var(--fw-600);
     font-size: clamp(36px, 8vw, 54px);
     line-height: 119%;
     text-shadow: 0 2px 10px rgba(245, 247, 82, 0.4);
@@ -209,7 +209,7 @@
   }
 
   .category_item>p {
-    font-weight: 500;
+    font-weight: var(--fw-500);
     font-size: clamp(16px, 4.5vw, 18px);
     letter-spacing: 0.06em;
     text-transform: uppercase;

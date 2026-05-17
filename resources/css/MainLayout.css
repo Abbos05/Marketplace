@@ -24,8 +24,8 @@ main {
   border-radius: 50%;
   background: var(--background, #FF2E63);
   color: #fff;
-  font-size: 26px;
-  font-weight: 800;
+  font-size: var(--size-26);
+  font-weight: var(--fw-800);
   line-height: 1;
   cursor: pointer;
   opacity: 0;
@@ -52,7 +52,7 @@ main {
     bottom: 16px;
     width: 42px;
     height: 42px;
-    font-size: 24px;
+    font-size: var(--size-xl);
   }
 }
 
@@ -73,8 +73,8 @@ main {
   padding-top: 0;
   text-transform: uppercase;
   color: #fff;
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: var(--fw-600);
+  font-size: var(--size-base);
   height: 82px;
   margin-bottom: 25px;
 
@@ -112,7 +112,7 @@ main {
 
 
 .header-logo-name .logo {
-  font-weight: 700;
+  font-weight: var(--fw-700);
   color: var(--background);
   margin: 0;
   line-height: 1.2;
@@ -147,8 +147,8 @@ main {
 }
 
 .header-menu-store p {
-  font-weight: 600;
-  font-size: 12px;
+  font-weight: var(--fw-600);
+  font-size: var(--size-md);
 
   letter-spacing: 0.07em;
   text-align: center;
@@ -179,8 +179,8 @@ padding: 2px;
   padding-right: 25px;
   padding-left: 15px;
 
-  font-weight: 100;
-  font-size: 15px;
+  font-weight: var(--fw-100);
+  font-size: var(--size-15);
   color: #848a9c;
 }
 
@@ -219,7 +219,7 @@ padding: 2px;
   border-radius: 4px;
   text-decoration: none;
   color: #fff;
-  font-size: 16px;
+  font-size: var(--size-base);
   text-transform: uppercase;
   transition: opacity 0.3s;
 }
@@ -248,8 +248,8 @@ padding: 2px;
   color: #1a1a1a;
   cursor: pointer;
   font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--size-md);
+  font-weight: var(--fw-600);
   letter-spacing: 0.03em;
   transition:
     border-color var(--trans-2),
@@ -285,7 +285,7 @@ padding: 2px;
   white-space: nowrap;
   line-height: 1.2;
   text-transform: none;
-  font-size: 14px;
+  font-size: var(--size-m);
 }
 
 .header-profile-trigger__chevron {
@@ -348,8 +348,8 @@ padding: 2px;
 }
 
 .header-menu-dropdown-name {
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: var(--fw-700);
+  font-size: var(--size-15);
   color: #1a1a1a;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -357,9 +357,9 @@ padding: 2px;
 }
 
 .header-menu-dropdown-meta {
-  font-size: 12px;
+  font-size: var(--size-md);
   color: var(--text-gray);
-  font-weight: 500;
+  font-weight: var(--fw-500);
 }
 
 .header-menu-item {
@@ -367,8 +367,8 @@ padding: 2px;
   cursor: pointer;
   transition: background var(--trans-2), color var(--trans-2);
   display: block;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--size-15);
+  font-weight: var(--fw-500);
 }
 
 .header-menu-item--profile a {
@@ -422,12 +422,12 @@ padding: 2px;
   align-items: center;
   gap: 12px;
   width: 100%;
-  font-weight: 500;
+  font-weight: var(--fw-500);
 }
 
 .logout-item {
   color: #dc2626 !important;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   padding: 11px 16px;
   display: flex;
   align-items: center;
@@ -498,7 +498,7 @@ padding: 2px;
   gap: 10px;
   color: #000000;
   text-decoration: none;
-  font-size: 16px;
+  font-size: var(--size-base);
 }
 
 .header-store-menu-link:hover {
@@ -591,8 +591,8 @@ padding: 2px;
   background: none;
   border: none;
   color: #fff;
-  font-size: 24px;
-  font-weight: 700;
+  font-size: var(--size-xl);
+  font-weight: var(--fw-700);
   cursor: pointer;
   transition: color 0.3s, transform 0.3s;
 }
@@ -613,8 +613,8 @@ padding: 2px;
   background: none;
   border: none;
   padding: 12px 20px;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--size-base);
+  font-weight: var(--fw-600);
   cursor: pointer;
   color: #848a9c;
   text-transform: uppercase;
@@ -650,7 +650,7 @@ padding: 2px;
   border: 1px solid #1c2533;
   border-radius: 8px;
   padding: 12px;
-  font-size: 16px;
+  font-size: var(--size-base);
   color: #fff;
   outline: none;
   transition: border-color 0.3s;
@@ -668,7 +668,7 @@ padding: 2px;
 
 .modal-error {
   color: #ff4d4f;
-  font-size: 14px;
+  font-size: var(--size-m);
   margin-top: 4px;
 }
 
@@ -688,7 +688,7 @@ padding: 2px;
 
 .modal-link {
   color: #848a9c;
-  font-size: 14px;
+  font-size: var(--size-m);
   text-decoration: underline;
   transition: color 0.3s;
 }
@@ -703,8 +703,8 @@ padding: 2px;
   padding: 12px 24px;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--size-base);
+  font-weight: var(--fw-600);
   cursor: pointer;
   transition: background 0.3s, transform 0.2s;
 }
@@ -730,7 +730,7 @@ padding: 2px;
   background: #111826;
   padding: 0 10px;
   color: #848a9c;
-  font-size: 14px;
+  font-size: var(--size-m);
   position: relative;
   z-index: 1;
 }
@@ -748,14 +748,14 @@ padding: 2px;
 
 .modal-success {
   color: #28a745;
-  font-size: 14px;
+  font-size: var(--size-m);
   margin-bottom: 10px;
   text-align: center;
 }
 
 .modal-error {
   color: #ff4d4f;
-  font-size: 14px;
+  font-size: var(--size-m);
   margin-bottom: 10px;
   text-align: center;
 }
@@ -772,8 +772,8 @@ padding: 2px;
   padding: 12px 20px;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
+  font-size: var(--size-base);
+  font-weight: var(--fw-500);
   cursor: pointer;
   transition: background 0.3s, transform 0.2s;
   width: 100%;
@@ -795,7 +795,7 @@ padding: 2px;
   background: none;
   border: none;
   padding: 10px;
-  font-size: 16px;
+  font-size: var(--size-base);
   cursor: pointer;
   color: #848a9c;
   text-transform: uppercase;
@@ -854,7 +854,7 @@ padding: 2px;
 /* wallet.css — подключай только в Profile! */
 .wallet-btnRelative {
   position: relative;
-  font-size: 14px;
+  font-size: var(--size-m);
 }
 
 
@@ -869,9 +869,9 @@ padding: 2px;
   color: var(--background);
   cursor: pointer;
   transition: all 0.3s ease;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   letter-spacing: 0.05em;
-  font-size: 12px;
+  font-size: var(--size-md);
 }
 
 
@@ -904,8 +904,8 @@ padding: 2px;
 
 .wallet-title {
   margin: 0 0 20px;
-  font-size: 22px;
-  font-weight: 700;
+  font-size: var(--size-22);
+  font-weight: var(--fw-700);
   color: #ffd438;
   text-align: center;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -917,7 +917,7 @@ padding: 2px;
   background: #050B1C;
   border: 2px solid #ffd438;
   border-radius: 14px;
-  font-size: 18px;
+  font-size: var(--size-18);
   color: white;
   outline: none;
   transition: all 0.3s;
@@ -934,7 +934,7 @@ padding: 2px;
 }
 
 .wallet-hint {
-  font-size: 16px;
+  font-size: var(--size-base);
   color: #848a9c;
   margin-top: 10px;
   text-align: center;
@@ -953,8 +953,8 @@ padding: 2px;
   color: black;
   border: none;
   border-radius: 16px;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--size-18);
+  font-weight: var(--fw-700);
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -977,7 +977,7 @@ padding: 2px;
   color: #fff;
   border: 1px solid #ffd438;
   border-radius: 12px;
-  font-size: 18px;
+  font-size: var(--size-18);
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -1012,8 +1012,8 @@ padding: 2px;
   border: 1px solid #ffd438;
   border-radius: 12px;
   color: #ffd438;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--size-base);
+  font-weight: var(--fw-600);
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -1040,7 +1040,7 @@ padding: 2px;
 
 .search-results-header h2 {
   color: #ffd438;
-  font-size: 32px;
+  font-size: var(--size-2xl);
   margin-bottom: 8px;
 }
 
@@ -1048,7 +1048,7 @@ padding: 2px;
   color: white;
   padding: 4px 12px;
   border-radius: 12px;
-  font-weight: 600;
+  font-weight: var(--fw-600);
 }
 
 .search-btn {
@@ -1064,7 +1064,7 @@ padding: 2px;
 
 .search-results-header p {
   color: #ccc;
-  font-size: 20px;
+  font-size: var(--size-lg);
 }
 
 .no-results {
@@ -1080,9 +1080,9 @@ padding: 2px;
 
 .clear-search {
   display: inline-block;
-  font-size: 18px;
+  font-size: var(--size-18);
   color: #ffd438;
-  font-weight: 500;
+  font-weight: var(--fw-500);
 }
 
 .clear-search:hover {
@@ -1094,7 +1094,7 @@ padding: 2px;
   align-items: center;
   gap: 8px;
   color: #ccc;
-  font-size: 14px;
+  font-size: var(--size-m);
 }
 
 .search-header-content {
@@ -1110,7 +1110,7 @@ padding: 2px;
 .search-header-content p {
   margin: 8px 0 0;
   color: #ccc;
-  font-size: 15px;
+  font-size: var(--size-15);
 }
 
 .sort-select {
@@ -1119,7 +1119,7 @@ padding: 2px;
   color: white;
   padding: 8px 12px;
   border-radius: 12px;
-  font-size: 14px;
+  font-size: var(--size-m);
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -1167,7 +1167,7 @@ padding: 2px;
 
 .alt-modal-title {
   font-size: 2.8rem;
-  font-weight: 800;
+  font-weight: var(--fw-800);
   text-align: center;
   background: linear-gradient(90deg, #fbcd26, #ffd438);
   -webkit-background-clip: text;
@@ -1203,7 +1203,7 @@ padding: 2px;
 .alt-btn-golden {
   background: linear-gradient(135deg, #ffd438, #ff8c00);
   color: #000;
-  font-weight: 700;
+  font-weight: var(--fw-700);
   font-size: 1.3rem;
   padding: 18px 48px;
   border-radius: 50px;
@@ -1313,7 +1313,7 @@ padding: 2px;
   }
 
   .header-logo-name p {
-    font-size: 26px;
+    font-size: var(--size-26);
     /* было 30px → теперь влезает */
   }
 
@@ -1329,7 +1329,7 @@ padding: 2px;
   }
 
   .header-menu-store p {
-    font-size: 15px;
+    font-size: var(--size-15);
   }
 
   /* Поисковая строка — теперь 100% ширины и не вылезает */
@@ -1340,19 +1340,19 @@ padding: 2px;
   }
 
   .header-search input {
-    font-size: 16px;
+    font-size: var(--size-base);
     /* чтобы на iPhone не зуммило */
   }
 
   /* Кошелёк и кнопки входа — чуть компактнее */
   .header-wallet {
     padding: 10px 14px;
-    font-size: 13px;
+    font-size: var(--size-l);
   }
 
   .login-button {
     padding: 10px 16px;
-    font-size: 15px;
+    font-size: var(--size-15);
   }
 
   .header-store-menu-dropdown {
@@ -1370,7 +1370,7 @@ padding: 2px;
   }
 
   .header-profile-trigger__name {
-    font-size: 11px;
+    font-size: var(--size-s);
   }
 
   /* Модалки — не вылезают за экран */
@@ -1394,7 +1394,7 @@ padding: 2px;
 
   .wallet-input {
     padding: 14px;
-    font-size: 16px;
+    font-size: var(--size-base);
   }
 
   .wallet-topup-btn__block {
@@ -1409,15 +1409,15 @@ padding: 2px;
 /* Чтобы на очень узких экранах (360–380px) вообще ничего не ломалось */
 @media (max-width: 380px) {
   .header-logo-name p {
-    font-size: 24px;
+    font-size: var(--size-xl);
   }
 
   .header-menu-store p {
-    font-size: 14px;
+    font-size: var(--size-m);
   }
 
   .header-search input {
-    font-size: 15px;
+    font-size: var(--size-15);
   }
 }
 
@@ -1433,7 +1433,7 @@ padding: 2px;
   }
 
   .header-search input {
-    font-size: 15px;
+    font-size: var(--size-15);
     /* важно! iOS не будет зумить при фокусе */
     padding-right: 10px;
   }
@@ -1459,11 +1459,11 @@ padding: 2px;
 @media (max-width: 375px) {
 
   .header-logo-name p {
-    font-size: 24px;
+    font-size: var(--size-xl);
   }
 
   .header-menu-store p {
-    font-size: 14px;
+    font-size: var(--size-m);
   }
 }
 
@@ -1497,7 +1497,7 @@ padding: 2px;
   border: 1.5px solid #e2e8f0;
   color: #1e293b;
   border-radius: 10px;
-  font-size: 15px;
+  font-size: var(--size-15);
   font-family: inherit;
 }
 .phone-auth-modal .modal-input:focus {
@@ -1547,8 +1547,8 @@ padding: 2px;
   background: #f1f5f9;
   border: 2px solid #e2e8f0;
   color: #94a3b8;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--size-l);
+  font-weight: var(--fw-700);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1571,23 +1571,23 @@ padding: 2px;
 
 /* Заголовки */
 .phone-auth-title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: var(--size-22);
+  font-weight: var(--fw-700);
   color: #1e293b;
   margin: 0 0 8px;
   text-align: center;
 }
 
 .phone-auth-subtitle {
-  font-size: 14px;
+  font-size: var(--size-m);
   color: #64748b;
   margin: 0 0 24px;
   text-align: center;
 }
 
 .phone-auth-label {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--size-md);
+  font-weight: var(--fw-700);
   color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1600,8 +1600,8 @@ padding: 2px;
   color: #FF2E63;
   border: 1px solid rgba(255, 46, 99, 0.25);
   border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--size-md);
+  font-weight: var(--fw-700);
   padding: 4px 14px;
   margin: -8px auto 16px;
   text-align: center;
@@ -1614,8 +1614,8 @@ padding: 2px;
   color: #fff;
   border: none;
   border-radius: 10px;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: var(--size-15);
+  font-weight: var(--fw-700);
   padding: 13px;
   cursor: pointer;
   transition: background 0.2s, transform 0.15s, opacity 0.2s;
@@ -1637,8 +1637,8 @@ padding: 2px;
   background: none;
   border: none;
   color: #64748b;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--size-l);
+  font-weight: var(--fw-600);
   cursor: pointer;
   padding: 0 0 16px;
   display: block;
@@ -1678,21 +1678,21 @@ padding: 2px;
 }
 
 .phone-auth-method-icon {
-  font-size: 24px;
+  font-size: var(--size-xl);
   flex-shrink: 0;
 }
 
 .phone-auth-method-title {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--size-m);
+  font-weight: var(--fw-700);
   color: #1e293b;
   margin-bottom: 3px;
 }
 
 .phone-auth-method-desc {
-  font-size: 12px;
+  font-size: var(--size-md);
   color: #64748b;
-  font-weight: 400;
+  font-weight: var(--fw-400);
 }
 
 /* Поле ввода кода — крупный центрированный шрифт */
@@ -1710,7 +1710,7 @@ padding: 2px;
   background: none;
   border: none;
   color: #64748b;
-  font-size: 13px;
+  font-size: var(--size-l);
   cursor: pointer;
   padding: 4px 0 0;
   text-align: center;
@@ -1736,8 +1736,8 @@ padding: 2px;
   padding: 14px 18px;
   border-radius: 14px;
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--size-m);
+  font-weight: var(--fw-700);
   line-height: 1.35;
   text-align: center;
   transform: translateX(-50%);

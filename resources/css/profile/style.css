@@ -53,8 +53,8 @@
 
 .profile-modal-title {
     text-align: center;
-    font-size: 28px;
-    font-weight: 700;
+    font-size: var(--size-28);
+    font-weight: var(--fw-700);
     color: #ffd438;
     margin-bottom: 30px;
     text-shadow: 0 2px 10px rgba(255, 212, 56, 0.3);
@@ -73,9 +73,9 @@
 }
 
 .profile-modal-label {
-    font-weight: 600;
+    font-weight: var(--fw-600);
     color: #ffd438;
-    font-size: 16px;
+    font-size: var(--size-base);
 }
 
 .profile-modal-input,
@@ -85,7 +85,7 @@
     border: 1px solid #333;
     border-radius: 10px;
     color: white;
-    font-size: 16px;
+    font-size: var(--size-base);
     transition: all 0.3s;
     max-height: 500px;
 }
@@ -124,8 +124,8 @@
     height: 50px;
     background: #ffd438;
     color: #0e1424;
-    font-size: 28px;
-    font-weight: bold;
+    font-size: var(--size-28);
+    font-weight: var(--fw-700);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -143,7 +143,7 @@
 /* ОШИБКИ */
 .profile-modal-error {
     color: #ff6b6b;
-    font-size: 14px;
+    font-size: var(--size-m);
     margin-top: 4px;
 }
 
@@ -159,8 +159,8 @@
     color: #0e1424;
     border: none;
     border-radius: 12px;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: var(--size-18);
+    font-weight: var(--fw-600);
     cursor: pointer;
     transition: all 0.3s;
     min-width: 180px;
@@ -220,9 +220,9 @@
 
 
 .profile-modal-hint {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #ffd43880;
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 
 .profile-modal-submit-btn {
@@ -231,8 +231,8 @@
     color: #0e1424;
     border: none;
     border-radius: 12px;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: var(--size-18);
+    font-weight: var(--fw-600);
     cursor: pointer;
     transition: all 0.3s;
     min-width: 200px;
@@ -269,7 +269,7 @@
 }
 
 .HeaderLogoName p {
-    font-weight: 700;
+    font-weight: var(--fw-700);
     font-size: 30px;
     color: #fff;
 }
@@ -303,8 +303,8 @@
 }
 
 .HeaderMenuStore p {
-    font-weight: 600;
-    font-size: 14px;
+    font-weight: var(--fw-600);
+    font-size: var(--size-m);
     letter-spacing: 0.07em;
     text-align: center;
     color: #050b1c;
@@ -330,8 +330,8 @@
     outline: none;
     padding-right: 25px;
     font-style: italic;
-    font-weight: 400;
-    font-size: 18px;
+    font-weight: var(--fw-400);
+    font-size: var(--size-18);
     color: #848a9c;
 }
 
@@ -342,8 +342,8 @@
 }
 
 .HeaderA {
-    font-weight: 500;
-    font-size: 14px;
+    font-weight: var(--fw-500);
+    font-size: var(--size-m);
     letter-spacing: 0.07em;
     color: #9398a7;
     transition: 0.3s opacity;
@@ -376,8 +376,8 @@
     transition: 0.3s opacity;
     cursor: pointer;
 
-    font-weight: 500;
-    font-size: 14px;
+    font-weight: var(--fw-500);
+    font-size: var(--size-m);
     letter-spacing: 0.07em;
     text-align: center;
     color: #fff;
@@ -422,7 +422,7 @@
 }
 
 .profile__title{
-    font-size: 26px;
+    font-size: var(--size-26);
     color: #333;
 }
 .profiles_block__all {
@@ -499,8 +499,8 @@
 
 
 .profiles_description {
-    font-weight: 500;
-    font-size: 16px;
+    font-weight: var(--fw-500);
+    font-size: var(--size-base);
     line-height: 162%;
     margin-bottom: 6px;
     max-height: 160px;
@@ -522,8 +522,8 @@
     gap: 20px;
     padding-bottom: 10px;
     border-bottom: 2px solid #1c2533;
-    font-size: 20px;
-    font-weight: 500;
+    font-size: var(--size-lg);
+    font-weight: var(--fw-500);
 
 
 }
@@ -552,7 +552,7 @@
 }
 
 .Profile_cash span {
-    font-size: 20px;
+    font-size: var(--size-lg);
 }
 
 /* // profiles */
@@ -602,8 +602,8 @@
     border: none;
     padding: 6px 10px;
     border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: var(--size-md);
+    font-weight: var(--fw-600);
     cursor: pointer;
     transition: all 0.3s;
 }
@@ -628,7 +628,7 @@
 }
 
 .price {
-    font-weight: 700;
+    font-weight: var(--fw-700);
     color: #ffd438;
 }
 
@@ -654,14 +654,14 @@
 }
 
 .history-table .font-bold {
-    font-weight: 600;
+    font-weight: var(--fw-600);
     color: #fff;
 }
 
 /* // Истрия продаж */
 
 .nftNones {
-    font-size: 26px;
+    font-size: var(--size-26);
     color: #848a9c;
 }
 
@@ -725,8 +725,8 @@
 
 /* === ЗАГОЛОВКИ === */
 .phone-modal-content h3 {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: var(--size-xl);
+    font-weight: var(--fw-700);
     color: #ffd438;
     text-align: center;
     margin: 0 0 16px;
@@ -739,7 +739,7 @@
     color: #ccc;
     text-align: center;
     margin-bottom: 24px;
-    font-size: 15px;
+    font-size: var(--size-15);
 }
 
 /* === ИНПУТЫ === */
@@ -750,7 +750,7 @@
     border: 1px solid #ffd43840;
     border-radius: 16px;
     color: white;
-    font-size: 16px;
+    font-size: var(--size-base);
     transition: all 0.3s;
     margin-bottom: 16px;
 }
@@ -775,8 +775,8 @@
 .phone-modal-btn {
     flex: 1;
     padding: 14px;
-    font-weight: 700;
-    font-size: 16px;
+    font-weight: var(--fw-700);
+    font-size: var(--size-base);
     border: none;
     border-radius: 16px;
     cursor: pointer;
@@ -814,7 +814,7 @@
 /* === ОШИБКИ === */
 .modal-error {
     color: #ff6b6b;
-    font-size: 14px;
+    font-size: var(--size-m);
     margin-top: 8px;
     text-align: center;
 }
@@ -831,14 +831,14 @@
 
 .delete-modal h5 {
     color: #ffd438;
-    font-size: 22px;
+    font-size: var(--size-22);
     margin-bottom: 12px;
 }
 
 .delete-modal p {
     color: #ccc;
     margin-bottom: 20px;
-    font-size: 15px;
+    font-size: var(--size-15);
 }
 
 .delete-modal .flex {
@@ -849,7 +849,7 @@
 .delete-modal button {
     padding: 12px 24px;
     border-radius: 16px;
-    font-weight: 700;
+    font-weight: var(--fw-700);
     transition: all 0.3s;
 }
 
@@ -938,7 +938,7 @@ overflow: hidden;
 
 .profile-user .name {
     margin-top: 10px;
-    font-weight: 600;
+    font-weight: var(--fw-600);
 }
 
 .profile-user .edit {
@@ -1108,17 +1108,17 @@ overflow: hidden;
 }
 
 .verify-banner-text h2 {
-    font-size: 28px;
-    font-weight: 700;
+    font-size: var(--size-28);
+    font-weight: var(--fw-700);
     color: #FF2E63;
     margin-bottom: 12px;
 }
 
 .verify-banner-text p {
-    font-size: 16px;
+    font-size: var(--size-base);
     color: #FF2E63;
     margin-bottom: 16px;
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 
 .verify-banner-text ul {
@@ -1128,7 +1128,7 @@ overflow: hidden;
 }
 
 .verify-banner-text ul li {
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #555;
     margin-bottom: 8px;
     display: flex;
@@ -1138,7 +1138,7 @@ overflow: hidden;
 .verify-banner-text ul li::before {
     content: "✓";
     color: #FF2E63;
-    font-weight: bold;
+    font-weight: var(--fw-700);
     margin-right: 8px;
 }
 
@@ -1153,8 +1153,8 @@ overflow: hidden;
     color: white;
     border: none;
     padding: 16px 32px;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: var(--size-18);
+    font-weight: var(--fw-600);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -1217,21 +1217,21 @@ overflow: hidden;
 }
 
 .order-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--size-base);
+  font-weight: var(--fw-600);
   margin-bottom: 8px;
   color: #333;
 }
 
 .order-price {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--size-18);
+  font-weight: var(--fw-700);
   color: #FF2E63;
   margin-bottom: 6px;
 }
 
 .order-status-text {
-  font-size: 14px;
+  font-size: var(--size-m);
   color: #666;
 }
 
@@ -1272,19 +1272,19 @@ overflow: hidden;
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: var(--size-xl);
   cursor: pointer;
 }
 
 .pickup-code-text {
-  font-size: 18px;
-  font-weight: bold;
+  font-size: var(--size-18);
+  font-weight: var(--fw-700);
   color: #FF2E63;
   margin-top: 16px;
 }
 
 .pickup-instruction {
-  font-size: 14px;
+  font-size: var(--size-m);
   color: #666;
   margin-top: 8px;
 }
@@ -1293,8 +1293,8 @@ overflow: hidden;
 .completed-status {
   padding: 12px 20px;
   text-align: center;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--size-m);
+  font-weight: var(--fw-500);
   border-radius: 12px;
 }
 
@@ -1325,7 +1325,7 @@ overflow: hidden;
   color: #FF2E63;
   border-radius: 12px;
   text-decoration: none;
-  font-weight: 500;
+  font-weight: var(--fw-500);
   transition: all 0.3s ease;
   border: 1px solid #FF2E63;
 }
@@ -1356,8 +1356,8 @@ overflow: hidden;
   display: inline-block;
   padding: 6px 12px;
   border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--size-l);
+  font-weight: var(--fw-500);
   margin-top: 8px;
 }
 
@@ -1382,8 +1382,8 @@ overflow: hidden;
 }
 
 .order-price {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--size-18);
+  font-weight: var(--fw-700);
   color: #FF2E63;
   margin: 5px 0;
 }
@@ -1420,8 +1420,8 @@ overflow: hidden;
 }
 
 .company-modal-header h2 {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: var(--size-lg);
+  font-weight: var(--fw-600);
 }
 
 .company-modal-body {
@@ -1435,7 +1435,7 @@ overflow: hidden;
 }
 
 .inn-input-group label {
-  font-weight: 500;
+  font-weight: var(--fw-500);
   margin-bottom: 8px;
   display: block;
 }
@@ -1445,11 +1445,11 @@ overflow: hidden;
   padding: 12px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: var(--size-base);
 }
 
 .inn-hint {
-  font-size: 12px;
+  font-size: var(--size-md);
   color: #6b7280;
   margin-top: 8px;
 }
@@ -1461,7 +1461,7 @@ overflow: hidden;
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  font-weight: 500;
+  font-weight: var(--fw-500);
 }
 
 .form-group input {
@@ -1496,7 +1496,7 @@ overflow: hidden;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--size-l);
   color: #4b5563;
 }
 /* Страница компаний */
@@ -1520,7 +1520,7 @@ overflow: hidden;
 }
 
 .company-empty-state h2 {
-    font-size: 24px;
+    font-size: var(--size-xl);
     margin-bottom: 12px;
     color: #1a1a1a;
 }
@@ -1536,8 +1536,8 @@ overflow: hidden;
     border: none;
     padding: 12px 32px;
     border-radius: 30px;
-    font-size: 16px;
-    font-weight: 500;
+    font-size: var(--size-base);
+    font-weight: var(--fw-500);
     cursor: pointer;
     transition: background 0.3s;
 }
@@ -1562,18 +1562,18 @@ overflow: hidden;
 }
 
 .benefit-icon {
-    font-size: 40px;
+    font-size: var(--size-3xl);
     margin-bottom: 12px;
 }
 
 .benefit-item h4 {
-    font-size: 16px;
+    font-size: var(--size-base);
     margin-bottom: 8px;
     color: #1a1a1a;
 }
 
 .benefit-item p {
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #666;
 }
 
@@ -1593,7 +1593,7 @@ overflow: hidden;
 }
 
 .form-header h2 {
-    font-size: 24px;
+    font-size: var(--size-xl);
     color: #1a1a1a;
 }
 
@@ -1602,7 +1602,7 @@ overflow: hidden;
     border: none;
     color: var(--background);
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .company-form {
@@ -1613,7 +1613,7 @@ overflow: hidden;
 
 .form-group label {
     display: block;
-    font-weight: 500;
+    font-weight: var(--fw-500);
     margin-bottom: 8px;
     color: #1a1a1a;
 }
@@ -1628,7 +1628,7 @@ overflow: hidden;
     padding: 12px;
     border: 1px solid #d1d5db;
     border-radius: 10px;
-    font-size: 15px;
+    font-size: var(--size-15);
     transition: border 0.3s;
 }
 
@@ -1645,14 +1645,14 @@ overflow: hidden;
 
 .error-text {
     color: #e74c3c;
-    font-size: 12px;
+    font-size: var(--size-md);
     margin-top: 4px;
     display: block;
 }
 
 .hint {
     color: #888;
-    font-size: 12px;
+    font-size: var(--size-md);
     margin-top: 6px;
 }
 
@@ -1689,7 +1689,7 @@ overflow: hidden;
 }
 
 .day-checkbox span {
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 
 .time-range {
@@ -1703,7 +1703,7 @@ overflow: hidden;
     padding: 6px 10px;
     border: 1px solid #d1d5db;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .time-range span {
@@ -1724,7 +1724,7 @@ overflow: hidden;
     border: none;
     border-radius: 30px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .submit-btn {
@@ -1734,8 +1734,8 @@ overflow: hidden;
     border: none;
     border-radius: 30px;
     cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--size-m);
+    font-weight: var(--fw-500);
 }
 
 .submit-btn:disabled {
@@ -1767,17 +1767,17 @@ overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 40px;
+    font-size: var(--size-3xl);
 }
 
 .company-title h2 {
-    font-size: 24px;
+    font-size: var(--size-xl);
     margin-bottom: 8px;
 }
 
 .company-inn {
     color: #666;
-    font-size: 14px;
+    font-size: var(--size-m);
     margin-bottom: 12px;
 }
 
@@ -1785,8 +1785,8 @@ overflow: hidden;
     display: inline-block;
     padding: 4px 12px;
     border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: var(--size-md);
+    font-weight: var(--fw-500);
 }
 
 .status-badge.active {
@@ -1808,7 +1808,7 @@ overflow: hidden;
 }
 
 .info-section h3 {
-    font-size: 18px;
+    font-size: var(--size-18);
     margin-bottom: 16px;
     color: #1a1a1a;
 }
@@ -1844,7 +1844,7 @@ overflow: hidden;
 }
 
 .hours-row .day {
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 
 .hours-row .time {
@@ -1871,13 +1871,13 @@ overflow: hidden;
 
 .stat-value {
     display: block;
-    font-size: 24px;
-    font-weight: 600;
+    font-size: var(--size-xl);
+    font-weight: var(--fw-600);
     color: var(--background);
 }
 
 .stat-label {
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #666;
 }
 
@@ -1886,7 +1886,7 @@ overflow: hidden;
     margin-top: 20px;
     color: var(--background);
     text-decoration: none;
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 
 .dashboard-link:hover {
@@ -1911,7 +1911,7 @@ overflow: hidden;
     
     .verify-green-btn {
         padding: 12px 24px;
-        font-size: 16px;
+        font-size: var(--size-base);
     }
 }
 
@@ -1969,7 +1969,7 @@ overflow: hidden;
         border: 1px solid #ffd438;
         border-radius: 50%;
         color: #ffd438;
-        font-size: 18px;
+        font-size: var(--size-18);
     }
 
     .profile-modal-close-btn:hover {
@@ -1999,14 +1999,14 @@ overflow: hidden;
     .profile-modal-avatar-upload {
         width: 48px;
         height: 48px;
-        font-size: 24px;
+        font-size: var(--size-xl);
     }
 
     /* Инпуты */
     .profile-modal-input,
     .profile-modal-form-item textarea {
         padding: 14px;
-        font-size: 16px;
+        font-size: var(--size-base);
         /* важно для iOS */
     }
 
@@ -2015,7 +2015,7 @@ overflow: hidden;
         width: 100%;
         max-width: 300px;
         padding: 16px;
-        font-size: 18px;
+        font-size: var(--size-18);
     }
 
     /* ========== ШАПКА (ещё раз, но теперь безопасно) ========== */
@@ -2088,11 +2088,11 @@ overflow: hidden;
     .history-table {
         min-width: 800px;
         /* но теперь можно скроллить пальцем */
-        font-size: 14px;
+        font-size: var(--size-m);
     }
 
     .history-table {
-        font-size: 13px;
+        font-size: var(--size-l);
     }
 
     .history-table th,
@@ -2125,7 +2125,7 @@ overflow: hidden;
     }
 
     .phone-modal-input {
-        font-size: 16px;
+        font-size: var(--size-base);
         /* против зума на iOS */
     }
 
@@ -2255,7 +2255,7 @@ overflow: hidden;
 }
 
 .settings-card-icon {
-    font-size: 20px;
+    font-size: var(--size-lg);
     flex-shrink: 0;
     width: 42px;
     height: 42px;
@@ -2267,17 +2267,17 @@ overflow: hidden;
 }
 
 .settings-card-title {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: var(--size-m);
+    font-weight: var(--fw-700);
     color: #1e293b;
     line-height: 1.3;
     font-family: var(--font-family);
 }
 
 .settings-card-value {
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #64748b;
-    font-weight: 400;
+    font-weight: var(--fw-400);
     margin-top: 2px;
     display: flex;
     align-items: center;
@@ -2313,8 +2313,8 @@ overflow: hidden;
     background: transparent;
     border: 1.5px solid rgba(255, 46, 99, 0.4);
     color: #FF2E63;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--size-l);
+    font-weight: var(--fw-600);
     padding: 7px 18px;
     border-radius: 10px;
     cursor: pointer;
@@ -2335,8 +2335,8 @@ overflow: hidden;
     background: transparent;
     border: 1.5px solid var(--border);
     color: #64748b;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--size-l);
+    font-weight: var(--fw-600);
     padding: 7px 18px;
     border-radius: 10px;
     cursor: pointer;
@@ -2355,8 +2355,8 @@ overflow: hidden;
     background: transparent;
     border: 1.5px solid rgba(220, 38, 38, 0.4);
     color: #dc2626;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--size-l);
+    font-weight: var(--fw-600);
     padding: 7px 18px;
     border-radius: 10px;
     cursor: pointer;
@@ -2396,8 +2396,8 @@ overflow: hidden;
 }
 
 .settings-label {
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--size-md);
+    font-weight: var(--fw-700);
     color: #475569;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -2405,7 +2405,7 @@ overflow: hidden;
 }
 
 .settings-hint {
-    font-weight: 400;
+    font-weight: var(--fw-400);
     color: #94a3b8;
     margin-left: 4px;
     text-transform: none;
@@ -2417,9 +2417,9 @@ overflow: hidden;
     border: 1.5px solid var(--border);
     border-radius: 10px;
     color: #1e293b;
-    font-size: 14px;
+    font-size: var(--size-m);
     font-family: var(--font-family);
-    font-weight: 500;
+    font-weight: var(--fw-500);
     padding: 10px 14px;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -2434,7 +2434,7 @@ overflow: hidden;
 
 .settings-input::placeholder {
     color: #94a3b8;
-    font-weight: 400;
+    font-weight: var(--fw-400);
 }
 
 .settings-textarea {
@@ -2444,9 +2444,9 @@ overflow: hidden;
 }
 
 .settings-error {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #dc2626;
-    font-weight: 500;
+    font-weight: var(--fw-500);
     margin: 0;
 }
 
@@ -2470,8 +2470,8 @@ overflow: hidden;
     background: transparent;
     border: 1.5px dashed rgba(255, 46, 99, 0.4);
     color: #FF2E63;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--size-l);
+    font-weight: var(--fw-600);
     padding: 9px 20px;
     border-radius: 10px;
     cursor: pointer;
@@ -2496,8 +2496,8 @@ overflow: hidden;
     color: #fff;
     border: none;
     border-radius: 10px;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: var(--size-m);
+    font-weight: var(--fw-700);
     font-family: var(--font-family);
     padding: 10px 28px;
     cursor: pointer;
@@ -2529,16 +2529,16 @@ overflow: hidden;
 
 .settings-session-head h4 {
     margin: 0;
-    font-size: 14px;
-    font-weight: 800;
+    font-size: var(--size-m);
+    font-weight: var(--fw-800);
     color: #1e293b;
     font-family: var(--font-family);
 }
 
 .settings-session-head span {
     color: #64748b;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: var(--size-md);
+    font-weight: var(--fw-600);
 }
 
 .settings-session-list,
@@ -2587,8 +2587,8 @@ overflow: hidden;
     gap: 8px;
     flex-wrap: wrap;
     color: #1e293b;
-    font-size: 13px;
-    font-weight: 800;
+    font-size: var(--size-l);
+    font-weight: var(--fw-800);
 }
 
 .settings-session-meta {
@@ -2598,8 +2598,8 @@ overflow: hidden;
     flex-wrap: wrap;
     margin-top: 3px;
     color: #64748b;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: var(--size-md);
+    font-weight: var(--fw-500);
 }
 
 .settings-current-badge {
@@ -2607,8 +2607,8 @@ overflow: hidden;
     background: rgba(34, 197, 94, 0.12);
     border-radius: 999px;
     padding: 3px 8px;
-    font-size: 11px;
-    font-weight: 800;
+    font-size: var(--size-s);
+    font-weight: var(--fw-800);
 }
 
 .settings-session-kick {
@@ -2617,8 +2617,8 @@ overflow: hidden;
 
 .settings-login-time {
     color: #64748b;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--size-md);
+    font-weight: var(--fw-700);
     white-space: nowrap;
 }
 
@@ -2673,7 +2673,7 @@ overflow: hidden;
 
 .verification-modal-title {
     font-size: 22px !important;
-    font-weight: 700;
+    font-weight: var(--fw-700);
     color: #FF2E63 !important;
     text-align: center;
     margin: 0 0 8px !important;
@@ -2702,8 +2702,8 @@ overflow: hidden;
 }
 
 .verification-label {
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--size-md);
+    font-weight: var(--fw-700);
     color: #94a3b8;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -2769,7 +2769,7 @@ overflow: hidden;
     border-style: dashed;
 }
 .settings-hint-text {
-    font-size: 11px;
+    font-size: var(--size-s);
     color: #94a3b8;
     margin: 0;
     font-style: italic;
@@ -2798,8 +2798,8 @@ overflow: hidden;
     background: transparent;
     border: 1.5px solid rgba(100, 116, 139, 0.4);
     color: #475569;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--size-l);
+    font-weight: var(--fw-600);
     padding: 9px 20px;
     border-radius: 10px;
     cursor: pointer;
@@ -2847,8 +2847,8 @@ overflow: hidden;
     border-radius: 10px;
     background: var(--backgroundBlack);
     color: #fff;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--size-l);
+    font-weight: var(--fw-600);
     text-decoration: none;
     transition: background .2s, opacity .2s;
     white-space: nowrap;
@@ -2870,7 +2870,7 @@ overflow: hidden;
     border-radius: 20px;
     border: 1.5px solid var(--border, #e2e8f0);
     background: rgba(255,255,255,0.85);
-    font-size: 13px;
+    font-size: var(--size-l);
     cursor: pointer;
     transition: all .2s;
     color: inherit;
@@ -2892,8 +2892,8 @@ overflow: hidden;
     height: 18px;
     padding: 0 5px;
     border-radius: 9px;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: var(--size-s);
+    font-weight: var(--fw-700);
     background: rgba(255,255,255,0.3);
 }
 .admin-filter-tab.active .admin-filter-count {
@@ -2909,7 +2909,7 @@ overflow: hidden;
     text-align: center;
     padding: 40px;
     color: #94a3b8;
-    font-size: 15px;
+    font-size: var(--size-15);
 }
 
 /* ── Blocked badge ── */
@@ -2919,7 +2919,7 @@ overflow: hidden;
     color: #dc2626;
     padding: 1px 6px;
     border-radius: 6px;
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 
 /* ── View (detail) button ── */
@@ -2935,7 +2935,7 @@ overflow: hidden;
     transition: .4s;
     border-top: 1px solid rgba(99, 102, 241, 0.2);
     color: var(--backgroundBlack);
-    font-weight: 600;
+    font-weight: var(--fw-600);
 }
 .profile-menu-admin:hover {
     background: rgba(99, 102, 241, 0.12);
@@ -2965,7 +2965,7 @@ overflow: hidden;
     border-radius: 12px;
     border: 1.5px solid var(--border, #e2e8f0);
     background: rgba(255,255,255,0.85);
-    font-size: 14px;
+    font-size: var(--size-m);
     outline: none;
     transition: border-color .2s;
 }
@@ -2973,7 +2973,7 @@ overflow: hidden;
     border-color: var(--backgroundBlack);
 }
 .admin-users-count {
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #64748b;
     white-space: nowrap;
 }
@@ -3023,8 +3023,8 @@ overflow: hidden;
     min-width: 0;
 }
 .admin-user-name {
-    font-weight: 600;
-    font-size: 14px;
+    font-weight: var(--fw-600);
+    font-size: var(--size-m);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -3038,17 +3038,17 @@ overflow: hidden;
     color: #fff;
     padding: 1px 6px;
     border-radius: 6px;
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 .admin-user-contacts {
     display: flex;
     gap: 10px;
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #64748b;
     margin-top: 2px;
 }
 .admin-user-meta {
-    font-size: 11px;
+    font-size: var(--size-s);
     color: #94a3b8;
     margin-top: 2px;
 }
@@ -3061,8 +3061,8 @@ overflow: hidden;
     display: inline-block;
     padding: 3px 10px;
     border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: var(--size-md);
+    font-weight: var(--fw-600);
 }
 .admin-role-badge.role-admin {
     background: rgba(99,102,241,0.15);
@@ -3093,7 +3093,7 @@ overflow: hidden;
     border-radius: 8px;
     border: 1.5px solid var(--border, #e2e8f0);
     background: #fff;
-    font-size: 12px;
+    font-size: var(--size-md);
     cursor: pointer;
     outline: none;
     transition: border-color .2s;
@@ -3105,8 +3105,8 @@ overflow: hidden;
     padding: 5px 12px;
     border-radius: 8px;
     border: none;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: var(--size-md);
+    font-weight: var(--fw-500);
     cursor: pointer;
     transition: opacity .2s, background .2s;
 }
@@ -3127,7 +3127,7 @@ overflow: hidden;
     border: 1px solid rgba(239,68,68,0.25);
 }
 .admin-self-label {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #94a3b8;
     font-style: italic;
 }

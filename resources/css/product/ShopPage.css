@@ -16,7 +16,7 @@
     cursor: pointer;
     transition: all 0.3s ease;
     font-weight: var(--fw-500);
-    font-size: 24px;
+    font-size: var(--size-xl);
     color: #000;
 }
 
@@ -42,14 +42,14 @@
 }
 
 .category-header__title {
-    font-size: 32px;
-    font-weight: 700;
+    font-size: var(--size-2xl);
+    font-weight: var(--fw-700);
     margin: 20px 0 12px;
     color: #fff;
 }
 
 .category-header__description {
-    font-size: 16px;
+    font-size: var(--size-base);
     color: #8892b0;
     max-width: 600px;
     margin: 0 auto;
@@ -103,13 +103,13 @@
     background: none;
     border: none;
     color: #2563eb;
-    font-size: 13px;
+    font-size: var(--size-l);
     cursor: pointer;
     padding: 0;
 }
 
 .shop-sidebar__hint {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #6b7280;
     margin: 0 0 10px;
 }
@@ -122,8 +122,8 @@
 }
 
 .shop-sidebar__title {
-    font-size: 20px;
-    font-weight: 600;
+    font-size: var(--size-lg);
+    font-weight: var(--fw-600);
     margin-bottom: 24px;
     color: #000;
     padding-bottom: 12px;
@@ -136,8 +136,8 @@
 
 .shop-sidebar__filter-label {
     display: block;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--size-m);
+    font-weight: var(--fw-500);
     margin-bottom: 10px;
     color: black;
 }
@@ -149,7 +149,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     color: #000;
-    font-size: 14px;
+    font-size: var(--size-m);
     font-weight: var(--fw-500);
     cursor: pointer;
 }
@@ -172,7 +172,7 @@
     border-radius: 12px;
     color: #000;
     font-weight: var(--fw-500);
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .shop-sidebar__price-input::placeholder {
@@ -191,7 +191,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     color: black;
-    font-size: 14px;
+    font-size: var(--size-m);
     font-weight: var(--fw-500);
     margin-bottom: 8px;
 }
@@ -203,7 +203,7 @@
     border: 1px solid rgba(255, 59, 48, 0.5);
     border-radius: 12px;
     color: #ff3b30;
-    font-size: 12px;
+    font-size: var(--size-md);
     cursor: pointer;
     transition: all 0.3s ease;
 }
@@ -233,7 +233,7 @@
 
 .shop-products__search-info span {
     color: gray;
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .shop-products__search-info strong {
@@ -245,7 +245,7 @@
     border: none;
     color: var(--background);
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--size-m);
     text-decoration: underline;
     transition: opacity 0.3s ease;
 }
@@ -267,7 +267,7 @@
 
 .shop-products__empty p {
     color: gray;
-    font-size: 18px;
+    font-size: var(--size-18);
     padding-bottom: 10px;
     width: 100%;
     display: inline-block;
@@ -284,7 +284,7 @@
     padding: 13px 20px;
     cursor: pointer;
     font-weight: var(--fw-500);
-    font-size: 16px;
+    font-size: var(--size-base);
     transition: background 0.2s;
     color: white;
     border: none;
@@ -307,8 +307,8 @@
     border-radius: 10px;
     background: var(--background);
     font-family: var(--font-family);
-    font-weight: 500;
-    font-size: 18px;
+    font-weight: var(--fw-500);
+    font-size: var(--size-18);
     color: #fff;
     text-align: center;
     transition: var(--trans-3);
@@ -350,7 +350,7 @@
     }
 
     .category-header__title {
-        font-size: 24px;
+        font-size: var(--size-xl);
     }
 
     .category-header__avatar {
@@ -499,7 +499,7 @@
 
 .seller__button--message,
 .seller__likes-count {
-    font-size: 20px;
+    font-size: var(--size-lg);
     text-align: center;
     color: #000;
     font-weight: var(--fw-500);
@@ -549,8 +549,8 @@
 }
 
 .filter-section__title {
-    font-size: 15px;
-    font-weight: 600;
+    font-size: var(--size-15);
+    font-weight: var(--fw-600);
     color: #000;
 }
 
@@ -587,7 +587,7 @@
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #111;
 }
 
@@ -604,7 +604,7 @@
 }
 
 .filter-option__count {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #9ca3af;
     flex-shrink: 0;
 }
@@ -614,7 +614,7 @@
     padding: 8px 10px;
     border: 1px solid var(--border);
     border-radius: 10px;
-    font-size: 13px;
+    font-size: var(--size-l);
     margin-bottom: 10px;
 }
 
@@ -622,7 +622,7 @@
     background: none;
     border: none;
     color: #2563eb;
-    font-size: 13px;
+    font-size: var(--size-l);
     cursor: pointer;
     padding: 4px 0 0;
 }
@@ -650,13 +650,13 @@
     background: #f3f4f6;
     border: 1px solid var(--border);
     border-radius: 999px;
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #111;
     cursor: pointer;
 }
 
 .active-filters__chip-x {
-    font-size: 16px;
+    font-size: var(--size-base);
     line-height: 1;
     color: #6b7280;
 }
@@ -665,7 +665,7 @@
     background: none;
     border: none;
     color: var(--background);
-    font-size: 13px;
+    font-size: var(--size-l);
     cursor: pointer;
     white-space: nowrap;
 }
@@ -680,7 +680,7 @@
 
 .shop-products__count {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #6b7280;
 }
 
@@ -692,15 +692,15 @@
     background: #fff;
     border: 1px solid var(--border);
     border-radius: 12px;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--size-m);
+    font-weight: var(--fw-500);
     cursor: pointer;
 }
 
 .shop-filters-mobile-btn__badge {
     background: #2563eb;
     color: #fff;
-    font-size: 11px;
+    font-size: var(--size-s);
     padding: 2px 7px;
     border-radius: 999px;
 }
@@ -753,13 +753,13 @@
 
 .shop-filters-drawer__head h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--size-18);
 }
 
 .shop-filters-drawer__close {
     background: none;
     border: none;
-    font-size: 28px;
+    font-size: var(--size-28);
     line-height: 1;
     cursor: pointer;
     color: #666;
@@ -792,8 +792,8 @@
     color: #fff;
     border: none;
     border-radius: 14px;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--size-base);
+    font-weight: var(--fw-600);
     cursor: pointer;
 }
 

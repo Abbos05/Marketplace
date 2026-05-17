@@ -4,7 +4,7 @@
   background: #fff;
   border-top: 1px solid var(--border);
   color: var(--text-gray);
-  font-size: 15px;
+  font-size: var(--size-15);
 }
 
 .site-footer__inner {
@@ -31,7 +31,7 @@
 }
 
 .site-footer__tagline {
-  font-size: 14px;
+  font-size: var(--size-m);
   line-height: 1.5;
   color: var(--text-gray);
   margin-bottom: 16px;
@@ -53,8 +53,8 @@
   padding: 0 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--size-l);
+  font-weight: var(--fw-600);
   color: #333;
   text-decoration: none;
   transition: color var(--trans-2), border-color var(--trans-2), background var(--trans-2);
@@ -67,8 +67,8 @@
 }
 
 .site-footer__col-title {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--size-m);
+  font-weight: var(--fw-700);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #1a1a1a;
@@ -85,8 +85,8 @@
 }
 
 .site-footer__link {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--size-15);
+  font-weight: var(--fw-500);
   color: var(--text-gray);
   text-decoration: none;
   transition: color var(--trans-2);
@@ -105,12 +105,12 @@
   gap: 12px 24px;
   padding-top: 20px;
   border-top: 1px solid var(--border);
-  font-size: 14px;
+  font-size: var(--size-m);
 }
 
 .site-footer__copy {
   color: var(--text-gray);
-  font-weight: 500;
+  font-weight: var(--fw-500);
 }
 
 .site-footer__legal {
@@ -123,7 +123,7 @@
 .site-footer__legal-link {
   color: var(--text-gray);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: var(--fw-500);
   transition: color var(--trans-2);
 }
 
@@ -141,8 +141,8 @@
   list-style: none;
   cursor: pointer;
   padding: 14px 0;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--size-m);
+  font-weight: var(--fw-700);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #1a1a1a;
@@ -157,8 +157,8 @@
 
 .site-footer__accordion summary::after {
   content: '+';
-  font-size: 18px;
-  font-weight: 400;
+  font-size: var(--size-18);
+  font-weight: var(--fw-400);
   color: var(--text-gray);
 }
 

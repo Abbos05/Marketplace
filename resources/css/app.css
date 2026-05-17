@@ -5,7 +5,7 @@
 
 :root {
   font-family: "Montserrat", sans-serif;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   font-style: normal;
   --border2: #808d9a;
   --border: #808d9a7b;
@@ -17,119 +17,43 @@
   --font5: "Font Awesome 5 Free", sans-serif;
   --font6: "Inter", sans-serif;
   /* --background: #FF6500; */
-  --background:  #FF2E63;
+  --background: #FF2E63;
   --backgroundBlack: #d30035;
   --text-gray: #667685;
 
-    /* Размеры от маленького к большому */
-    --size-0: 0;
-    --size-2xs: 2px;
-    --size-xs: 4px;
-    --size-sm: 8px;
-    --size-md: 12px;
-    --size-base: 16px;
-    --size-lg: 20px;
-    --size-xl: 24px;
-    --size-2xl: 32px;
-    --size-3xl: 40px;
-    --size-4xl: 48px;
-    --size-5xl: 64px;
-    --size-6xl: 80px;
-    --size-7xl: 96px;
-    --size-full: 100%;
+  /* Размеры от маленького к большому */
+  --size-0: 0;
+  --size-2xs: 2px;
+  --size-xs: 4px;
+  --size-sm: 8px;
+  --size-s: 11px;
+  --size-md: 12px;
+  --size-lg: 13px;
+  --size-m: 14px;
+  --size-15: 15px;
+  --size-base: 16px;
+  --size-17: 17px;
+  --size-18: 18px;
+  --size-19: 19px;
+  --size-lg: 20px;
+  --size-22: 22px;
+  --size-xl: 24px;
+  --size-26: 26px;
+  --size-28: 28px;
+  --size-2xl: 32px;
+  --size-3xl: 40px;
 
-    /* Отступы */
-    --space-0: 0;
-    --space-2xs: 2px;
-    --space-xs: 4px;
-    --space-sm: 8px;
-    --space-md: 12px;
-    --space-base: 16px;
-    --space-lg: 20px;
-    --space-xl: 24px;
-    --space-2xl: 32px;
-    --space-3xl: 40px;
-    --space-4xl: 48px;
-    --space-5xl: 64px;
-    --space-6xl: 80px;
+  --fw-100: 100;
+  --fw-200: 200;
+  --fw-300: 300;
+  --fw-400: 400;
+  --fw-500: 500;
+  --fw-600: 600;
+  --fw-700: 700;
+  --fw-800: 800;
 
-    /* Размеры текста */
-    --fs-2xs: 10px;
-    --fs-xs: 12px;
-    --fs-sm: 14px;
-    --fs-md: 16px;
-    --fs-base: 18px;
-    --fs-lg: 20px;
-    --fs-xl: 24px;
-    --fs-2xl: 28px;
-    --fs-3xl: 32px;
-    --fs-4xl: 40px;
-    --fs-5xl: 48px;
-    --fs-6xl: 56px;
-    --fs-7xl: 64px;
-
-    /* Межстрочный интервал */
-    --lh-tight: 1.15;
-    --lh-sm: 1.25;
-    --lh-md: 1.4;
-    --lh-base: 1.5;
-    --lh-lg: 1.65;
-    --lh-xl: 1.8;
-
-    /* Скругления */
-    --radius-none: 0;
-    --radius-xs: 4px;
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 10px;
-    --radius-xl: 12px;
-    --radius-2xl: 16px;
-    --radius-3xl: 20px;
-    --radius-4xl: 24px;
-    --radius-full: 999px;
-
-    /* Контейнеры */
-    --container-xs: 360px;
-    --container-sm: 540px;
-    --container-md: 720px;
-    --container-lg: 960px;
-    --container-xl: 1140px;
-    --container-2xl: 1320px;
-    --container-3xl: 1460px;
-
-    /* Иконки */
-    --icon-xs: 14px;
-    --icon-sm: 16px;
-    --icon-md: 20px;
-    --icon-lg: 24px;
-    --icon-xl: 32px;
-    --icon-2xl: 40px;
-    --icon-3xl: 48px;
-
-    /* Поля, кнопки, инпуты */
-    --control-height-sm: 34px;
-    --control-height-md: 42px;
-    --control-height-lg: 50px;
-    --control-height-xl: 58px;
-    --control-padding-sm: 8px 12px;
-    --control-padding-md: 10px 16px;
-    --control-padding-lg: 13px 20px;
-    --control-padding-xl: 16px 24px;
-
-    --fw-100: 100;
-    --fw-200: 200;
-    --fw-300: 300;
-    --fw-400: 400;
-    --fw-500: 500;
-    --fw-600: 600;
-    --fw-700: 700;
-    --fw-800: 800;
-    --fw-900: 900;
-  
-    --trans-1: 0.1s;
-    --trans-2: 0.2s;
-    --trans-3: 0.3s;
-    --trans-4: 0.4s;
+  --trans-2: 0.2s;
+  --trans-3: 0.3s;
 }
 
 html {
@@ -151,8 +75,8 @@ html {
 
 body {
   background-color: #F5F7FA;
-  font-size: 18px;
-  font-weight: 500;
+  font-size: var(--size-18);
+  font-weight: var(--fw-500);
   color: black;
 }
 
@@ -196,7 +120,7 @@ object {
 }
 
 .section-info-title {
-  font-weight: 600;
+  font-weight: var(--fw-600);
   font-size: 54px;
   line-height: 119%;
   text-align: center;
@@ -208,7 +132,7 @@ object {
 }
 
 .section-info-description {
-  font-size: 18px;
+  font-size: var(--size-18);
   color: #848a9c;
   text-align: center;
   margin-bottom: 30px;
@@ -230,7 +154,7 @@ object {
   border-radius: 5px;
   background: #ffd438;
   color: #111826;
-  font-size: 18px;
+  font-size: var(--size-18);
   cursor: pointer;
   transition: background 0.3s;
 }
@@ -258,7 +182,8 @@ object {
   width: 250px;
   height: 250px;
   pointer-events: none;
-  transition: transform 0.1s linear; /* Плавность движения */
+  transition: transform 0.1s linear;
+  /* Плавность движения */
   top: 125px;
   left: 125px;
   display: flex;
@@ -271,10 +196,12 @@ object {
     background: #e85f5f;
     opacity: 0.55;
   }
+
   50% {
     background: #8a2a8a;
     opacity: 0.7;
   }
+
   100% {
     background: #005BFF;
     opacity: 0.55;

@@ -59,13 +59,13 @@
   }
   
   .userchat h3 {
-    font-weight: 500;
+    font-weight: var(--fw-500);
     font-size: 1.125rem;
     color: #000;
   }
   
   .userchat p {
-    font-weight: 400;
+    font-weight: var(--fw-400);
     font-size: 0.875rem;
     color: rgba(0, 0, 0, 0.6);
     max-width: 200px;
@@ -95,7 +95,7 @@
   }
   
   .imguser p {
-    font-weight: 500;
+    font-weight: var(--fw-500);
     font-size: 1.25rem;
     color: #000;
   }
@@ -137,13 +137,13 @@
   }
   
   .chat__user__item__block h3 {
-    font-weight: 500;
+    font-weight: var(--fw-500);
     font-size: 0.875rem;
     color: #000;
   }
   
   .chat__user__item__block p {
-    font-weight: 400;
+    font-weight: var(--fw-400);
     font-size: 1rem;
     color: #374151;
 

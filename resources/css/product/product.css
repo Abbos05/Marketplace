@@ -125,7 +125,7 @@
 }
 
 .product__stock__item {
-  font-size: 12px;
+  font-size: var(--size-md);
   color: white;
   background-color: red;
   border-radius: 6px;
@@ -165,15 +165,15 @@
 }
 
 .products__prices .products__current-price {
-  font-weight: 600;
-  font-size: 22px;
+  font-weight: var(--fw-600);
+  font-size: var(--size-22);
   color: var(--background);
 }
 
 
 .products__prices .products__old-price {
-  font-weight: 600;
-  font-size: 18px;
+  font-weight: var(--fw-600);
+  font-size: var(--size-18);
 }
 
 .products__prices .products__old-price span:first-child {
@@ -188,22 +188,22 @@
 }
 
 .products__stock {
-  font-weight: 500;
-  font-size: 12px;
+  font-weight: var(--fw-500);
+  font-size: var(--size-md);
   color: var(--background);
 
 }
 
 .products__seller .products__shop-name {
-  font-weight: 500;
+  font-weight: var(--fw-500);
   color: #000;
 
 }
 
 .products__title-text {
-  font-weight: 600;
+  font-weight: var(--fw-600);
   color: #000;
-  font-size: 16px;
+  font-size: var(--size-base);
   display: -webkit-box;
   overflow: hidden;
   padding-right: 5px;
@@ -237,14 +237,14 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: var(--fw-600);
+  font-size: var(--size-m);
   color: #808D9A;
 }
 
 .info_dop {
-  font-weight: 500;
-  font-size: 32px;
+  font-weight: var(--fw-500);
+  font-size: var(--size-2xl);
   color: black;
   margin-bottom: -10px;
 }
@@ -277,8 +277,8 @@
   justify-content: center;
   gap: 7px;
   font-family: var(--font-family);
-  font-weight: 500;
-  font-size: 18px;
+  font-weight: var(--fw-500);
+  font-size: var(--size-18);
   color: #fff;
   text-align: center;
   border: none;
@@ -381,8 +381,8 @@
 }
 
 .NFT_description {
-  font-weight: 500;
-  font-size: 16px;
+  font-weight: var(--fw-500);
+  font-size: var(--size-base);
   line-height: 162%;
   text-transform: capitalize;
   color: #848a9c;
@@ -417,14 +417,14 @@
 }
 
 .NFT_cash span {
-  font-size: 20px;
+  font-size: var(--size-lg);
 }
 
 /* // profiles */
 /* filtr */
 .NFT__filter__title {
-  font-weight: 400;
-  font-size: 24px;
+  font-weight: var(--fw-400);
+  font-size: var(--size-xl);
   line-height: 180%;
   color: #fff;
 }
@@ -447,10 +447,10 @@
   outline: none;
 
   text-transform: capitalize;
-  font-size: 16px;
+  font-size: var(--size-base);
   line-height: 162%;
   letter-spacing: .13em;
-  font-weight: 400;
+  font-weight: var(--fw-400);
 
 }
 
@@ -477,7 +477,7 @@
 }
 
 .filter_nfts_header h2 {
-  font-weight: 600;
+  font-weight: var(--fw-600);
   font-size: 54px;
   line-height: 119%;
   text-shadow: 0 2px 10px 0 rgba(245, 247, 82, 0.4);
@@ -499,7 +499,7 @@
 .nfts_block,
 .nonesNFT {
   color: rgba(255, 255, 255, 0.541) !important;
-  font-size: 24px;
+  font-size: var(--size-xl);
   display: flex !important;
 }
 
@@ -541,8 +541,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 400;
-  font-size: 16px;
+  font-weight: var(--fw-400);
+  font-size: var(--size-base);
   line-height: 175%;
   text-transform: capitalize;
   color: #848a9c;
@@ -550,8 +550,8 @@
 
 .nft_title {
   margin-top: 5px;
-  font-weight: 700;
-  font-size: 18px;
+  font-weight: var(--fw-700);
+  font-size: var(--size-18);
   line-height: 144%;
   color: #fff;
 }
@@ -570,13 +570,13 @@
 
 .nft_details {
   color: #fff;
-  font-size: 16px;
+  font-size: var(--size-base);
   text-transform: capitalize;
 }
 
 .nft_owner p:first-child,
 .nft_price p:first-child {
-  font-weight: 400;
+  font-weight: var(--fw-400);
   line-height: 165%;
   color: #848a9c;
 }
@@ -593,8 +593,8 @@
   margin: 0 auto;
   border-radius: 10px;
   font-family: var(--font-family);
-  font-weight: 500;
-  font-size: 18px;
+  font-weight: var(--fw-500);
+  font-size: var(--size-18);
   text-align: center;
   background: transparent;
   color: #FF2E63;
@@ -618,7 +618,7 @@
 
 .products__variant-chip {
   font: inherit;
-  font-size: 12px;
+  font-size: var(--size-md);
   line-height: 1.2;
   padding: 5px 10px;
   border-radius: 999px;
@@ -641,7 +641,7 @@
   border-color: #0ea5e9;
   background: #e0f2fe;
   color: #0c4a6e;
-  font-weight: 600;
+  font-weight: var(--fw-600);
 }
 
 .showMore__btn--active {

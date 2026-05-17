@@ -31,15 +31,15 @@
 }
 
 .promo-card__title {
-    font-size: 15px;
-    font-weight: 700;
+    font-size: var(--size-15);
+    font-weight: var(--fw-700);
     color: #1e293b;
 }
 
 .promo-card__count {
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #94a3b8;
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 
 .promo-card__body { padding: 22px; }
@@ -58,13 +58,13 @@
 }
 
 .promo-form__label {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--size-l);
+    font-weight: var(--fw-600);
     color: #475569;
 }
 
 .promo-form__hint {
-    font-size: 11px;
+    font-size: var(--size-s);
     color: #94a3b8;
     margin-top: 2px;
 }
@@ -73,7 +73,7 @@
     padding: 10px 14px;
     border: 1.5px solid #e2e8f0;
     border-radius: 10px;
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #1e293b;
     background: #fff;
     transition: border-color .15s;
@@ -84,9 +84,9 @@
 .promo-form__input.error { border-color: #f43f5e; }
 
 .promo-form__error {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #f43f5e;
-    font-weight: 500;
+    font-weight: var(--fw-500);
     margin-top: 3px;
 }
 
@@ -97,8 +97,8 @@
     color: #fff;
     border: none;
     border-radius: 10px;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: var(--size-m);
+    font-weight: var(--fw-700);
     cursor: pointer;
     transition: background .15s;
     margin-top: 4px;
@@ -110,14 +110,14 @@
 .promo-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .promo-table th {
     padding: 11px 16px;
     text-align: left;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: var(--size-s);
+    font-weight: var(--fw-700);
     color: #64748b;
     background: #f8fafc;
     text-transform: uppercase;
@@ -136,8 +136,8 @@
 
 .promo-code-cell {
     font-family: monospace;
-    font-size: 15px;
-    font-weight: 700;
+    font-size: var(--size-15);
+    font-weight: var(--fw-700);
     color: var(--backgroundBlack);
     letter-spacing: .5px;
 }
@@ -146,8 +146,8 @@
     display: inline-block;
     background: #f0fdf4;
     color: #15803d;
-    font-size: 13px;
-    font-weight: 700;
+    font-size: var(--size-l);
+    font-weight: var(--fw-700);
     padding: 3px 10px;
     border-radius: 20px;
 }
@@ -157,8 +157,8 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: var(--size-md);
+    font-weight: var(--fw-600);
     padding: 4px 10px;
     border-radius: 20px;
 }
@@ -169,10 +169,10 @@
 
 /* ---------- Usage display ---------- */
 .promo-usage {
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #475569;
 }
-.promo-usage__used { font-weight: 700; color: #1e293b; }
+.promo-usage__used { font-weight: var(--fw-700); color: #1e293b; }
 .promo-usage__limit{ color: #94a3b8; }
 
 /* ---------- Actions ---------- */
@@ -185,8 +185,8 @@
 .promo-btn {
     padding: 6px 12px;
     border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: var(--size-md);
+    font-weight: var(--fw-600);
     border: none;
     cursor: pointer;
     transition: background .15s;
@@ -212,22 +212,22 @@
     gap: 8px;
 }
 .promo-empty__icon  { font-size: 44px; }
-.promo-empty__title { font-size: 16px; font-weight: 700; color: #1e293b; }
-.promo-empty__sub   { font-size: 13px; color: #94a3b8; }
+.promo-empty__title { font-size: var(--size-base); font-weight: var(--fw-700); color: #1e293b; }
+.promo-empty__sub   { font-size: var(--size-l); color: #94a3b8; }
 
 /* ---------- Flash ---------- */
 .promo-flash {
     padding: 12px 18px;
     border-radius: 10px;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--size-m);
+    font-weight: var(--fw-500);
     margin-bottom: 16px;
 }
 .promo-flash--success { background: #d1fae5; color: #065f46; }
 .promo-flash--error   { background: #fee2e2; color: #991b1b; }
 
 /* ---------- Expiry date color ---------- */
-.promo-date--soon    { color: #f59e0b; font-weight: 600; }
-.promo-date--expired { color: #dc2626; font-weight: 600; }
+.promo-date--soon    { color: #f59e0b; font-weight: var(--fw-600); }
+.promo-date--expired { color: #dc2626; font-weight: var(--fw-600); }
 .promo-date--ok      { color: #475569; }
 .promo-date--none    { color: #94a3b8; }

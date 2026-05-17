@@ -42,7 +42,7 @@
 }
 
 .sidebar-header h2 {
-    font-size: 20px;
+    font-size: var(--size-lg);
     margin: 0;
     color: var(--background);
     font-weight: var(--fw-700);
@@ -92,13 +92,13 @@
 }
 
 .nav-icon {
-    font-size: 22px;
+    font-size: var(--size-22);
     margin-right: 12px;
     min-width: 24px;
 }
 
 .nav-label {
-    font-size: 14px;
+    font-size: var(--size-m);
     font-weight: var(--fw-600);
 }
 
@@ -127,7 +127,7 @@
 }
 
 .seller-header h1 {
-    font-size: 24px;
+    font-size: var(--size-xl);
     margin: 0;
     color: #333;
     font-weight: var(--fw-700);
@@ -150,7 +150,7 @@
     color: white;
     border-radius: 8px;
     text-decoration: none;
-    font-size: 14px;
+    font-size: var(--size-m);
     font-weight: var(--fw-600);
     transition: var(--trans-3);
 }
@@ -194,7 +194,7 @@
 }
 
 .stat-info h3 {
-    font-size: 20px;
+    font-size: var(--size-lg);
     margin: 0;
     color: var(--background);
     font-weight: var(--fw-800);
@@ -203,7 +203,7 @@
 .stat-info p {
     margin: 5px 0 0;
     color: var(--text-gray);
-    font-size: 14px;
+    font-size: var(--size-m);
     font-weight: var(--fw-500);
 }
 
@@ -220,7 +220,7 @@
 .chart-container h3 {
     margin-bottom: 20px;
     color: #333;
-    font-size: 18px;
+    font-size: var(--size-18);
     font-weight: var(--fw-700);
 }
 
@@ -254,7 +254,7 @@
 .popular-products h3 {
     margin-bottom: 20px;
     color: #333;
-    font-size: 18px;
+    font-size: var(--size-18);
     font-weight: var(--fw-700);
 }
 
@@ -274,12 +274,12 @@
 .orders-table th {
     color: var(--text-gray);
     font-weight: var(--fw-600);
-    font-size: 13px;
+    font-size: var(--size-l);
 }
 
 .orders-table td {
     color: #333;
-    font-size: 14px;
+    font-size: var(--size-m);
     font-weight: var(--fw-500);
 }
 
@@ -287,7 +287,7 @@
     display: inline-block;
     padding: 4px 12px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: var(--size-md);
     font-weight: var(--fw-600);
 }
 
@@ -340,7 +340,7 @@
 
 .popular-item small {
     color: var(--text-gray);
-    font-size: 12px;
+    font-size: var(--size-md);
     font-weight: var(--fw-500);
 }
 /* Chart Styles */
@@ -356,7 +356,7 @@
 .chart-container h3 {
     margin-bottom: 24px;
     color: #333;
-    font-size: 18px;
+    font-size: var(--size-18);
     font-weight: var(--fw-700);
 }
 
@@ -393,7 +393,7 @@
     color: white;
     padding: 4px 10px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--size-md);
     font-weight: var(--fw-600);
     white-space: nowrap;
     transition: var(--trans-2);
@@ -445,7 +445,7 @@
 }
 
 .chart-bar-label {
-    font-size: 11px;
+    font-size: var(--size-s);
     color: var(--text-gray);
     font-weight: var(--fw-600);
     text-align: center;
@@ -468,13 +468,13 @@
 }
 
 .chart-stat .stat-label {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: var(--text-gray);
     font-weight: var(--fw-500);
 }
 
 .chart-stat .stat-value {
-    font-size: 16px;
+    font-size: var(--size-base);
     font-weight: var(--fw-700);
     color: var(--background);
 }
@@ -556,7 +556,7 @@
 .seller-products-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .seller-products-table th,
@@ -588,7 +588,7 @@
     display: inline-block;
     padding: 4px 10px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: var(--size-md);
     font-weight: var(--fw-600);
 }
 
@@ -618,7 +618,7 @@
     color: var(--background);
     font-weight: var(--fw-600);
     text-decoration: none;
-    font-size: 13px;
+    font-size: var(--size-l);
 }
 
 .seller-products-link:hover {

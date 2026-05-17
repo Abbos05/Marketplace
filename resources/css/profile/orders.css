@@ -22,12 +22,12 @@
 }
 
 .pickup-code {
-    font-size: 32px;
-    font-weight: bold;
+    font-size: var(--size-2xl);
+    font-weight: var(--fw-700);
 }
 
 .pickup-hint {
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #888;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .order-status {
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 
 .order-number-box {
@@ -85,12 +85,12 @@
 }
 
 .sub {
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #777;
 }
 
 .sum {
-    font-weight: bold;
+    font-weight: var(--fw-700);
 }
 
 /* FOOTER */
@@ -143,7 +143,7 @@ max-width: 150px;
 }
 .barcode-text {
     margin-top: 10px;
-    font-size: 20px;
+    font-size: var(--size-lg);
 }
 
 /* HEADER */
@@ -157,8 +157,8 @@ max-width: 150px;
 .order-status {
     padding: 4px 10px;
     border-radius: 12px;
-    font-size: 13px;
-    font-weight: 500;
+    font-size: var(--size-l);
+    font-weight: var(--fw-500);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -201,12 +201,12 @@ max-width: 150px;
 
 /* итого */
 .total-label {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #777;
 }
 
 .total-price {
-    font-weight: bold;
+    font-weight: var(--fw-700);
 }
 
 /* фильтр */
@@ -253,20 +253,20 @@ max-width: 150px;
 
 /* заголовок */
 .order-title {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: var(--size-lg);
+    font-weight: var(--fw-700);
     color: #6a5cff; /* как у ozon */
 }
 
 /* дата */
 .order-date {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--size-base);
+    font-weight: var(--fw-600);
 }
 
 /* адрес */
 .order-address {
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #888;
 }
 
@@ -292,8 +292,8 @@ max-width: 150px;
 }
 
 .NoOrder__title {
-    font-size: 24px;
-    font-weight: 600;
+    font-size: var(--size-xl);
+    font-weight: var(--fw-600);
     margin-bottom: 10px;
 }
 
@@ -302,7 +302,7 @@ max-width: 150px;
     max-width: 420px;
     margin: 0 auto 24px;
     line-height: 1.5;
-    font-size: 15px;
+    font-size: var(--size-15);
 }
 
 .NoOrder__button {
@@ -316,8 +316,8 @@ max-width: 150px;
     border-radius: 12px;
     background: #0f172a;
     color: #fff;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--size-base);
+    font-weight: var(--fw-600);
     font-family: inherit;
     cursor: pointer;
     transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;

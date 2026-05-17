@@ -100,8 +100,8 @@
 
   .sliderTitle .sliderTitle-cta {
     display: inline-block;
-    font-weight: 500;
-    font-size: 14px;
+    font-weight: var(--fw-500);
+    font-size: var(--size-m);
     letter-spacing: 0.07em;
     text-transform: uppercase;
     text-align: center;
@@ -141,7 +141,7 @@
   }
   
   .sliderTitle h1 {
-    font-weight: 600;
+    font-weight: var(--fw-600);
     font-size: 30px;
     line-height: 114%;
     color: #0f172a;
@@ -153,8 +153,8 @@
   }
   
   .sliderTitle p {
-    font-weight: 300;
-    font-size: 20px;
+    font-weight: var(--fw-300);
+    font-size: var(--size-lg);
     line-height: 150%;
     color: #667685;
     margin-bottom: 22px;
@@ -165,8 +165,8 @@
   }
   
   .sliderTitle button {
-    font-weight: 500;
-    font-size: 14px;
+    font-weight: var(--fw-500);
+    font-size: var(--size-m);
     letter-spacing: 0.07em;
     text-transform: uppercase;
     text-align: center;
@@ -310,20 +310,20 @@
 
 /* ==== АДАПТИВ ТЕКСТОВ ==== */
 .sliderTitle h1 {
-  font-weight: 600;
+  font-weight: var(--fw-600);
   font-size: clamp(32px, 8vw, 58px);   /* от 32px до 58px */
   line-height: 114%;
   color: #0f172a;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
   margin-bottom: 2px;
   opacity: 0;
-  font-size: 15px;
+  font-size: var(--size-15);
   transform: translateY(20px);
   transition: all 0.8s 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .sliderTitle p {
-  font-weight: 300;
+  font-weight: var(--fw-300);
   font-size: clamp(16px, 4.5vw, 24px);
   line-height: 150%;
   color: #667685;
@@ -336,7 +336,7 @@
 }
 
 .sliderTitle button {
-  font-weight: 500;
+  font-weight: var(--fw-500);
   font-size: clamp(13px, 3.5vw, 14px);
   letter-spacing: 0.07em;
   text-transform: uppercase;

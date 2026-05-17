@@ -18,8 +18,8 @@
     border-radius: 9px;
     border: none;
     background: transparent;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: var(--size-m);
+    font-weight: var(--fw-600);
     color: #64748b;
     cursor: pointer;
     transition: background .15s, color .15s, box-shadow .15s;
@@ -58,14 +58,14 @@
 }
 
 .set-card__title {
-    font-size: 15px;
-    font-weight: 700;
+    font-size: var(--size-15);
+    font-weight: var(--fw-700);
     color: #1e293b;
     margin: 0;
 }
 
 .set-card__sub {
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #94a3b8;
     margin-top: 3px;
 }
@@ -86,16 +86,16 @@
 }
 
 .set-label {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--size-l);
+    font-weight: var(--fw-600);
     color: #475569;
 }
 
 .set-label--optional::after {
     content: ' (необязательно)';
-    font-weight: 400;
+    font-weight: var(--fw-400);
     color: #94a3b8;
-    font-size: 11px;
+    font-size: var(--size-s);
 }
 
 .set-input,
@@ -103,7 +103,7 @@
     padding: 10px 14px;
     border: 1.5px solid #e2e8f0;
     border-radius: 10px;
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #1e293b;
     background: #fff;
     transition: border-color .15s;
@@ -124,15 +124,15 @@
 .set-textarea { resize: vertical; min-height: 90px; }
 
 .set-hint {
-    font-size: 11px;
+    font-size: var(--size-s);
     color: #94a3b8;
     line-height: 1.4;
 }
 
 .set-error {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #f43f5e;
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 
 /* ---------- Two-col row ---------- */
@@ -176,21 +176,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
-    font-weight: 700;
+    font-size: var(--size-28);
+    font-weight: var(--fw-700);
     color: #fff;
     flex-shrink: 0;
 }
 
 .set-avatar-info { flex: 1; }
 .set-avatar-info h4 {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: var(--size-m);
+    font-weight: var(--fw-600);
     color: #1e293b;
     margin: 0 0 4px;
 }
 .set-avatar-info p {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #94a3b8;
     margin: 0;
 }
@@ -203,8 +203,8 @@
     background: #fff;
     border: 1.5px solid #e2e8f0;
     border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--size-l);
+    font-weight: var(--fw-600);
     color: #475569;
     cursor: pointer;
     transition: background .15s, border-color .15s;
@@ -235,8 +235,8 @@
 .set-wh-row--closed { background: #fafafa; }
 
 .set-wh-day {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--size-l);
+    font-weight: var(--fw-600);
     color: #1e293b;
 }
 .set-wh-day--closed { color: #94a3b8; }
@@ -252,7 +252,7 @@
     padding: 6px 10px;
     border: 1.5px solid #e2e8f0;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #1e293b;
     background: #fff;
     transition: border-color .15s;
@@ -267,7 +267,7 @@
 }
 
 .set-wh-sep {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #94a3b8;
     text-align: center;
 }
@@ -283,8 +283,8 @@
     color: #fff;
     border: none;
     border-radius: 10px;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: var(--size-m);
+    font-weight: var(--fw-700);
     cursor: pointer;
     transition: background .15s;
     margin-top: 4px;
@@ -305,7 +305,7 @@
 }
 
 .set-password-rule {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #64748b;
     display: flex;
     align-items: center;
@@ -323,8 +323,8 @@
 .set-flash {
     padding: 13px 18px;
     border-radius: 10px;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--size-m);
+    font-weight: var(--fw-500);
     margin-bottom: 20px;
     display: flex;
     align-items: center;
@@ -351,17 +351,17 @@
 }
 
 .set-info-row__label {
-    font-size: 11px;
-    font-weight: 700;
+    font-size: var(--size-s);
+    font-weight: var(--fw-700);
     text-transform: uppercase;
     letter-spacing: .4px;
     color: #94a3b8;
 }
 
 .set-info-row__value {
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #1e293b;
-    font-weight: 500;
+    font-weight: var(--fw-500);
 }
 
 .set-info-divider {
@@ -378,14 +378,14 @@
 }
 
 .set-danger-zone__title {
-    font-size: 13px;
-    font-weight: 700;
+    font-size: var(--size-l);
+    font-weight: var(--fw-700);
     color: #dc2626;
     margin-bottom: 6px;
 }
 
 .set-danger-zone__text {
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #64748b;
     margin-bottom: 12px;
     line-height: 1.5;

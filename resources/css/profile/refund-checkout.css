@@ -13,7 +13,7 @@
     margin-bottom: 20px;
     color: #64748b;
     text-decoration: none;
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .refund-back:hover {
@@ -38,15 +38,15 @@
 }
 
 .refund-checkout-logo {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: var(--size-22);
+    font-weight: var(--fw-700);
     color: #635bff;
     letter-spacing: -0.5px;
 }
 
 .refund-checkout-badge {
-    font-size: 11px;
-    font-weight: 700;
+    font-size: var(--size-s);
+    font-weight: var(--fw-700);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: #0f766e;
@@ -59,7 +59,7 @@
     background: #fffbeb;
     border: 1px solid #fde68a;
     color: #92400e;
-    font-size: 13px;
+    font-size: var(--size-l);
     line-height: 1.45;
     padding: 10px 12px;
     border-radius: 10px;
@@ -67,8 +67,8 @@
 }
 
 .refund-checkout-title {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: var(--size-22);
+    font-weight: var(--fw-700);
     margin: 0 0 20px;
     color: #0f172a;
 }
@@ -83,13 +83,13 @@
 }
 
 .refund-checkout-amount__label {
-    font-size: 13px;
+    font-size: var(--size-l);
     color: #64748b;
 }
 
 .refund-checkout-amount__value {
-    font-size: 32px;
-    font-weight: 800;
+    font-size: var(--size-2xl);
+    font-weight: var(--fw-800);
     color: #059669;
 }
 
@@ -98,12 +98,12 @@
     grid-template-columns: 1fr 1fr;
     gap: 12px;
     margin-bottom: 24px;
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .refund-checkout-meta__label {
     display: block;
-    font-size: 11px;
+    font-size: var(--size-s);
     color: #94a3b8;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -119,7 +119,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #94a3b8;
     padding: 8px 0;
     position: relative;
@@ -150,7 +150,7 @@
 
 .refund-step--active {
     color: #0f172a;
-    font-weight: 600;
+    font-weight: var(--fw-600);
 }
 
 .refund-step--active .refund-step__dot {
@@ -174,8 +174,8 @@
     border: none;
     border-radius: 12px;
     padding: 16px;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--size-base);
+    font-weight: var(--fw-600);
     cursor: pointer;
     background: #635bff;
     color: #fff;
@@ -192,7 +192,7 @@
 
 .refund-checkout-note {
     margin-top: 14px;
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #94a3b8;
     text-align: center;
     line-height: 1.45;
@@ -206,7 +206,7 @@
 .refund-checkout-loading p {
     margin-top: 12px;
     color: #64748b;
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .refund-spinner {
