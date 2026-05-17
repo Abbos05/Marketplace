@@ -5,7 +5,10 @@ import { expandCatalogProductRows } from '@/lib/catalogListing';
 import '../../../css/product/product.css';
 
 const ProductPage = ({ products = [] }) => {
-    const rows = useMemo(() => expandCatalogProductRows(products), [products]);
+    const rows = useMemo(
+        () => expandCatalogProductRows(products, { oneVariantPerProduct: true }),
+        [products],
+    );
 
     if (rows.length === 0) {
         return (

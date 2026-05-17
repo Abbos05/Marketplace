@@ -92,6 +92,7 @@ class HandleInertiaRequests extends Middleware
                     + app(NotificationFeedService::class)->unreadCount($request->user())
                 : 0,
             'footerSocial' => fn () => config('marketplace.footer.social', []),
+            'catalogSearchQuery' => fn () => trim((string) $request->query('search', '')),
         ];
     }
 }

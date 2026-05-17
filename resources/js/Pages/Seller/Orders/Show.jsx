@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import SellerLayout from '@/Layouts/SellerLayout';
+import ArticleNumber from '@/Components/Product/ArticleNumber';
 import '../../../../css/seller/orders.css';
 
 const PAYMENT_STATUS_LABELS = {
     pending:  'Ожидает оплаты',
     paid:     'Оплачен',
-    failed:   'Ошибка оплаты',
+    failed:   'Не оплачено',
     refunded: 'Возвращён',
 };
 
@@ -41,6 +42,8 @@ export default function Show({ order, items, nextStatuses, statusLabels }) {
     };
 
     const itemsTotal = items.reduce((sum, i) => sum + i.subtotal, 0);
+    const commissionTotal = items.reduce((sum, i) => sum + Number(i.commission_amount || 0), 0);
+    const payoutTotal = items.reduce((sum, i) => sum + Number(i.seller_payout_amount || 0), 0);
 
     return (
         <SellerLayout title={`Заказ ${order.number}`}>
@@ -82,6 +85,8 @@ export default function Show({ order, items, nextStatuses, statusLabels }) {
                                     <th>Кол-во</th>
                                     <th>Цена</th>
                                     <th>Итог</th>
+                                    <th>Комиссия</th>
+                                    <th>К выплате</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -104,7 +109,9 @@ export default function Show({ order, items, nextStatuses, statusLabels }) {
                                                         <div className="ord-item-variant">{item.variant.options}</div>
                                                     )}
                                                     {item.variant.sku && (
-                                                        <div className="ord-item-variant">SKU: {item.variant.sku}</div>
+                                                        <div className="ord-item-variant">
+                                                            Артикул: <ArticleNumber sku={item.variant.sku} />
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -118,12 +125,27 @@ export default function Show({ order, items, nextStatuses, statusLabels }) {
                                                 {Number(item.subtotal).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
                                             </strong>
                                         </td>
+                                        <td>
+                                            {Number(item.commission_amount).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
+                                            <div className="ord-item-variant">{Number(item.commission_percent).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%</div>
+                                        </td>
+                                        <td>
+                                            <strong>
+                                                {Number(item.seller_payout_amount).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
+                                            </strong>
+                                        </td>
                                     </tr>
                                 ))}
                                 <tr className="ord-items-total-row">
                                     <td colSpan={3} style={{ textAlign: 'right' }}>Итого по вашим товарам:</td>
                                     <td>
                                         {Number(itemsTotal).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
+                                    </td>
+                                    <td>
+                                        {Number(commissionTotal).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
+                                    </td>
+                                    <td>
+                                        {Number(payoutTotal).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
                                     </td>
                                 </tr>
                             </tbody>
@@ -207,6 +229,28 @@ export default function Show({ order, items, nextStatuses, statusLabels }) {
                                 <span className="ord-info-row__value" style={{ fontWeight: 700 }}>
                                     {Number(itemsTotal).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
                                 </span>
+                            </div>
+                            <div className="ord-info-row">
+                                <span className="ord-info-row__label">Комиссия платформы</span>
+                                <span className="ord-info-row__value">
+                                    {Number(commissionTotal).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
+                                </span>
+                            </div>
+                            <div className="ord-info-row">
+                                <span className="ord-info-row__label">К выплате продавцу</span>
+                                <span className="ord-info-row__value" style={{ fontWeight: 700 }}>
+                                    {Number(payoutTotal).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
+                                </span>
+                            </div>
+                            <div className="ord-info-row" style={{ marginTop: 12 }}>
+                                <a
+                                    href={route('seller.orders.commission-receipt', order.id)}
+                                    className="ord-btn ord-btn--ghost"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    📄 Скачать отчёт по комиссии (PDF)
+                                </a>
                             </div>
                         </div>
                     </div>

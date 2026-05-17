@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import { canManageUserAsStaff, roleOptionsFor } from '@/lib/staffAccess';
@@ -145,6 +145,7 @@ export default function UserDetail({ auth, user, orders, sellerOrders, products,
     const [message, setMessage]       = useState(null);
     const [selectedRole, setSelectedRole]   = useState(user.role);
     const [productComments, setProductComments] = useState({});
+    const [pendingProductStatus, setPendingProductStatus] = useState({});
     const [expandedOrder, setExpandedOrder] = useState(null);
     const [sessionQuery, setSessionQuery] = useState('');
     const [loginQuery, setLoginQuery] = useState('');
@@ -266,9 +267,30 @@ export default function UserDetail({ auth, user, orders, sellerOrders, products,
         });
     };
 
-    const updateProductStatus = (productId, status) => {
-        const comment = productComments[productId] || '';
-        router.post(`/admin/products/${productId}/status`, { status, moderation_comment: comment }, {
+    useEffect(() => {
+        const comments = {};
+        const statuses = {};
+        (products || []).forEach((p) => {
+            comments[p.id] = p.moderation_comment || '';
+            statuses[p.id] = p.status;
+        });
+        setProductComments((prev) => ({ ...comments, ...prev }));
+        setPendingProductStatus((prev) => ({ ...statuses, ...prev }));
+    }, [products]);
+
+    const applyProductStatus = (productId, currentStatus) => {
+        const newStatus = pendingProductStatus[productId] ?? currentStatus;
+        const comment = (productComments[productId] || '').trim();
+
+        if (newStatus === 'rejected' && !comment) {
+            flash('При отклонении укажите комментарий для продавца — он увидит его в кабинете.', true);
+            return;
+        }
+
+        router.post(`/admin/products/${productId}/status`, {
+            status: newStatus,
+            moderation_comment: comment,
+        }, {
             preserveScroll: true,
             preserveState: false,
             onSuccess: () => flash(`Статус товара #${productId} изменён`),
@@ -748,22 +770,33 @@ export default function UserDetail({ auth, user, orders, sellerOrders, products,
                                             {PRODUCT_STATUS_MAP[p.status] || p.status}
                                         </span>
                                         <select
-                                            className="adm-status-select"
-                                            defaultValue={p.status}
-                                            onChange={(e) => updateProductStatus(p.id, e.target.value)}
-                                        >
-                                            {PRODUCT_STATUSES.map(s => (
-                                                <option key={s.value} value={s.value}>{s.label}</option>
-                                            ))}
-                                        </select>
-                                        {/* Optional moderation comment */}
-                                        <input
-                                            type="text"
-                                            className="adm-comment-input"
-                                            placeholder="Комментарий модератора..."
-                                            value={productComments[p.id] || ''}
-                                            onChange={(e) => setProductComments(prev => ({ ...prev, [p.id]: e.target.value }))}
-                                        />
+                                                className="adm-status-select"
+                                                value={pendingProductStatus[p.id] ?? p.status}
+                                                onChange={(e) => setPendingProductStatus((prev) => ({
+                                                    ...prev,
+                                                    [p.id]: e.target.value,
+                                                }))}
+                                            >
+                                                {PRODUCT_STATUSES.map(s => (
+                                                    <option key={s.value} value={s.value}>{s.label}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                type="text"
+                                                className="adm-comment-input"
+                                                placeholder={ (pendingProductStatus[p.id] ?? p.status) === 'rejected' ? 'Комментарий для продавца *' : 'Комментарий для продавца' }
+                                                value={productComments[p.id] ?? ''}
+                                                onChange={(e) => setProductComments((prev) => ({
+                                                    ...prev,
+                                                    [p.id]: e.target.value,
+                                                }))}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="adm-action-btn adm-btn-save" onClick={() => applyProductStatus(p.id, p.status)}
+                                            >
+                                                OK
+                                            </button>
                                         <a
                                             href={`/product/${p.id}`}
                                             className="adm-action-btn adm-btn-view"

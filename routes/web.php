@@ -21,10 +21,12 @@ use App\Http\Controllers\PromocodeController;
 use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\SellerController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\CommissionDocumentController;
 use App\Http\Middleware\CheckRole;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +43,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('product', ProductController::class);
 });
 Route::get('/product/{product}', [ProductController::class, 'show'])->name('product.show');
+Route::get('/article/{sku}', [ArticleController::class, 'show'])->name('article.show')->where('sku', '[0-9]+');
 
 // о нас
 Route::get('/about', function () {
@@ -154,6 +157,7 @@ Route::middleware(['auth', CheckRole::class . ':admin,moderator'])->group(functi
     Route::get('/admin/reports/revenue',        [AdminController::class, 'exportRevenue'])->name('admin.reports.revenue');
     Route::get('/admin/reports/user/{userId}',  [AdminController::class, 'exportUserReport'])->name('admin.reports.user');
     Route::get('/admin/reports/order/{order}',  [AdminController::class, 'exportOrderReceipt'])->name('admin.reports.order');
+    Route::get('/admin/reports/order/{order}/commission', [CommissionDocumentController::class, 'orderReceipt'])->name('admin.reports.commission');
 
     Route::delete('/admin/users/{user}', [ProfileController::class, 'destroy'])->name('admin.users.destroy');
     Route::put('/admin/users/{user}/block', [ProfileController::class, 'block'])->name('admin.users.block');
@@ -208,8 +212,6 @@ Route::middleware(['auth', 'seller'])->group(function () {
     Route::post('/seller/products/{product}/variants/{variant}/stock', [SellerProductController::class, 'updateVariantStock'])
         ->name('seller.products.variant.stock');
 
-    Route::post('/seller/products/{product}/images/{image}/set-main', [SellerProductController::class, 'setMainImage'])
-        ->name('seller.products.image.set-main');
 
     /* POST: multipart + файлы надёжнее, чем PUT (PHP не всегда парсит multipart для PUT) */
     Route::post('/seller/products/{product}', [SellerProductController::class, 'update'])
@@ -218,8 +220,11 @@ Route::middleware(['auth', 'seller'])->group(function () {
     Route::get('/seller/orders', [SellerOrderController::class, 'index'])->name('seller.orders');
     Route::get('/seller/orders/export', [SellerOrderController::class, 'export'])->name('seller.orders.export');
     Route::get('/seller/orders/{order}', [SellerOrderController::class, 'show'])->name('seller.orders.show');
+    Route::get('/seller/orders/{order}/commission-receipt', [CommissionDocumentController::class, 'orderReceipt'])->name('seller.orders.commission-receipt');
     Route::post('/seller/orders/{order}/status', [SellerOrderController::class, 'updateStatus'])->name('seller.orders.status');
     Route::get('/seller/statistics', [SellerStatisticsController::class, 'index'])->name('seller.statistics');
+    Route::get('/seller/statistics/commission-breakdown', [CommissionDocumentController::class, 'periodBreakdown'])->name('seller.statistics.commission-breakdown');
+    Route::get('/seller/statistics/commission-report', [CommissionDocumentController::class, 'periodReport'])->name('seller.statistics.commission-report');
 
     Route::get('/seller/settings', [SellerSettingsController::class, 'index'])->name('seller.settings');
     Route::post('/seller/settings/shop', [SellerSettingsController::class, 'updateShop'])->name('seller.settings.shop');

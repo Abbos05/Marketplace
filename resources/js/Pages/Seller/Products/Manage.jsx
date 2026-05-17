@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import SellerLayout from '@/Layouts/SellerLayout';
+import ArticleNumber from '@/Components/Product/ArticleNumber';
 import '../../../../css/seller/manage.css';
 
 const STATUS_LABELS = {
@@ -79,17 +80,19 @@ export default function Manage({ product, variants }) {
                             onClick={handleVisibilityToggle}
                             disabled={processing}
                         >
-                            {product.status === 'hidden' ? '👁 Показать на витрине' : '🚫 Скрыть с витрины'}
+                            {product.status === 'hidden' ? 'Показать на витрине' : '🚫 Скрыть с витрины'}
                         </button>
                     )}
-                    <a
-                        href={`/product/${product.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="manage-btn manage-btn--ghost"
-                    >
-                        На витрине ↗
-                    </a>
+                    {product.status === 'approved' && product.is_listed !== false && (
+                        <a
+                            href={`/product/${product.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="manage-btn manage-btn--ghost"
+                        >
+                            На витрине ↗
+                        </a>
+                    )}
                 </div>
             </div>
 
@@ -110,10 +113,11 @@ export default function Manage({ product, variants }) {
                     <p className="manage-meta">
                         Добавлен: <strong>{product.created_at}</strong>
                     </p>
-                    {product.status === 'rejected' && (
-                        <p className="manage-meta manage-meta--rejected">
-                            Причина отклонения указана администратором
-                        </p>
+                    {product.moderation_comment && (
+                        <div className="manage-moderation-banner" role="alert">
+                            <strong>Комментарий модератора</strong>
+                            <p>{product.moderation_comment}</p>
+                        </div>
                     )}
                     <span className={`manage-status-badge manage-status-badge--${status.cls}`}>
                         {status.label}
@@ -211,7 +215,9 @@ export default function Manage({ product, variants }) {
                                             </td>
 
                                             {/* Артикул */}
-                                            <td className="manage-sku">{v.sku}</td>
+                                            <td className="manage-sku">
+                                                <ArticleNumber sku={v.sku} />
+                                            </td>
 
                                             {/* Цена */}
                                             <td>

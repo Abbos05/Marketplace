@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import { Head, useForm, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import '../../../css/product/product_page.css';
-import '../../../css/product/NftCreate.css';
 
 export default function NftCreate({ auth, categories }) {
   const [preview, setPreview] = useState(null);

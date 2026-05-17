@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\OrderLedgerService;
 use App\Services\StripeRefundService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class SellerOrderController extends Controller
@@ -78,12 +80,10 @@ class SellerOrderController extends Controller
         $stats = [
             'total_orders'   => (clone $baseQuery)->count(),
             'pending_orders' => (clone $baseQuery)->whereIn('status', [Order::STATUS_NEW, Order::STATUS_INTRANSIT])->count(),
-            'month_revenue'  => (clone $baseQuery)
-                ->join('order_items', 'orders.id', '=', 'order_items.order_id')
-                ->where('order_items.seller_id', $user->id)
-                ->whereYear('orders.created_at', now()->year)
-                ->whereMonth('orders.created_at', now()->month)
-                ->sum(\DB::raw('order_items.price_at_purchase * order_items.quantity')),
+            'month_revenue'  => $this->sumSellerPayoutForMonth($user->id, realized: true),
+            'month_pending_revenue' => $this->sumSellerPayoutForMonth($user->id, realized: false),
+            'month_gross_revenue'  => $this->sumSellerGrossForMonth($user->id, realized: true),
+            'month_commission'  => $this->sumSellerCommissionForMonth($user->id, realized: true),
             'today_orders'   => (clone $baseQuery)->whereDate('created_at', today())->count(),
         ];
 
@@ -178,11 +178,14 @@ class SellerOrderController extends Controller
 
         if (in_array($newStatus, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true)) {
             $refund = app(StripeRefundService::class)->handleOrderCanceledOrRefused($order, 'seller_'.$newStatus);
+            app(OrderLedgerService::class)->reverseCommission($order->fresh());
             if ($refund['refunded']) {
                 $flash .= '. '.$refund['message'];
             } elseif (! $refund['ok']) {
                 return back()->with('error', $flash.'. '.$refund['message']);
             }
+        } elseif ($newStatus === Order::STATUS_ISSUED) {
+            app(OrderLedgerService::class)->finalizeCommission($order->fresh());
         }
 
         return back()->with('success', $flash);
@@ -215,7 +218,7 @@ class SellerOrderController extends Controller
         $orders = $query->latest()->get();
 
         $rows = [];
-        $rows[] = ['Номер заказа', 'Дата', 'Покупатель', 'Товар', 'Вариант', 'Кол-во', 'Цена', 'Статус заказа'];
+        $rows[] = ['Номер заказа', 'Дата', 'Покупатель', 'Товар', 'Вариант', 'Кол-во', 'Цена', 'Сумма', 'Комиссия', 'К выплате', 'Статус заказа'];
 
         foreach ($orders as $order) {
             foreach ($order->items as $item) {
@@ -232,6 +235,9 @@ class SellerOrderController extends Controller
                     $optionsStr ?: ($item->variant->sku ?? '—'),
                     $item->quantity,
                     number_format($item->price_at_purchase, 2, '.', ''),
+                    number_format($item->price_at_purchase * $item->quantity, 2, '.', ''),
+                    number_format($item->commission_amount, 2, '.', ''),
+                    number_format($item->seller_payout_amount, 2, '.', ''),
                     self::STATUS_LABELS[$order->status] ?? $order->status,
                 ];
             }
@@ -258,6 +264,10 @@ class SellerOrderController extends Controller
     {
         $sellerItems = $order->items->where('seller_id', $sellerId);
         $sellerTotal = $sellerItems->sum(fn($i) => $i->price_at_purchase * $i->quantity);
+        $sellerCommission = $sellerItems->sum(fn($i) => $i->commission_amount);
+        $sellerPayout = $sellerItems->sum(fn($i) => $i->seller_payout_amount > 0
+            ? $i->seller_payout_amount
+            : ($i->price_at_purchase * $i->quantity) - $i->commission_amount);
 
         return [
             'id'           => $order->id,
@@ -265,6 +275,8 @@ class SellerOrderController extends Controller
             'status'       => $order->status,
             'status_label' => self::STATUS_LABELS[$order->status] ?? $order->status,
             'total'        => (float) $sellerTotal,
+            'commission'   => (float) $sellerCommission,
+            'seller_payout'=> (float) $sellerPayout,
             'items_count'  => $sellerItems->count(),
             'created_at'   => $order->created_at->format('d.m.Y H:i'),
             'buyer'        => [
@@ -300,6 +312,12 @@ class SellerOrderController extends Controller
             'quantity'           => $item->quantity,
             'price_at_purchase'  => (float) $item->price_at_purchase,
             'subtotal'           => (float) ($item->price_at_purchase * $item->quantity),
+            'commission_percent' => (float) $item->commission_percent,
+            'commission_amount'  => (float) $item->commission_amount,
+            'seller_payout_amount' => (float) ($item->seller_payout_amount > 0
+                ? $item->seller_payout_amount
+                : ($item->price_at_purchase * $item->quantity) - $item->commission_amount),
+            'commission_status' => $item->commission_status,
             'variant' => [
                 'id'      => $variant?->id,
                 'sku'     => $variant?->sku,
@@ -327,5 +345,44 @@ class SellerOrderController extends Controller
             $transitions,
             fn (string $status) => $status === Order::STATUS_CANCELED,
         ));
+    }
+
+    private function sumSellerPayoutForMonth(int $sellerId, bool $realized): float
+    {
+        $query = OrderItem::query()
+            ->where('seller_id', $sellerId)
+            ->whereHas('order', fn ($q) => $q
+                ->whereYear('created_at', now()->year)
+                ->whereMonth('created_at', now()->month));
+
+        $realized ? $query->realizedRevenue() : $query->pendingRevenue();
+
+        return (float) $query->sum(DB::raw(OrderItem::payoutAmountSql()));
+    }
+
+    private function sumSellerGrossForMonth(int $sellerId, bool $realized): float
+    {
+        $query = OrderItem::query()
+            ->where('seller_id', $sellerId)
+            ->whereHas('order', fn ($q) => $q
+                ->whereYear('created_at', now()->year)
+                ->whereMonth('created_at', now()->month));
+
+        $realized ? $query->realizedRevenue() : $query->pendingRevenue();
+
+        return (float) $query->sum(DB::raw('order_items.price_at_purchase * order_items.quantity'));
+    }
+
+    private function sumSellerCommissionForMonth(int $sellerId, bool $realized): float
+    {
+        $query = OrderItem::query()
+            ->where('seller_id', $sellerId)
+            ->whereHas('order', fn ($q) => $q
+                ->whereYear('created_at', now()->year)
+                ->whereMonth('created_at', now()->month));
+
+        $realized ? $query->realizedRevenue() : $query->pendingRevenue();
+
+        return (float) $query->sum('commission_amount');
     }
 }

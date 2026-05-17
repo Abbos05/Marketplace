@@ -2,15 +2,35 @@ import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 const SCANNER_ID = 'barcode-scanner-viewport';
+const SCAN_FORMATS = [
+    Html5QrcodeSupportedFormats.QR_CODE,
+    Html5QrcodeSupportedFormats.CODE_128,
+    Html5QrcodeSupportedFormats.CODE_39,
+    Html5QrcodeSupportedFormats.CODE_93,
+    Html5QrcodeSupportedFormats.EAN_13,
+    Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.UPC_A,
+    Html5QrcodeSupportedFormats.UPC_E,
+    Html5QrcodeSupportedFormats.ITF,
+];
 
 /**
  * Модальное окно: сканирование QR / штрихкода с камеры.
  * onScan(decodedText) — один успешный результат, затем сканер останавливается.
  */
-export default function BarcodeScannerModal({ open, onClose, onScan, title = 'Сканировать код' }) {
+export default function BarcodeScannerModal({
+    open,
+    onClose,
+    onScan,
+    title = 'Сканировать код',
+    hint = 'Наведите на QR-код или штрихкод заказа / суточный код покупателя',
+}) {
     const scannerRef = useRef(null);
+    const fileInputRef = useRef(null);
     const [error, setError] = useState('');
     const [starting, setStarting] = useState(false);
+    const [photoScanning, setPhotoScanning] = useState(false);
+    const [cameraUnavailable, setCameraUnavailable] = useState(false);
     const handledRef = useRef(false);
     const onScanRef = useRef(onScan);
     onScanRef.current = onScan;
@@ -22,7 +42,15 @@ export default function BarcodeScannerModal({ open, onClose, onScan, title = 'С
 
         handledRef.current = false;
         setError('');
+        setCameraUnavailable(false);
         setStarting(true);
+
+        if (typeof window !== 'undefined' && !window.isSecureContext) {
+            setStarting(false);
+            setCameraUnavailable(true);
+            setError('Прямая камера доступна только через HTTPS. На локальном адресе можно сделать фото штрихкода и распознать его.');
+            return undefined;
+        }
 
         const html5QrCode = new Html5Qrcode(SCANNER_ID, { verbose: false });
         scannerRef.current = html5QrCode;
@@ -31,17 +59,7 @@ export default function BarcodeScannerModal({ open, onClose, onScan, title = 'С
             fps: 12,
             qrbox: { width: 280, height: 160 },
             aspectRatio: 1.5,
-            formatsToSupport: [
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39,
-                Html5QrcodeSupportedFormats.CODE_93,
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8,
-                Html5QrcodeSupportedFormats.UPC_A,
-                Html5QrcodeSupportedFormats.UPC_E,
-                Html5QrcodeSupportedFormats.ITF,
-            ],
+            formatsToSupport: SCAN_FORMATS,
         };
 
         let mounted = true;
@@ -97,6 +115,45 @@ export default function BarcodeScannerModal({ open, onClose, onScan, title = 'С
         };
     }, [open]);
 
+    const handleImageScan = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+
+        if (!file || photoScanning) {
+            return;
+        }
+
+        setPhotoScanning(true);
+        setError('');
+
+        const imageScanner = new Html5Qrcode(SCANNER_ID, {
+            verbose: false,
+            formatsToSupport: SCAN_FORMATS,
+        });
+        scannerRef.current = imageScanner;
+
+        try {
+            const decodedText = await imageScanner.scanFile(file, true);
+            const value = String(decodedText).trim();
+
+            if (value) {
+                onScanRef.current?.(value);
+            } else {
+                setError('Код на фото не найден. Попробуйте сфотографировать ближе и без бликов.');
+            }
+        } catch {
+            setError('Код на фото не найден. Попробуйте сфотографировать ближе и без бликов.');
+        } finally {
+            scannerRef.current = null;
+            try {
+                imageScanner.clear();
+            } catch {
+                /* cleanup best effort */
+            }
+            setPhotoScanning(false);
+        }
+    };
+
     if (!open) {
         return null;
     }
@@ -116,13 +173,33 @@ export default function BarcodeScannerModal({ open, onClose, onScan, title = 'С
                     </button>
                 </div>
                 <p className="barcode-scanner-modal__hint">
-                    Наведите на QR-код или штрихкод заказа / суточный код покупателя
+                    {hint}
                 </p>
                 {error ? <p className="barcode-scanner-modal__error">{error}</p> : null}
                 {starting && !error ? (
                     <p className="barcode-scanner-modal__hint">Запуск камеры…</p>
                 ) : null}
                 <div id={SCANNER_ID} className="barcode-scanner-modal__viewport" />
+                {cameraUnavailable ? (
+                    <>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="barcode-scanner-modal__file-input"
+                            onChange={handleImageScan}
+                        />
+                        <button
+                            type="button"
+                            className="barcode-scanner-modal__file-btn"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={photoScanning}
+                        >
+                            {photoScanning ? 'Распознаём фото…' : 'Сделать фото штрихкода'}
+                        </button>
+                    </>
+                ) : null}
                 <button type="button" className="adm-action-btn barcode-scanner-modal__cancel" onClick={onClose}>
                     Отмена
                 </button>

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
-import '../../../css/product/NftCreate.css'; // ← НОВЫЙ CSS
 
 export default function NftEdit({ auth, nft }) {
   const [form, setForm] = useState({

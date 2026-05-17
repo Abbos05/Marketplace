@@ -6,21 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up()
+    public function up(): void
     {
-       Schema::create('favorites', function (Blueprint $table) {
+        Schema::create('favorites', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('variant_id')
+                ->nullable()
+                ->constrained('product_variants')
+                ->cascadeOnDelete();
             $table->timestamps();
-            $table->unique(['user_id', 'product_id']);
+
+            $table->unique(['user_id', 'product_id', 'variant_id'], 'favorites_user_product_variant_unique');
         });
     }
 
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('favorites');
     }

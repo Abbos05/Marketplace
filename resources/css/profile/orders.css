@@ -2,13 +2,15 @@
     width: 100%;
     margin: 0 auto;
     overflow: hidden;
+    font-size: var(--size-m);
+    line-height: 1.45;
 }
 
 /* КОД */
 .pickup-block {
     max-width: fit-content;
     background: white;
-    padding: 40px;
+    padding: 28px;
     border-radius: 16px;
     text-align: center;
     margin: 20px auto;
@@ -22,12 +24,13 @@
 }
 
 .pickup-code {
-    font-size: var(--size-2xl);
+    font-size: var(--size-lg);
     font-weight: var(--fw-700);
+    letter-spacing: 2px;
 }
 
 .pickup-hint {
-    font-size: var(--size-m);
+    font-size: var(--size-l);
     color: #888;
 }
 
@@ -143,7 +146,7 @@ max-width: 150px;
 }
 .barcode-text {
     margin-top: 10px;
-    font-size: var(--size-lg);
+    font-size: var(--size-m);
 }
 
 /* HEADER */
@@ -222,6 +225,9 @@ max-width: 150px;
     background: #eee;
     border-radius: 8px;
     cursor: pointer;
+    font-size: var(--size-m);
+    font-family: inherit;
+    font-weight: var(--fw-600);
 }
 
 .orders-switch .active {
@@ -253,21 +259,22 @@ max-width: 150px;
 
 /* заголовок */
 .order-title {
-    font-size: var(--size-lg);
+    font-size: var(--size-base);
     font-weight: var(--fw-700);
     color: #6a5cff; /* как у ozon */
 }
 
 /* дата */
 .order-date {
-    font-size: var(--size-base);
+    font-size: var(--size-m);
     font-weight: var(--fw-600);
 }
 
 /* адрес */
 .order-address {
-    font-size: var(--size-m);
+    font-size: var(--size-l);
     color: #888;
+    line-height: 1.4;
 }
 
 /* картинка */
@@ -292,7 +299,7 @@ max-width: 150px;
 }
 
 .NoOrder__title {
-    font-size: var(--size-xl);
+    font-size: var(--size-lg);
     font-weight: var(--fw-600);
     margin-bottom: 10px;
 }
@@ -302,7 +309,7 @@ max-width: 150px;
     max-width: 420px;
     margin: 0 auto 24px;
     line-height: 1.5;
-    font-size: var(--size-15);
+    font-size: var(--size-m);
 }
 
 .NoOrder__button {
@@ -316,7 +323,7 @@ max-width: 150px;
     border-radius: 12px;
     background: #0f172a;
     color: #fff;
-    font-size: var(--size-base);
+    font-size: var(--size-m);
     font-weight: var(--fw-600);
     font-family: inherit;
     cursor: pointer;
@@ -338,4 +345,93 @@ max-width: 150px;
 .NoOrder__button:focus-visible {
     outline: 2px solid var(--background, #6a5cff);
     outline-offset: 3px;
+}
+
+@media (max-width: 768px) {
+    .pickup-block {
+        width: 100%;
+        max-width: 100%;
+        padding: 20px;
+        gap: 18px;
+    }
+
+    .order-card {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .order-main {
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .order-title {
+        font-size: var(--size-m);
+    }
+
+    .order-date,
+    .orders-switch button {
+        font-size: var(--size-l);
+    }
+
+    .order-address,
+    .pickup-hint {
+        font-size: var(--size-md);
+    }
+
+    .NoOrder {
+        padding: 32px 18px;
+    }
+
+    .NoOrder__title {
+        font-size: var(--size-base);
+    }
+
+    .NoOrder__text {
+        font-size: var(--size-l);
+    }
+}
+
+@media (max-width: 520px) {
+    .pickup-block {
+        flex-direction: column;
+        padding: 16px;
+    }
+
+    .pickup-code {
+        font-size: var(--size-base);
+        letter-spacing: 1px;
+    }
+
+    .orders-switch {
+        gap: 8px;
+    }
+
+    .orders-switch button {
+        flex: 1;
+        padding: 8px 10px;
+        font-size: var(--size-md);
+    }
+
+    .order-main {
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .order-main-right img {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+    }
+
+    .NoOrder__image {
+        width: 150px;
+    }
+
+    .NoOrder__button {
+        width: 100%;
+        min-width: 0;
+        padding: 12px 18px;
+        font-size: var(--size-m);
+    }
 }

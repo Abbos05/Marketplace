@@ -68,9 +68,9 @@ const Slider = ({ slides = [] }) => {
         {slide.title ? <h1>{slide.title}</h1> : null}
         {slide.description ? <p>{slide.description}</p> : null}
         {slide.button_text ? (
-          <a key={slide.id ?? index} href={slide.href} className="sliderTitle-cta" tabIndex={-1} aria-hidden="true">
+          <span className="sliderTitle-cta" aria-hidden="true">
             {slide.button_text}
-          </a>
+          </span>
         ) : null}
       </div>
       <img src={slide.image} alt="" className="slider-image" />
@@ -94,9 +94,9 @@ const Slider = ({ slides = [] }) => {
         );
       }
       return (
-        <div  className={`slide slide-link ${active}`}>
+        <Link key={slide.id ?? index} href={slide.href} className={`slide slide-link ${active}`}>
           {inner}
-        </div>
+        </Link>
       );
     }
     return (

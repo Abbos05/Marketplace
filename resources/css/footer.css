@@ -27,11 +27,11 @@
 }
 
 .site-footer__brand .header-logo-name .logo {
-  font-size: 56px;
+  font-size: 70px;
 }
 
 .site-footer__tagline {
-  font-size: var(--size-m);
+  font-size: var(--size-base);
   line-height: 1.5;
   color: var(--text-gray);
   margin-bottom: 16px;
@@ -85,7 +85,7 @@
 }
 
 .site-footer__link {
-  font-size: var(--size-15);
+  font-size: var(--size-base);
   font-weight: var(--fw-500);
   color: var(--text-gray);
   text-decoration: none;
@@ -141,7 +141,7 @@
   list-style: none;
   cursor: pointer;
   padding: 14px 0;
-  font-size: var(--size-m);
+  font-size: var(--size-base);
   font-weight: var(--fw-700);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -199,6 +199,9 @@
 }
 
 @media (max-width: 768px) {
+  .site-footer__link{
+    font-size: var(--size-15);
+  }
   .site-footer__desktop-only {
     display: none;
   }

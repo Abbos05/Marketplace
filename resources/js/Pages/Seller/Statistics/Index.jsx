@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Head, router } from '@inertiajs/react';
 import SellerLayout from '@/Layouts/SellerLayout';
 import '../../../../css/seller/statistics.css';
@@ -11,7 +11,6 @@ const PERIODS = [
     { value: 'all',  label: 'Всё время' },
 ];
 
-// ── Sparkline SVG ──────────────────────────────────────────────────
 function Sparkline({ values, days }) {
     const W = 600;
     const H = 70;
@@ -27,11 +26,10 @@ function Sparkline({ values, days }) {
         return [x, y];
     });
 
-    const linePath  = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-    const areaPath  = `${linePath} L${pts[pts.length-1][0].toFixed(1)},${H} L${pts[0][0].toFixed(1)},${H} Z`;
+    const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    const areaPath = `${linePath} L${pts[pts.length - 1][0].toFixed(1)},${H} L${pts[0][0].toFixed(1)},${H} Z`;
 
-    // Show every 5th label so they don't overlap
-    const labelIndices = values.map((_, i) => i).filter(i => i % 5 === 0 || i === values.length - 1);
+    const labelIndices = values.map((_, i) => i).filter((i) => i % 5 === 0 || i === values.length - 1);
 
     return (
         <div>
@@ -39,8 +37,8 @@ function Sparkline({ values, days }) {
                 <svg viewBox={`0 0 ${W} ${H}`} className="st-sparkline" preserveAspectRatio="none">
                     <defs>
                         <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%"   stopColor="var(--backgroundBlack)" stopOpacity=".4" />
-                            <stop offset="100%" stopColor="var(--backgroundBlack)" stopOpacity="0"  />
+                            <stop offset="0%" stopColor="var(--backgroundBlack)" stopOpacity=".4" />
+                            <stop offset="100%" stopColor="var(--backgroundBlack)" stopOpacity="0" />
                         </linearGradient>
                     </defs>
                     <path d={areaPath} className="st-sparkline-area" />
@@ -53,14 +51,13 @@ function Sparkline({ values, days }) {
                         <span key={i} className="st-sparkline-day">{d}</span>
                     ) : (
                         <span key={i} />
-                    )
+                    ),
                 )}
             </div>
         </div>
     );
 }
 
-// ── Bar chart ──────────────────────────────────────────────────────
 function BarChart({ values, labels, colorClass = '', suffix = ' ₽' }) {
     const [hovered, setHovered] = useState(null);
     const max = Math.max(...values, 1);
@@ -70,8 +67,8 @@ function BarChart({ values, labels, colorClass = '', suffix = ' ₽' }) {
             ? Number(v).toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽'
             : String(v);
 
-    const total  = values.reduce((a, b) => a + b, 0);
-    const avg    = values.length ? total / values.length : 0;
+    const total = values.reduce((a, b) => a + b, 0);
+    const avg = values.length ? total / values.length : 0;
     const maxVal = Math.max(...values);
 
     return (
@@ -86,13 +83,8 @@ function BarChart({ values, labels, colorClass = '', suffix = ' ₽' }) {
                             onMouseEnter={() => setHovered(i)}
                             onMouseLeave={() => setHovered(null)}
                         >
-                            {hovered === i && (
-                                <div className="st-bar-tooltip">{fmt(v)}</div>
-                            )}
-                            <div
-                                className={`st-bar ${colorClass}`}
-                                style={{ height: `${height}px` }}
-                            />
+                            {hovered === i && <div className="st-bar-tooltip">{fmt(v)}</div>}
+                            <div className={`st-bar ${colorClass}`} style={{ height: `${height}px` }} />
                             <span className="st-bar-label">{labels[i]}</span>
                         </div>
                     );
@@ -116,10 +108,9 @@ function BarChart({ values, labels, colorClass = '', suffix = ' ₽' }) {
     );
 }
 
-// ── Delta badge ────────────────────────────────────────────────────
 function Delta({ value }) {
     if (value === null || value === undefined) return null;
-    const cls  = value > 0 ? 'up' : value < 0 ? 'down' : 'neu';
+    const cls = value > 0 ? 'up' : value < 0 ? 'down' : 'neu';
     const icon = value > 0 ? '↑' : value < 0 ? '↓' : '→';
     return (
         <span className={`st-kpi-card__delta st-kpi-card__delta--${cls}`}>
@@ -128,8 +119,93 @@ function Delta({ value }) {
     );
 }
 
-// ── Main page ──────────────────────────────────────────────────────
-export default function Index({ kpi, monthly, byStatus, topProducts, daily, period, statusLabels }) {
+function CommissionModal({ open, onClose, breakdown, loading, period, fmtRub }) {
+    if (!open) return null;
+
+    const t = breakdown?.totals;
+    const labels = breakdown?.split_labels ?? {};
+
+    return (
+        <div className="st-modal-backdrop" onClick={onClose} role="presentation">
+            <div className="st-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+                <div className="st-modal__header">
+                    <h2 className="st-modal__title">Структура комиссии</h2>
+                    <button type="button" className="st-modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+                </div>
+
+                {loading && <p className="st-modal__loading">Загрузка…</p>}
+
+                {!loading && t && (
+                    <>
+                        <p className="st-modal__hint">
+                            Учитываются только выданные заказы (статус «Выдан»), по которым комиссия уже финализирована.
+                            Эквайринг и НДС выделяются из суммы комиссии, не из всего оборота.
+                        </p>
+                        <table className="st-modal__table">
+                            <tbody>
+                                <tr>
+                                    <td>Валовые продажи</td>
+                                    <td>{fmtRub(t.gross)}</td>
+                                </tr>
+                                <tr className="st-modal__row--accent">
+                                    <td>Комиссия платформы (всего)</td>
+                                    <td>{fmtRub(t.commission_total)}</td>
+                                </tr>
+                                <tr>
+                                    <td>{labels.payment_fee ?? 'Эквайринг'}</td>
+                                    <td>{fmtRub(t.payment_processing_fee)}</td>
+                                </tr>
+                                <tr>
+                                    <td>{labels.vat ?? 'НДС'}</td>
+                                    <td>{fmtRub(t.vat_amount)}</td>
+                                </tr>
+                                <tr>
+                                    <td>{labels.platform_net ?? 'Доля маркетплейса'}</td>
+                                    <td>{fmtRub(t.platform_net)}</td>
+                                </tr>
+                                <tr>
+                                    <td>Процентная часть комиссии</td>
+                                    <td>{fmtRub(t.commission_percent_amount)}</td>
+                                </tr>
+                                <tr>
+                                    <td>Фиксированная часть</td>
+                                    <td>{fmtRub(t.commission_fixed_amount)}</td>
+                                </tr>
+                                <tr className="st-modal__row--grand">
+                                    <td>К выплате вам (чистый доход)</td>
+                                    <td>{fmtRub(t.seller_payout)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div className="st-modal__actions">
+                            <a
+                                href={`${route('seller.statistics.commission-report')}?period=${encodeURIComponent(period)}`}
+                                className="st-modal__btn st-modal__btn--primary"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Скачать PDF за период
+                            </a>
+                            <button type="button" className="st-modal__btn" onClick={onClose}>
+                                Закрыть
+                            </button>
+                        </div>
+                    </>
+                )}
+
+                {!loading && !t && (
+                    <p className="st-modal__empty">Нет данных по комиссии за выбранный период.</p>
+                )}
+            </div>
+        </div>
+    );
+}
+
+export default function Index({ kpi, monthly, byStatus, topProducts, daily, period }) {
+    const [commissionOpen, setCommissionOpen] = useState(false);
+    const [commissionLoading, setCommissionLoading] = useState(false);
+    const [commissionBreakdown, setCommissionBreakdown] = useState(null);
+
     const switchPeriod = (p) => {
         router.get(route('seller.statistics'), { period: p }, { preserveState: false });
     };
@@ -137,16 +213,32 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
     const fmtRub = (v) =>
         Number(v).toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽';
 
+    const openCommissionModal = useCallback(async () => {
+        setCommissionOpen(true);
+        setCommissionLoading(true);
+        setCommissionBreakdown(null);
+        try {
+            const res = await fetch(
+                `${route('seller.statistics.commission-breakdown')}?period=${encodeURIComponent(period)}`,
+                { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } },
+            );
+            if (res.ok) {
+                setCommissionBreakdown(await res.json());
+            }
+        } finally {
+            setCommissionLoading(false);
+        }
+    }, [period]);
+
     const totalStatusOrders = useMemo(
         () => byStatus.reduce((s, r) => s + r.count, 0),
-        [byStatus]
+        [byStatus],
     );
 
     return (
         <SellerLayout title="Статистика">
             <Head title="Статистика" />
 
-            {/* Period switcher */}
             <div className="st-period-tabs">
                 {PERIODS.map((p) => (
                     <button
@@ -160,17 +252,40 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                 ))}
             </div>
 
-            {/* KPI cards */}
             <div className="st-kpi-grid">
                 <div className="st-kpi-card">
                     <div className="st-kpi-card__icon">💰</div>
-                    <div className="st-kpi-card__label">Выручка</div>
+                    <div className="st-kpi-card__label">Чистый доход (выдано)</div>
                     <div className="st-kpi-card__value">{fmtRub(kpi.revenue)}</div>
                     <Delta value={kpi.revenue_delta} />
                 </div>
+                <div className="st-kpi-card st-kpi-card--pending">
+                    <div className="st-kpi-card__icon">⏳</div>
+                    <div className="st-kpi-card__label">Ожидает выдачи</div>
+                    <div className="st-kpi-card__value">{fmtRub(kpi.pending_revenue ?? 0)}</div>
+                    <span className="st-kpi-card__hint">
+                        {kpi.pending_orders_count ?? 0} зак. · оборот {fmtRub(kpi.pending_gross_revenue ?? 0)}
+                    </span>
+                </div>
+                <div className="st-kpi-card">
+                    <div className="st-kpi-card__icon">₽</div>
+                    <div className="st-kpi-card__label">Валовые продажи (выдано)</div>
+                    <div className="st-kpi-card__value">{fmtRub(kpi.gross_revenue)}</div>
+                </div>
+                <button
+                    type="button"
+                    className="st-kpi-card st-kpi-card--clickable"
+                    onClick={openCommissionModal}
+                    title="Показать структуру комиссии"
+                >
+                    <div className="st-kpi-card__icon">%</div>
+                    <div className="st-kpi-card__label">Комиссия (выдано)</div>
+                    <div className="st-kpi-card__value">{fmtRub(kpi.commission_total)}</div>
+                    <span className="st-kpi-card__hint">Нажмите для детализации →</span>
+                </button>
                 <div className="st-kpi-card">
                     <div className="st-kpi-card__icon">🛒</div>
-                    <div className="st-kpi-card__label">Заказов</div>
+                    <div className="st-kpi-card__label">Заказов выдано</div>
                     <div className="st-kpi-card__value">{kpi.orders_count}</div>
                     <Delta value={kpi.orders_delta} />
                 </div>
@@ -186,14 +301,13 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                 </div>
             </div>
 
-            {/* Revenue + Orders charts side by side */}
             <div className="st-two-col">
                 <div className="st-chart-card">
-                    <div className="st-chart-card__title">Выручка по месяцам</div>
+                    <div className="st-chart-card__title">Чистый доход по месяцам (выдано)</div>
                     <BarChart values={monthly.revenue} labels={monthly.months} suffix=" ₽" />
                 </div>
                 <div className="st-chart-card">
-                    <div className="st-chart-card__title">Заказов по месяцам</div>
+                    <div className="st-chart-card__title">Заказов выдано по месяцам</div>
                     <BarChart
                         values={monthly.orders}
                         labels={monthly.months}
@@ -203,9 +317,7 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                 </div>
             </div>
 
-            {/* Status distribution + Top products side by side */}
             <div className="st-two-col">
-                {/* Status distribution */}
                 <div className="st-chart-card">
                     <div className="st-chart-card__title">
                         Распределение по статусам
@@ -238,9 +350,8 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                     )}
                 </div>
 
-                {/* Top products */}
                 <div className="st-chart-card">
-                    <div className="st-chart-card__title">Топ товаров по выручке</div>
+                    <div className="st-chart-card__title">Топ товаров по чистому доходу (выдано)</div>
                     {topProducts.length === 0 ? (
                         <div className="st-empty">Нет данных за выбранный период</div>
                     ) : (
@@ -249,7 +360,8 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                                 <tr>
                                     <th>#</th>
                                     <th>Товар</th>
-                                    <th>Выручка</th>
+                                    <th>Чистый доход</th>
+                                    <th>Комиссия</th>
                                     <th>Заказов</th>
                                     <th>Продано</th>
                                 </tr>
@@ -271,6 +383,7 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                                             </div>
                                         </td>
                                         <td style={{ fontWeight: 700 }}>{fmtRub(p.revenue)}</td>
+                                        <td>{fmtRub(p.commission_total)}</td>
                                         <td>{p.orders_count}</td>
                                         <td>{p.items_sold} шт.</td>
                                     </tr>
@@ -281,15 +394,23 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                 </div>
             </div>
 
-            {/* Sparkline — daily activity */}
             <div className="st-chart-card">
-                <div className="st-chart-card__title">Выручка за последние 30 дней</div>
+                <div className="st-chart-card__title">Чистый доход за 30 дней (выдано)</div>
                 {daily.revenue.every((v) => v === 0) ? (
                     <div className="st-empty">Нет продаж за последние 30 дней</div>
                 ) : (
                     <Sparkline values={daily.revenue} days={daily.days} />
                 )}
             </div>
+
+            <CommissionModal
+                open={commissionOpen}
+                onClose={() => setCommissionOpen(false)}
+                breakdown={commissionBreakdown}
+                loading={commissionLoading}
+                period={period}
+                fmtRub={fmtRub}
+            />
         </SellerLayout>
     );
 }

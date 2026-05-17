@@ -22,7 +22,6 @@ function attrScope(attr) {
 }
 
 export default function Edit({ product, leafCategory, parentCategory, initial, existingImages }) {
-    const [mainPreview, setMainPreview] = useState(null);
     const [galleryPreview, setGalleryPreview] = useState([]);
 
     const { data, setData, post, processing, errors, transform } = useForm({
@@ -42,7 +41,6 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
             newImage: null,
             newImagePreview: null,
         })),
-        main_image: null,
         images: [],
         remove_image_ids: [],
     });
@@ -60,7 +58,6 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                 ),
                 attributes_json: JSON.stringify(d.attributes ?? {}),
                 remove_image_ids_json: JSON.stringify(d.remove_image_ids ?? []),
-                main_image: d.main_image,
                 images: d.images ?? [],
             };
             d.variants.forEach((v, i) => {
@@ -84,8 +81,7 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
 
     const hasVariants = variantAttrs.length > 0;
 
-    const mainExisting = existingImages?.find((i) => i.is_main);
-    const galleryExisting = existingImages?.filter((i) => !i.is_main) ?? [];
+    const galleryExisting = existingImages ?? [];
 
     const updateAttribute = (id, value) => {
         setData('attributes', {
@@ -149,12 +145,6 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
             ? data.remove_image_ids.filter((x) => x !== imageId)
             : [...data.remove_image_ids, imageId];
         setData('remove_image_ids', next);
-    };
-
-    const setMainImage = (file) => {
-        if (!file) return;
-        setData('main_image', file);
-        setMainPreview(URL.createObjectURL(file));
     };
 
     const setGalleryImages = (files) => {
@@ -341,6 +331,13 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                 </span>
             </div>
 
+            {product.moderation_comment && (
+                <div className="seller-moderation-banner" role="alert">
+                    <strong>Комментарий модератора</strong>
+                    <p>{product.moderation_comment}</p>
+                </div>
+            )}
+
             <p className="builder-hint seller-edit-category">
                 Категория:{' '}
                 <strong>
@@ -450,10 +447,11 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                             </div>
                         )}
 
-                        {/* Фото варианта */}
-                        {hasVariants && (
-                            <div className="form-group">
-                                <label>Фото варианта</label>
+                        <div className="form-group">
+                                <label>
+                                    Фото {hasVariants ? 'варианта' : 'товара'}{' '}
+                                    <span className="required">*</span>
+                                </label>
                                 {variant.newImagePreview ? (
                                     <img src={variant.newImagePreview} className="variant-img-preview" alt="" />
                                 ) : variant.image_url ? (
@@ -472,7 +470,6 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                                     </p>
                                 )}
                             </div>
-                        )}
 
                         <div className="variant-pricing-grid">
                             <div className="form-group">
@@ -530,9 +527,9 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                     </button>
                 )}
 
-                <h2 className="builder-section-title seller-edit-mt">Фотографии</h2>
+                <h2 className="builder-section-title seller-edit-mt">Дополнительная галерея</h2>
                 <p className="builder-hint">
-                    Нажмите «Сделать главным» чтобы изменить главное фото. Отметьте «Удалить» для удаления. Новые фото добавляются к существующим.
+                    Основное фото — у каждого варианта выше. Здесь только общие дополнительные снимки для карточки.
                 </p>
 
                 {/* Существующие фото */}
@@ -543,28 +540,10 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                             return (
                                 <div
                                     key={img.id}
-                                    className={`seller-img-tile ${isRemoving ? 'seller-img-tile--drop' : ''} ${img.is_main ? 'seller-img-tile--main' : ''}`}
+                                    className={`seller-img-tile ${isRemoving ? 'seller-img-tile--drop' : ''}`}
                                 >
-                                    {img.is_main && (
-                                        <span className="seller-img-main-badge">Главное</span>
-                                    )}
                                     <img src={img.url} alt="" />
                                     <div className="seller-img-actions">
-                                        {!img.is_main && !isRemoving && (
-                                            <button
-                                                type="button"
-                                                className="seller-img-set-main"
-                                                onClick={() => {
-                                                    router.post(
-                                                        route('seller.products.image.set-main', { product: product.id, image: img.id }),
-                                                        {},
-                                                        { preserveScroll: true },
-                                                    );
-                                                }}
-                                            >
-                                                ★ Главным
-                                            </button>
-                                        )}
                                         <label className="seller-img-remove">
                                             <input
                                                 type="checkbox"
@@ -580,22 +559,6 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                     </div>
                 )}
 
-                {/* Загрузка нового главного фото */}
-                <div className="image-box">
-                    <label>Заменить главное фото</label>
-                    <div className="file-upload-zone">
-                        <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp,image/gif"
-                            onChange={(e) => setMainImage(e.target.files?.[0])}
-                        />
-                    </div>
-                    {mainPreview && (
-                        <img src={mainPreview} className="main-preview" alt="" />
-                    )}
-                </div>
-
-                {/* Загрузка доп. фото (накопительно) */}
                 <div className="image-box">
                     <label>Добавить фото в галерею</label>
                     <div className="file-upload-zone">

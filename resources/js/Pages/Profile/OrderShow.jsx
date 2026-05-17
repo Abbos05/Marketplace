@@ -8,7 +8,7 @@ import '../../../css/profile/order-show.css';
 const PAYMENT_STATUS_LABELS = {
     pending: 'Ожидает оплаты',
     paid: 'Оплачен',
-    failed: 'Ошибка оплаты',
+    failed: 'Не оплачено',
     refunded: 'Деньги возвращены на карту',
 };
 

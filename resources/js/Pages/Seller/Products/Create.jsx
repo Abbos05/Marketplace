@@ -25,7 +25,6 @@ export default function Create({ categories }) {
     const [step, setStep] = useState(1);
     const [selectedParent, setSelectedParent] = useState(null);
     const [selectedCategory, setSelectedCategory] = useState(null);
-    const [mainPreview, setMainPreview] = useState(null);
     const [galleryPreview, setGalleryPreview] = useState([]);
     const [errors, setErrors] = useState({});
     const [shake, setShake] = useState(false);
@@ -48,7 +47,6 @@ export default function Create({ categories }) {
                 imagePreview: null,
             },
         ],
-        main_image: null,
         images: [],
     });
 
@@ -65,7 +63,6 @@ export default function Create({ categories }) {
                     d.variants.map(({ image, imagePreview, ...v }) => v),
                 ),
                 attributes_json: JSON.stringify(d.attributes ?? {}),
-                main_image: d.main_image,
                 images: d.images ?? [],
             };
             // Фото вариантов — отдельные поля variant_image_0, variant_image_1, ...
@@ -149,13 +146,11 @@ export default function Create({ categories }) {
                             `Выберите «${attr.name}» для варианта ${idx + 1}`;
                     }
                 });
+                if (!variant.image) {
+                    newErrors[`variant_${idx}_image`] =
+                        `Загрузите фото ${hasVariants ? `варианта ${idx + 1}` : 'товара'}`;
+                }
             });
-        }
-
-        if (step === 4) {
-            if (!data.main_image) {
-                newErrors.main_image = 'Загрузите главное фото';
-            }
         }
 
         setErrors(newErrors);
@@ -272,17 +267,6 @@ export default function Create({ categories }) {
             };
         });
         setData('variants', variants);
-    };
-
-    const setMainImage = (file) => {
-        if (!file) return;
-        setData('main_image', file);
-        setMainPreview(URL.createObjectURL(file));
-        setErrors((prev) => {
-            const next = { ...prev };
-            delete next.main_image;
-            return next;
-        });
     };
 
     const setGalleryImages = (files) => {
@@ -681,26 +665,31 @@ export default function Create({ categories }) {
                                         );
                                     })}
 
-                                    {/* Фото варианта — только если у категории есть варианты */}
-                                    {hasVariants && (
-                                        <div className="form-group">
-                                            <label>Фото этого варианта</label>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={(e) =>
-                                                    updateVariant(index, 'image', e.target.files?.[0] ?? null)
-                                                }
+                                    <div className="form-group">
+                                        <label>
+                                            Фото {hasVariants ? 'этого варианта' : 'товара'}{' '}
+                                            <span className="required">*</span>
+                                        </label>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) =>
+                                                updateVariant(index, 'image', e.target.files?.[0] ?? null)
+                                            }
+                                        />
+                                        {errors[`variant_${index}_image`] && (
+                                            <div className="error-message">
+                                                {errors[`variant_${index}_image`]}
+                                            </div>
+                                        )}
+                                        {variant.imagePreview && (
+                                            <img
+                                                src={variant.imagePreview}
+                                                className="variant-img-preview"
+                                                alt=""
                                             />
-                                            {variant.imagePreview && (
-                                                <img
-                                                    src={variant.imagePreview}
-                                                    className="variant-img-preview"
-                                                    alt=""
-                                                />
-                                            )}
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
 
                                     <div className="variant-pricing-grid">
                                         <div className="form-group">
@@ -792,7 +781,10 @@ export default function Create({ categories }) {
                                         : 'Категория не выбрана'}
                                 </h2>
                             </div>
-                            <h2>Фото товара</h2>
+                            <h2>Дополнительные фото (необязательно)</h2>
+                            <p className="builder-hint">
+                                Основное фото задаётся у каждого варианта на предыдущем шаге. Здесь можно добавить общую галерею для карточки.
+                            </p>
 
                             {hasBannerErrors && (
                                 <div className="alert-banner alert-banner--error" role="alert">
@@ -810,23 +802,6 @@ export default function Create({ categories }) {
                                     </ul>
                                 </div>
                             )}
-
-                            <div className="image-box">
-                                <label>
-                                    Главное фото <span className="required">*</span>
-                                </label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => setMainImage(e.target.files?.[0])}
-                                />
-                                {errors.main_image && (
-                                    <div className="error-message">{errors.main_image}</div>
-                                )}
-                                {mainPreview && (
-                                    <img src={mainPreview} className="main-preview" alt="" />
-                                )}
-                            </div>
 
                             <div className="image-box">
                                 <label>Дополнительные фото (до 10 шт)</label>

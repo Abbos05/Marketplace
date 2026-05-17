@@ -4,24 +4,32 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Http\Controllers\Concerns\RedirectsArticleSearch;
 use App\Services\CatalogFilterService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class CategoryController extends Controller
 {
+    use RedirectsArticleSearch;
+
     public function __construct(
         private CatalogFilterService $catalogFilters,
     ) {}
 
     public function show($id, Request $request)
     {
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '' && ($redirect = $this->redirectIfArticleSearch($search))) {
+            return $redirect;
+        }
+
         $category = Category::query()
             ->where('is_active', true)
             ->with(['parent' => fn ($q) => $q->select('id', 'name', 'parent_id')])
             ->findOrFail((int) $id);
 
-        $listed = fn ($productQuery) => $productQuery->where('is_on_action', 1);
+        $listed = fn ($productQuery) => $productQuery->visibleInCatalog();
 
         $activeChildren = $category->children()
             ->where('is_active', true)
@@ -55,19 +63,22 @@ class CategoryController extends Controller
             $facets = ['price' => ['min' => null, 'max' => null], 'categories' => [], 'attributes' => []];
             $total = 0;
             $LikeProducts = Product::forCatalogPresentation()
-                ->where('is_on_action', 1)
+                ->visibleInCatalog()
                 ->whereNotIn('category_id', $activeChildren->pluck('id')->merge([$category->id]))
                 ->limit(20)
                 ->get();
         } else {
             $baseFactory = fn () => Product::forCatalogPresentation()
                 ->where('products.category_id', $category->id)
-                ->where('products.is_on_action', 1);
+                ->visibleInCatalog();
 
             $result = $this->catalogFilters->process($request, $baseFactory, [
                 'fixed_category_id' => (int) $category->id,
                 'allow_category_facet' => false,
                 'search_fields' => ['title', 'short_description'],
+                'limit' => $request->filled('search')
+                    ? (int) config('marketplace.catalog_search_limit', 10)
+                    : null,
             ]);
 
             $products = $result['products'];
@@ -76,7 +87,7 @@ class CategoryController extends Controller
             $total = $result['total'];
 
             $LikeProducts = Product::forCatalogPresentation()
-                ->where('is_on_action', 1)
+                ->visibleInCatalog()
                 ->where('category_id', '!=', $category->id)
                 ->limit(20)
                 ->get();

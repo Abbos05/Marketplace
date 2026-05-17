@@ -379,6 +379,11 @@ export default function AdminDashboard({
                 <div className="adm-flash" onClick={() => setMessage(null)}>{message}</div>
             )}
 
+            <div className="adm-mobile-unavailable">
+                <h2>{panelTitle} доступна с компьютера</h2>
+                <p>Для управления пользователями, заказами и отчётами нужен широкий экран. Откройте панель на ноутбуке или ПК.</p>
+            </div>
+
             <div className="adm-layout">
                 {/* Sidebar */}
                 <aside className="adm-sidebar">
@@ -441,7 +446,13 @@ export default function AdminDashboard({
                                     <div className="adm-stat-value">
                                         {Number(stats.revenue_total).toLocaleString('ru-RU')} ₽
                                     </div>
-                                    <div className="adm-stat-label">Выручка</div>
+                                    <div className="adm-stat-label">Оборот заказов</div>
+                                </div>
+                                <div className="adm-stat-card adm-stat-money">
+                                    <div className="adm-stat-value">
+                                        {Number(stats.platform_commission_total || 0).toLocaleString('ru-RU')} ₽
+                                    </div>
+                                    <div className="adm-stat-label">Комиссия платформы</div>
                                 </div>
                                 {stats.pending_approvals > 0 && (
                                     <div className="adm-stat-card adm-stat-warn" onClick={() => setActiveSection('pending')} style={{ cursor: 'pointer' }}>
@@ -973,6 +984,13 @@ export default function AdminDashboard({
                                                                 title="Скачать чек заказа"
                                                             >
                                                                 🧾 Чек
+                                                            </a>
+                                                            <a
+                                                                href={route('admin.reports.commission', o.id)}
+                                                                className="adm-action-btn adm-btn-view"
+                                                                title="Отчёт по комиссии и выплатам"
+                                                            >
+                                                                % Комиссия
                                                             </a>
                                                             {o.payment_status === 'paid' && (
                                                                 <a href={`/order/${o.id}/document/payment`} className="adm-action-btn adm-btn-view" title="Документ об оплате">💳 Оплата</a>

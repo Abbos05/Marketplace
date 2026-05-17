@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\User;
+use App\Http\Controllers\Concerns\RedirectsArticleSearch;
 use App\Services\CatalogFilterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,21 +12,31 @@ use Inertia\Inertia;
 
 class SellerController extends Controller
 {
+    use RedirectsArticleSearch;
+
     public function __construct(
         private CatalogFilterService $catalogFilters,
     ) {}
 
     public function index($id, Request $request)
     {
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '' && ($redirect = $this->redirectIfArticleSearch($search))) {
+            return $redirect;
+        }
+
         $sellerId = (int) $id;
 
         $baseFactory = fn () => Product::forCatalogPresentation()
             ->where('products.seller_id', $sellerId)
-            ->where('products.is_on_action', 1);
+            ->visibleInCatalog();
 
         $result = $this->catalogFilters->process($request, $baseFactory, [
             'allow_category_facet' => true,
             'search_fields' => ['title', 'short_description'],
+            'limit' => $request->filled('search')
+                ? (int) config('marketplace.catalog_search_limit', 10)
+                : null,
         ]);
 
         $products = $result['products'];

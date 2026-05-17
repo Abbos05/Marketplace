@@ -406,7 +406,7 @@ export default function Index({ user, sellerProfile }) {
     }, [flash.tab]);
 
     return (
-        <SellerLayout title="Настройки">
+        <SellerLayout title="Настройки" sellerProfile={sellerProfile}>
             <Head title="Настройки" />
 
             {flash.success && <div className="set-flash set-flash--success">{flash.success}</div>}

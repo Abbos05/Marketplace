@@ -15,8 +15,15 @@
 
 .products__grid > .scroll-reveal,
 .shop-products__grid > .scroll-reveal {
+  width: 100%;
   max-width: 270px;
-  flex: 0 0 auto;
+}
+
+@media (max-width: 1024px) {
+  .products__grid > .scroll-reveal,
+  .shop-products__grid > .scroll-reveal {
+    max-width: none;
+  }
 }
 
 /* Scroll reveal вместо анимации при загрузке всей сетки */

@@ -23,6 +23,9 @@ class Transaction extends Model
         'seller_id',
         'product_id',
         'amount',
+        'gross_amount',
+        'commission_amount',
+        'seller_payout_amount',
         'type',
         'status',
         'description',
@@ -30,6 +33,9 @@ class Transaction extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'gross_amount' => 'decimal:2',
+        'commission_amount' => 'decimal:2',
+        'seller_payout_amount' => 'decimal:2',
     ];
 
     public function order()

@@ -51,7 +51,7 @@ class Category extends Model
      */
     public static function rootsForCatalogNav(): Collection
     {
-        $hasListed = fn (Builder $productQuery) => $productQuery->where('is_on_action', 1);
+        $hasListed = fn (Builder $productQuery) => $productQuery->visibleInCatalog();
 
         return self::query()
             ->whereNull('parent_id')

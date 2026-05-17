@@ -166,7 +166,7 @@ class StripePaymentController extends Controller
                 }
             }
             
-            return redirect()->route('profile.orders')->with('error', 'Ошибка оплаты');
+            return redirect()->route('profile.orders')->with('error', 'Не оплачено');
             
         } catch (\Exception $e) {
             \Log::error('Stripe success error: ' . $e->getMessage());

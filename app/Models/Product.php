@@ -54,6 +54,107 @@ class Product extends Model
         return $this->hasMany(ProductImage::class, 'product_id');
     }
 
+    /** Товар виден в каталоге, поиске и на главной. */
+    public function scopeVisibleInCatalog(Builder $query): Builder
+    {
+        return $query
+            ->where('status', 'approved')
+            ->where('is_on_action', true);
+    }
+
+    public function isPubliclyVisible(): bool
+    {
+        return $this->status === 'approved' && (bool) $this->is_on_action;
+    }
+
+    public function canBeViewedBy(?User $user): bool
+    {
+        if ($this->isPubliclyVisible()) {
+            return true;
+        }
+
+        if ($user === null) {
+            return false;
+        }
+
+        if ((int) $this->seller_id === (int) $user->id) {
+            return true;
+        }
+
+        return $user->isStaff();
+    }
+
+    /** Причина блокировки витрины: moderation, hidden, rejected и т.д. */
+    public function storefrontBlockReason(): ?string
+    {
+        if ($this->isPubliclyVisible()) {
+            return null;
+        }
+
+        if ($this->status === 'approved' && ! $this->is_on_action) {
+            return 'hidden';
+        }
+
+        return $this->status;
+    }
+
+    public function storefrontBlockMessage(): string
+    {
+        return match ($this->storefrontBlockReason()) {
+            'moderation' => 'Товар на модерации и пока недоступен для покупки.',
+            'hidden' => 'Товар скрыт с витрины и недоступен для покупки.',
+            'rejected' => 'Товар отклонён модерацией и недоступен для покупки.',
+            'archived' => 'Товар снят с продажи.',
+            'draft' => 'Товар ещё не опубликован.',
+            default => 'Товар недоступен для покупки.',
+        };
+    }
+
+    public function isPurchasable(): bool
+    {
+        return $this->isPubliclyVisible();
+    }
+
+    /**
+     * URL для карточки витрины: фото активного варианта (дешевле), иначе галерея товара.
+     */
+    public function resolveListingImageUrl(): ?string
+    {
+        $variant = $this->variants()
+            ->where('is_active', true)
+            ->with(['images' => fn ($q) => $q->orderByDesc('is_main')->orderBy('sort_order')])
+            ->orderBy('price')
+            ->first();
+
+        $variantUrl = $variant?->images->first()?->url;
+        if ($variantUrl) {
+            return self::normalizeListingUrl($variantUrl);
+        }
+
+        $gallery = $this->relationLoaded('images')
+            ? $this->images->whereNull('variant_id')
+            : $this->images()->whereNull('variant_id')->orderBy('sort_order')->get();
+
+        $productUrl = $gallery->first()?->url;
+
+        return $productUrl ? self::normalizeListingUrl($productUrl) : null;
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Product $product) {
+            if (! $product->isDirty('status')) {
+                return;
+            }
+
+            if ($product->status === 'approved') {
+                $product->is_on_action = true;
+            } elseif (in_array($product->status, ['hidden', 'rejected', 'archived', 'draft', 'moderation'], true)) {
+                $product->is_on_action = false;
+            }
+        });
+    }
+
     public function attributeValues()
     {
         return $this->hasMany(ProductAttributeValue::class, 'product_id');
@@ -127,6 +228,7 @@ class Product extends Model
         $cheapestByProduct = ProductVariant::query()
             ->whereIn('product_id', $ids)
             ->where('is_active', true)
+            ->with(['images' => fn ($q) => $q->orderByDesc('is_main')->orderBy('sort_order')])
             ->orderBy('product_id')
             ->orderBy('price')
             ->get()
@@ -149,17 +251,11 @@ class Product extends Model
 
             $product->setAttribute('stock_total', (int) ($stockByProduct[$product->id] ?? 0));
 
-            $mainImage = $product->relationLoaded('images')
-                ? ($product->images->firstWhere('is_main', true) ?? $product->images->first())
+            $variantUrl = $variant?->images->first()?->url;
+            $galleryUrl = $product->relationLoaded('images')
+                ? $product->images->whereNull('variant_id')->first()?->url
                 : null;
-            $url = $mainImage?->url;
-            if ($url !== null && $url !== '') {
-                if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://') && ! str_starts_with($url, '/')) {
-                    $url = '/'.ltrim($url, '/');
-                }
-            } else {
-                $url = null;
-            }
+            $url = self::normalizeListingUrl($variantUrl ?? $galleryUrl);
             $product->setAttribute('image', $url);
 
             $seller = $product->seller ?? $product->user;

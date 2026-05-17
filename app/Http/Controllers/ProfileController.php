@@ -32,7 +32,7 @@ class ProfileController extends Controller
 
         // Рекомендации
         $LikeProducts = Product::with('user', 'category')
-            ->where('is_on_action', 1)
+            ->visibleInCatalog()
             ->limit(20)
             ->get();
         Product::enrichForCatalog($LikeProducts);

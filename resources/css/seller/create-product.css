@@ -557,7 +557,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
-    margin-bottom: 24px;
+    margin: 24px 0;
 }
 
 .seller-img-tile {
@@ -697,6 +697,17 @@
 }
 
 /* Responsive */
+.seller-moderation-banner {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 12px;
+    color: #9a3412;
+}
+.seller-moderation-banner strong { display: block; margin-bottom: 6px; }
+.seller-moderation-banner p { margin: 0; line-height: 1.5; font-size: var(--size-m); }
+
 @media (max-width: 768px) {
     .builder-layout {
         flex-direction: column;

@@ -10,10 +10,10 @@ use Illuminate\Support\Facades\Hash;
  * Демо-аккаунты (пароль = часть email до @).
  *
  * admin@gmail.com / admin          — главный админ (id 1, из миграции)
- * admin2@demo.local / admin2
- * mod1@demo.local / mod1 … mod3@demo.local / mod3
- * seller1@demo.local / seller1, seller2@demo.local / seller2
- * buyer1@demo.local / buyer1, buyer2@demo.local / buyer2
+ * admin2@gmail.com / admin2
+ * mod1@gmail.com / mod1 … mod3@gmail.com / mod3
+ * seller1@gmail.com / seller1, seller2@gmail.com / seller2
+ * buyer1@gmail.com / buyer1, buyer2@gmail.com / buyer2
  */
 class DemoUsersSeeder extends Seeder
 {
@@ -24,7 +24,7 @@ class DemoUsersSeeder extends Seeder
         $rows = [
             [
                 'id' => 2,
-                'email' => 'admin2@demo.local',
+                'email' => 'admin2@gmail.com',
                 'password' => Hash::make('admin2'),
                 'name' => 'Админ',
                 'last_name' => 'Запасной',
@@ -33,7 +33,7 @@ class DemoUsersSeeder extends Seeder
             ],
             [
                 'id' => 3,
-                'email' => 'mod1@demo.local',
+                'email' => 'mod1@gmail.com',
                 'password' => Hash::make('mod1'),
                 'name' => 'Анна',
                 'last_name' => 'Модерова',
@@ -42,7 +42,7 @@ class DemoUsersSeeder extends Seeder
             ],
             [
                 'id' => 4,
-                'email' => 'mod2@demo.local',
+                'email' => 'mod2@gmail.com',
                 'password' => Hash::make('mod2'),
                 'name' => 'Игорь',
                 'last_name' => 'Контролев',
@@ -51,7 +51,7 @@ class DemoUsersSeeder extends Seeder
             ],
             [
                 'id' => 5,
-                'email' => 'mod3@demo.local',
+                'email' => 'mod3@gmail.com',
                 'password' => Hash::make('mod3'),
                 'name' => 'Елена',
                 'last_name' => 'Проверова',
@@ -60,7 +60,7 @@ class DemoUsersSeeder extends Seeder
             ],
             [
                 'id' => 6,
-                'email' => 'seller1@demo.local',
+                'email' => 'seller1@gmail.com',
                 'password' => Hash::make('seller1'),
                 'name' => 'Михаил',
                 'last_name' => 'Торговцев',
@@ -69,7 +69,7 @@ class DemoUsersSeeder extends Seeder
             ],
             [
                 'id' => 7,
-                'email' => 'seller2@demo.local',
+                'email' => 'seller2@gmail.com',
                 'password' => Hash::make('seller2'),
                 'name' => 'Ольга',
                 'last_name' => 'Маркетова',
@@ -78,7 +78,7 @@ class DemoUsersSeeder extends Seeder
             ],
             [
                 'id' => 8,
-                'email' => 'buyer1@demo.local',
+                'email' => 'buyer1@gmail.com',
                 'password' => Hash::make('buyer1'),
                 'name' => 'Дмитрий',
                 'last_name' => 'Покупателев',
@@ -87,7 +87,7 @@ class DemoUsersSeeder extends Seeder
             ],
             [
                 'id' => 9,
-                'email' => 'buyer2@demo.local',
+                'email' => 'buyer2@gmail.com',
                 'password' => Hash::make('buyer2'),
                 'name' => 'Светлана',
                 'last_name' => 'Заказова',

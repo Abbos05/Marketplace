@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class CatalogFilterService
 {
+    public function __construct(
+        private readonly ArticleNumberService $articles,
+        private readonly CatalogTextSearchService $textSearch,
+    ) {}
     public const SORT_NEW = 'new';
 
     public const SORT_CHEAP = 'cheap';
@@ -113,8 +117,10 @@ class CatalogFilterService
             $categoryId = (int) $request->query('category_id');
         }
 
+        $search = trim((string) $request->query('search', ''));
+
         return [
-            'search' => $request->query('search') ?: null,
+            'search' => $search !== '' ? $search : null,
             'sort' => $this->normalizeSort($request->query('sort')),
             'price_from' => $request->query('price_from'),
             'price_to' => $request->query('price_to'),
@@ -189,7 +195,7 @@ class CatalogFilterService
             $this->applyAttributeFilter($query, (int) $attrId, $filter);
         }
 
-        $this->applySort($query, $parsed['sort']);
+        $this->applySort($query, $parsed['sort'], $parsed['search'] ?? null);
     }
 
     /**
@@ -218,8 +224,12 @@ class CatalogFilterService
         return [$skip, $exceptAttrId];
     }
 
-    public function applySort(Builder $query, string $sort): void
+    public function applySort(Builder $query, string $sort, ?string $search = null): void
     {
+        if ($search && ! $this->articles->isStrictArticleQuery($search)) {
+            $this->textSearch->applyRelevanceOrder($query, $search, ['title', 'short_description']);
+        }
+
         match ($sort) {
             self::SORT_CHEAP => $query->orderBy('products.min_price'),
             self::SORT_EXPENSIVE => $query->orderByDesc('products.min_price'),
@@ -233,12 +243,14 @@ class CatalogFilterService
      */
     protected function applySearch(Builder $query, string $search, array $fields): void
     {
-        $term = '%'.$search.'%';
-        $query->where(function (Builder $q) use ($fields, $term) {
-            foreach ($fields as $field) {
-                $q->orWhere('products.'.$field, 'like', $term);
-            }
-        });
+        if ($this->articles->isStrictArticleQuery($search)) {
+            $sku = trim($search);
+            $query->whereHas('variants', fn (Builder $vq) => $vq->where('sku', $sku));
+
+            return;
+        }
+
+        $this->textSearch->apply($query, $search, $fields);
     }
 
     /**

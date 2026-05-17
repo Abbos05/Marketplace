@@ -154,6 +154,13 @@ export default function Index({ products, statusCounts = {}, filters = {} }) {
                                     {stockWarn && (
                                         <div className="idx-card-alert">⚠ Товар закончился</div>
                                     )}
+
+                                    {product.moderation_comment && (
+                                        <div className="idx-card-moderation">
+                                            <strong>Комментарий модератора:</strong>
+                                            <span>{product.moderation_comment}</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Actions */}

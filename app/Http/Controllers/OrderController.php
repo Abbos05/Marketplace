@@ -11,6 +11,7 @@ use App\Models\PromocodeUsage;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Transaction;
+use App\Services\CommissionService;
 use App\Services\OrderLedgerService;
 use App\Services\StripeRefundService;
 use Carbon\Carbon;
@@ -109,6 +110,7 @@ class OrderController extends Controller
 
         $total = 0;
         $orderItemsData = [];
+        $commissionService = app(CommissionService::class);
 
         foreach ($items as $item) {
             $cartItem = null;
@@ -155,6 +157,15 @@ class OrderController extends Controller
                 return back()->with('error', 'Товар недоступен для заказа.');
             }
 
+            if (! $variant->product?->isPurchasable()) {
+                DB::rollBack();
+
+                return back()->with(
+                    'error',
+                    $variant->product?->storefrontBlockMessage() ?? 'Товар недоступен для заказа.'
+                );
+            }
+
             if ($variant->stock < $quantity) {
                 DB::rollBack();
 
@@ -164,6 +175,7 @@ class OrderController extends Controller
             $price = (float) $variant->price;
             $variantId = $variant->id;
             $sellerId = $variant->product->seller_id;
+            $commission = $commissionService->calculateForProduct($variant->product, $price, $quantity);
 
             $total += $price * $quantity;
 
@@ -179,7 +191,11 @@ class OrderController extends Controller
                 'seller_id' => $sellerId,
                 'quantity' => $quantity,
                 'price_at_purchase' => $price,
-                'commission_percent' => 0,
+                'commission_percent' => $commission['percent'],
+                'commission_fixed_amount' => $commission['fixed_amount'],
+                'commission_amount' => $commission['commission'],
+                'seller_payout_amount' => $commission['seller_payout'],
+                'commission_status' => 'pending',
             ]);
 
             $variant->decrement('stock', $quantity);
@@ -465,6 +481,7 @@ class OrderController extends Controller
             }
 
             $order->update(['status' => Order::STATUS_CANCELED]);
+            app(OrderLedgerService::class)->reverseCommission($order->fresh());
 
             $refund = app(StripeRefundService::class)->handleOrderCanceledOrRefused($order, 'buyer_cancel');
 

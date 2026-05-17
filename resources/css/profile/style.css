@@ -919,7 +919,7 @@
     border-radius: 20px;
     border: 1px solid var(--border);
     position: sticky;
-top: 0px;
+top: 100px;
 overflow: hidden;
 }
 
@@ -1502,6 +1502,10 @@ overflow: hidden;
 /* Страница компаний */
 .company-page {
     margin: 0 auto;
+}
+
+.company-mobile-unavailable {
+    display: none;
 }
 
 /* Пустое состояние */
@@ -2870,7 +2874,7 @@ overflow: hidden;
     border-radius: 20px;
     border: 1.5px solid var(--border, #e2e8f0);
     background: rgba(255,255,255,0.85);
-    font-size: var(--size-l);
+    font-size: var(--size-15);
     cursor: pointer;
     transition: all .2s;
     color: inherit;
@@ -2953,6 +2957,10 @@ overflow: hidden;
     gap: 16px;
 }
 
+.admin-mobile-unavailable {
+    display: none;
+}
+
 /* Search bar */
 .admin-search-bar {
     display: flex;
@@ -2973,7 +2981,7 @@ overflow: hidden;
     border-color: var(--backgroundBlack);
 }
 .admin-users-count {
-    font-size: var(--size-l);
+    font-size: var(--size-base);
     color: #64748b;
     white-space: nowrap;
 }
@@ -3141,5 +3149,448 @@ overflow: hidden;
         flex-wrap: wrap;
         width: 100%;
         margin-top: 8px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROFILE RESPONSIVE LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+    .profile-page {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .profile-sidebar,
+    .profile-content {
+        width: 100%;
+    }
+
+    .profile-sidebar {
+        position: static;
+        border-radius: 18px;
+    }
+
+    .profile-user {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        text-align: left;
+        padding: 16px;
+    }
+
+    .profile-user .avatar {
+        width: 64px;
+        height: 64px;
+        flex-shrink: 0;
+    }
+
+    .profile-user .name {
+        margin-top: 0;
+        min-width: 0;
+    }
+
+    .profile-menu {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 8px;
+        padding: 10px;
+        overflow: visible;
+    }
+
+    .profile-menu div,
+    .profile-menu-admin,
+    .profile-menu-logout {
+        flex: none;
+        padding: 10px 14px;
+        border-radius: 12px;
+        white-space: normal;
+        text-align: center;
+        border-top: 0;
+        font-size: var(--size-m);
+    }
+
+    .Profile__recommendated .products__grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    .verify-banner {
+        margin-bottom: 18px;
+    }
+
+    .verify-banner-content {
+        gap: 18px;
+        padding: 24px;
+    }
+
+    .company-benefits {
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .company-page > :not(.company-mobile-unavailable) {
+        display: none;
+    }
+
+    .company-mobile-unavailable {
+        display: block;
+        padding: 24px 18px;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        text-align: center;
+    }
+
+    .company-mobile-unavailable h3 {
+        margin: 0 0 8px;
+        color: #1e293b;
+        font-size: var(--size-18);
+        font-weight: var(--fw-700);
+    }
+
+    .company-mobile-unavailable p {
+        margin: 0;
+        color: #64748b;
+        font-size: var(--size-m);
+        line-height: 1.45;
+    }
+
+    .benefit,
+    .benefit-item {
+        min-width: 180px;
+    }
+}
+
+@media (max-width: 768px) {
+    .profile-page {
+        gap: 12px;
+    }
+
+    .profile__title {
+        font-size: var(--size-xl);
+        line-height: 1.2;
+    }
+
+    .profile-sidebar {
+        border-radius: 16px;
+    }
+
+    .profile-menu {
+        padding: 8px;
+        gap: 6px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .profile-menu div,
+    .profile-menu-admin,
+    .profile-menu-logout {
+        padding: 9px 12px;
+        font-size: var(--size-l);
+    }
+
+    .Profile__recommendated .products__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+    }
+
+    .orders-list.products {
+        margin-top: 0;
+    }
+
+    .orders-list .order-card {
+        align-items: flex-start;
+        gap: 14px;
+        padding: 14px;
+    }
+
+    .order-info {
+        min-width: 0;
+        gap: 12px;
+    }
+
+    .order-image {
+        width: 66px;
+        height: 66px;
+        flex-shrink: 0;
+    }
+
+    .order-details {
+        min-width: 0;
+    }
+
+    .order-details h3 {
+        font-size: var(--size-base);
+        line-height: 1.25;
+    }
+
+    .qr-code-box {
+        max-width: 150px;
+        overflow: hidden;
+    }
+
+    .company-form-container,
+    .company-card,
+    .company-empty-state,
+    .settings-card {
+        border-radius: 16px;
+    }
+
+    .company-form-container,
+    .company-card-body,
+    .company-empty-state {
+        padding: 20px;
+    }
+
+    .company-card-header {
+        padding: 20px;
+        gap: 16px;
+    }
+
+    .info-row {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .info-label {
+        width: auto;
+        font-size: var(--size-l);
+    }
+
+    .settings-card-header {
+        padding: 14px;
+    }
+
+    .settings-card-body {
+        padding: 16px;
+    }
+
+    .admin-search-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-users-count {
+        white-space: normal;
+    }
+}
+
+@media (max-width: 560px) {
+    .profile-user {
+        padding: 12px;
+    }
+
+    .profile-user .avatar {
+        width: 54px;
+        height: 54px;
+    }
+
+    .profile-menu {
+        scroll-snap-type: none;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .profile-menu div,
+    .profile-menu-admin,
+    .profile-menu-logout {
+        scroll-snap-align: none;
+        padding: 8px 11px;
+    }
+
+    .verify-banner-content {
+        padding: 18px;
+        gap: 14px;
+    }
+
+    .verify-banner-text h2 {
+        font-size: var(--size-xl);
+    }
+
+    .verify-banner-text p,
+    .verify-banner-text ul li {
+        font-size: var(--size-m);
+    }
+
+    .verify-green-btn {
+        width: 100%;
+    }
+
+    .Profile__recommendated .products__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .orders-list .order-card {
+        flex-direction: column;
+    }
+
+    .order-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .qr-code-box {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        padding: 8px;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+
+    .all-orders-btn,
+    .shop-now-btn,
+    .add-company-btn,
+    .dashboard-link {
+        width: 100%;
+        text-align: center;
+    }
+
+    .empty-orders,
+    .empty-favorite,
+    .company-empty-state {
+        padding: 28px 16px;
+    }
+
+    .empty-state-icon {
+        font-size: var(--size-3xl);
+    }
+
+    .form-header,
+    .company-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .cancel-btn,
+    .submit-btn {
+        width: 100%;
+    }
+
+    .company-logo .logo-placeholder {
+        width: 64px;
+        height: 64px;
+        font-size: var(--size-2xl);
+    }
+
+    .company-title h2,
+    .company-empty-state h2 {
+        font-size: var(--size-18);
+    }
+
+    .settings-card-header {
+        align-items: flex-start;
+    }
+
+    .settings-card-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+    }
+
+    .settings-card-value {
+        display: block;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    .settings-edit-btn,
+    .settings-cancel-btn,
+    .settings-danger-btn,
+    .settings-save-btn,
+    .settings-avatar-upload-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .settings-card-actions,
+    .settings-account-actions {
+        flex-direction: column;
+    }
+
+    .settings-session-meta {
+        gap: 4px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .admin-section-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-goto-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .admin-section-header .admin-goto-btn,
+    .admin-filter-tabs,
+    .admin-search-bar,
+    .admin-users-list {
+        display: none;
+    }
+
+    .admin-mobile-unavailable {
+        display: block;
+        padding: 24px 18px;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        text-align: center;
+    }
+
+    .admin-mobile-unavailable h3 {
+        margin: 0 0 8px;
+        color: #1e293b;
+        font-size: var(--size-18);
+        font-weight: var(--fw-700);
+    }
+
+    .admin-mobile-unavailable p {
+        margin: 0;
+        color: #64748b;
+        font-size: var(--size-m);
+        line-height: 1.45;
+    }
+
+    .admin-user-card {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .admin-user-contacts {
+        flex-direction: column;
+        gap: 2px;
+    }
+}
+
+@media (max-width: 390px) {
+    .profile__title {
+        font-size: var(--size-18);
+    }
+
+    .profile-user .avatar {
+        width: 48px;
+        height: 48px;
+    }
+
+    .Profile__recommendated .products__grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .order-info {
+        flex-direction: column;
+    }
+
+    .order-image {
+        width: 100%;
+        height: 140px;
+    }
+
+    .settings-card-meta {
+        gap: 10px;
     }
 }

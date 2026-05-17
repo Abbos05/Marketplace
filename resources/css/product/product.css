@@ -8,22 +8,24 @@
 }
 
 .products__grid {
-  max-width: max-content;
+  width: 100%;
+  max-width: 100%;
   border: 1px solid #808d9a7b;
   padding: 20px;
   min-height: 300px;
   border-radius: 21px;
   background: white;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 270px));
   align-items: stretch;
-  flex-wrap: wrap;
-  justify-content: start;
-  column-gap: 11px;
+  justify-content: space-between;
+  column-gap: 12px;
   row-gap: 20px;
 }
 
 .products__card {
   transition: 0.3s all;
+  width: 100%;
   max-width: 270px;
   overflow: hidden;
   border-radius: 18px;
@@ -31,6 +33,7 @@
   display: flex;
   flex-direction: column;
   justify-self: stretch;
+  height: 100%;
 }
 
 .products__card:hover {
@@ -43,10 +46,12 @@
 
 .products__image-wrapper {
   border-radius: 19px;
-  width: 270px;
-  height: 350px;
+  width: 100%;
+  aspect-ratio: 270 / 350;
+  height: auto;
   overflow: hidden;
   position: relative;
+  background: #f5f7fa;
 }
 
 .products__image-wrapper .products__image-float {
@@ -141,7 +146,7 @@
 
 .products__info {
   margin-top: 10px;
-  margin-left: 7px;
+  padding: 0 7px;
   max-width: 100%;
   overflow: hidden;
   font-size: 14px !important;
@@ -159,7 +164,7 @@
   display: flex;
   align-items: center;
   justify-content: start;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 4px;
 
 }
@@ -294,16 +299,144 @@
   opacity: 0.8;
 }
 
-/* Адаптивность */
-@media (max-width: 768px) {
-  .products__card {
-    width: calc(50% - 15px);
-    /* 2 карточки в ряд */
-    height: auto;
-    margin-right: 15px;
+/* Адаптивность карточек товара */
+@media (max-width: 1024px) {
+  .products__grid {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 18px 12px;
+    padding: 16px;
   }
 
+  .products__card {
+    max-width: none;
+  }
+}
 
+@media (max-width: 640px) {
+  .products {
+    margin-top: 0px;
+  }
+
+  .products__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 10px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .products__card {
+    border-radius: 14px;
+    padding-bottom: 8px;
+  }
+
+  .products__image-wrapper {
+    border-radius: 14px;
+  }
+
+  .products__image-wrapper svg {
+    width: 22px;
+    height: 22px;
+    top: 8px;
+    right: 8px;
+  }
+
+  .product__img-stock {
+    bottom: 8px;
+    left: 8px;
+    gap: 5px;
+  }
+
+  .product__stock__item {
+    font-size: var(--size-s);
+    padding: 3px 7px;
+  }
+
+  .products__info {
+    margin-top: 8px;
+    padding: 0 3px;
+    gap: 4px;
+  }
+
+  .products__prices .products__current-price {
+    font-size: var(--size-18);
+    line-height: 1.15;
+  }
+
+  .products__prices .products__old-price {
+    font-size: var(--size-m);
+  }
+
+  .products__seller .products__shop-name {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--size-md);
+  }
+
+  .products__title-text {
+    font-size: var(--size-m);
+    line-height: 1.25;
+    padding-right: 0;
+  }
+
+  .products__rating {
+    gap: 7px;
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .products__rating>div {
+    gap: 4px;
+    font-size: var(--size-md);
+    min-width: 0;
+  }
+
+  .products__rating img {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .products__reviews span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .products__btn button {
+    min-height: 38px;
+    padding: 8px 6px;
+    border-radius: 9px;
+    font-size: var(--size-md);
+    gap: 5px;
+  }
+
+  .products__btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 360px) {
+  .products__grid {
+    gap: 14px 8px;
+    padding: 8px;
+  }
+
+  .products__prices .products__current-price {
+    font-size: var(--size-base);
+  }
+
+  .products__title-text {
+    font-size: var(--size-md);
+  }
+
+  .products__rating {
+    gap: 5px;
+  }
 }
 
 /* // TopNFT */
@@ -589,7 +722,7 @@
   max-width: 100%;
   width: max-content;
   padding: 10px 40px;
-  display:block;
+  display: block;
   margin: 0 auto;
   border-radius: 10px;
   font-family: var(--font-family);
@@ -679,6 +812,3 @@
     grid-template-columns: repeat(4, 1fr);
   }
 }
-
-
-

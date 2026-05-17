@@ -86,11 +86,16 @@ export default function Index({ orders, stats, statusCounts, statusLabels, filte
                     <span className="ord-stat-card__sub">new + paid + в обработке</span>
                 </div>
                 <div className="ord-stat-card ord-stat-card--green">
-                    <span className="ord-stat-card__label">Выручка (месяц)</span>
+                    <span className="ord-stat-card__label">Чистый доход (выдано, месяц)</span>
                     <span className="ord-stat-card__value">
                         {Number(stats.month_revenue).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
                     </span>
-                    <span className="ord-stat-card__sub">текущий месяц</span>
+                    <span className="ord-stat-card__sub">
+                        оборот {Number(stats.month_gross_revenue || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽ · комиссия {Number(stats.month_commission || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
+                        {(stats.month_pending_revenue > 0) && (
+                            <> · ожидает {Number(stats.month_pending_revenue).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽</>
+                        )}
+                    </span>
                 </div>
                 <div className="ord-stat-card ord-stat-card--rose">
                     <span className="ord-stat-card__label">Сегодня</span>
@@ -179,6 +184,7 @@ export default function Index({ orders, stats, statusCounts, statusLabels, filte
                                 <th>Дата</th>
                                 <th>Позиций</th>
                                 <th>Сумма</th>
+                                <th>К выплате</th>
                                 <th>Статус</th>
                                 <th></th>
                             </tr>
@@ -199,6 +205,9 @@ export default function Index({ orders, stats, statusCounts, statusLabels, filte
                                     </td>
                                     <td className="ord-total">
                                         {Number(order.total).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
+                                    </td>
+                                    <td className="ord-total">
+                                        {Number(order.seller_payout).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
                                     </td>
                                     <td>
                                         <span className={`ord-badge ord-badge--${order.status}`}>

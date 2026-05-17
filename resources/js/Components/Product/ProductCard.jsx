@@ -136,7 +136,7 @@ export default function ProductCard({ product, hideFooter = false }) {
     const ratingDisplay = ratingStr ?? '0.0';
     const shopName = product.seller_shop_name ?? product.seller?.name ?? 'Магазин';
     const verified = !!product.seller_verified;
-    const showPromoBadges = !!product.is_on_action || showOldPrice;
+    const showPromoBadges = showOldPrice;
 
     const productHref =
         variantId != null
@@ -158,11 +158,6 @@ export default function ProductCard({ product, hideFooter = false }) {
                     />
                     {showPromoBadges && (
                         <div className="product__img-stock">
-                            {product.is_on_action ? (
-                                <div className="product__stock__item">
-                                    <p>Акция</p>
-                                </div>
-                            ) : null}
                             {showOldPrice ? (
                                 <div className="product__stock__item">
                                     <p>Скидка</p>

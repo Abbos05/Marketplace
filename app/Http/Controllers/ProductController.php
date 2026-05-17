@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ReviewVote;
 use App\Models\User;
+use App\Services\CommissionService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +34,11 @@ class ProductController extends Controller
 
         $query = Product::query()
             ->where('seller_id', Auth::id())
-            ->with(['category', 'images' => fn ($q) => $q->whereNull('variant_id')]);
+            ->with([
+                'category',
+                'images' => fn ($q) => $q->whereNull('variant_id'),
+                'variants.images',
+            ]);
 
         if ($status !== 'all') {
             $query->where('status', $status);
@@ -49,17 +54,17 @@ class ProductController extends Controller
 
         $products = $query->withCount('variants')->get()->map(function (Product $p) {
             $totalStock = $p->variants()->sum('stock');
-            $mainImage  = $p->images->firstWhere('is_main', true) ?? $p->images->first();
-
             return [
                 'id'             => $p->id,
                 'title'          => $p->title,
                 'category'       => ['name' => $p->category?->name],
                 'min_price'      => (float) $p->min_price,
-                'status'         => $p->status,
+                'status'              => $p->status,
+                'moderation_comment'  => $p->moderation_comment,
+                'is_listed'           => (bool) $p->is_on_action,
                 'variants_count' => (int) $p->variants_count,
                 'total_stock'    => (int) $totalStock,
-                'main_image'     => $mainImage?->url ?? null,
+                'main_image'     => $p->resolveListingImageUrl(),
                 'created_at'     => $p->created_at?->format('d.m.Y'),
             ];
         });
@@ -79,6 +84,23 @@ class ProductController extends Controller
 
     public function show(Product $product, Request $request)
     {
+        $user = Auth::user();
+        $blockReason = $product->storefrontBlockReason();
+
+        if ($blockReason !== null) {
+            $canPreview = $user && (
+                (int) $user->id === (int) $product->seller_id || $user->isStaff()
+            );
+
+            if (! $canPreview) {
+                return Inertia::render('Product/Unavailable', [
+                    'reason' => $blockReason,
+                    'message' => $product->storefrontBlockMessage(),
+                    'title' => $product->title,
+                ]);
+            }
+        }
+
         $product->load([
             'seller.sellerProfile',
             'images' => fn ($q) => $q->whereNull('variant_id')->orderByDesc('is_main')->orderBy('sort_order'),
@@ -93,7 +115,6 @@ class ProductController extends Controller
 
         if ($variants->isEmpty()) {
             $created = $product->variants()->create([
-                'sku' => 'default-'.$product->id,
                 'options' => ['Вариант' => 'Стандарт'],
                 'price' => $product->min_price,
                 'stock' => 0,
@@ -125,9 +146,9 @@ class ProductController extends Controller
             return $merged !== [] ? $merged : ['/img/products/default.png'];
         };
 
-        $user = Auth::user();
         $favoriteVariantIds = [];
         $hasProductFavorite = false;
+        $purchasable = $product->isPurchasable();
 
         if ($user) {
             $favoriteRows = DB::table('favorites')
@@ -144,7 +165,7 @@ class ProductController extends Controller
             $hasProductFavorite = $favoriteRows->contains(fn ($row) => $row->variant_id === null);
         }
 
-        $platformCommissionPercent = 10.0;
+        $commissionService = app(CommissionService::class);
 
         $rows = [];
         foreach ($variants as $v) {
@@ -152,12 +173,12 @@ class ProductController extends Controller
             $variantPrice = (float) $v->price;
             $variantOld = $v->old_price !== null ? (float) $v->old_price : null;
             $showOld = $variantOld !== null && $variantOld > $variantPrice;
-            $commissionFromSeller = round($variantPrice * $platformCommissionPercent / 100, 2);
+            $commission = $commissionService->calculateForProduct($product, $variantPrice, 1);
 
             $inCart = false;
             $hasOrdered = false;
             $existingOrderId = null;
-            if ($user) {
+            if ($user && $purchasable) {
                 $inCart = Cart::where('user_id', $user->id)
                     ->where('variant_id', $v->id)
                     ->exists();
@@ -196,8 +217,9 @@ class ProductController extends Controller
                     'item_price' => $variantPrice,
                     'payable_total' => $variantPrice,
                     'buyer_service_fee' => 0.0,
-                    'platform_commission_percent' => $platformCommissionPercent,
-                    'platform_keeps_from_seller' => $commissionFromSeller,
+                    'platform_commission_percent' => $commission['percent'],
+                    'platform_keeps_from_seller' => $commission['commission'],
+                    'seller_receives' => $commission['seller_payout'],
                 ],
             ];
         }
@@ -290,6 +312,7 @@ class ProductController extends Controller
         $product->specs = $specs;
         $product->display_title = $displayTitle;
         $product->variant_label = $variantLabel;
+        $product->variant_sku = $selectedRow['sku'] ?? null;
         $product->variant_options = $variantOptions;
         $product->reviews_list = $reviewsList;
         $product->reviews_avg_rating = $reviewsAvg !== null ? round((float) $reviewsAvg, 1) : null;
@@ -334,6 +357,8 @@ class ProductController extends Controller
                 'delivery_hours' => $p->region?->delivery_hours,
             ]);
 
+        $canPurchase = $purchasable && (int) $selectedRow['stock'] > 0;
+
         return Inertia::render('Product/Show', [
             'nftUser' => [
                 'owner_name' => ($sellerPayload ?? [])['name'] ?? 'Продавец',
@@ -341,7 +366,13 @@ class ProductController extends Controller
             ],
             'product' => $product,
             'seller' => $sellerPayload,
-            'canPayWithWallet' => $user !== null && (float) $user->balance >= (float) $selectedRow['price'],
+            'can_purchase' => $canPurchase,
+            'storefront_block' => $blockReason ? [
+                'reason' => $blockReason,
+                'message' => $product->storefrontBlockMessage(),
+                'is_preview' => true,
+            ] : null,
+            'canPayWithWallet' => $canPurchase && $user !== null && (float) $user->balance >= (float) $selectedRow['price'],
             'walletBalance' => $user ? (float) $user->balance : 0,
             'auth' => ['user' => $user],
             'hasOrdered' => $selectedRow['has_ordered'],
@@ -349,6 +380,7 @@ class ProductController extends Controller
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error'),
+                'in_cart' => session('in_cart'),
             ],
             'pickupPoints' => $pickupPoints,
         ]);

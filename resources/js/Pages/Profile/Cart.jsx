@@ -274,26 +274,24 @@ export default function Cart({ cartItems = [], pickupPoints = [] }) {
                             </div>
 
                             {/* Promo code input */}
-                            <div style={{ margin: '12px 0' }}>
+                            <div className="cart-promo">
                                 {promoResult?.valid ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#d1fae5', borderRadius: '10px', fontSize: '13px', fontWeight: 600, color: '#065f46' }}>
+                                    <div className="cart-promo-applied">
                                         <span>🏷️ {promoResult.code} применён</span>
-                                        <button onClick={clearPromo} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#065f46', fontSize: '16px', lineHeight: 1 }}>✕</button>
+                                        <button onClick={clearPromo}>✕</button>
                                     </div>
                                 ) : (
-                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                    <div className="cart-promo-form">
                                         <input
                                             type="text"
                                             value={promoCode}
                                             onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoResult(null); }}
                                             placeholder="Промокод"
-                                            style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '13px', fontFamily: 'monospace', letterSpacing: '.5px' }}
                                             onKeyDown={e => e.key === 'Enter' && applyPromo()}
                                         />
                                         <button
                                             onClick={applyPromo}
                                             disabled={promoLoading || !promoCode.trim() || selected.length === 0}
-                                            style={{ padding: '9px 16px', background: 'var(--backgroundBlack)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: (promoLoading || !promoCode.trim()) ? .5 : 1 }}
                                         >
                                             {promoLoading ? '...' : 'Применить'}
                                         </button>
@@ -307,10 +305,9 @@ export default function Cart({ cartItems = [], pickupPoints = [] }) {
                             </div>
 
                             {pickupPoints.length > 0 && (
-                                <div style={{ marginBottom: 14 }}>
+                                <div className="cart-pickup">
                                     <label
                                         htmlFor="cart-pickup-select"
-                                        style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#334155' }}
                                     >
                                         Пункт выдачи
                                     </label>
@@ -320,13 +317,6 @@ export default function Cart({ cartItems = [], pickupPoints = [] }) {
                                         onChange={(e) =>
                                             setPickupId(e.target.value === '' ? '' : Number(e.target.value))
                                         }
-                                        style={{
-                                            width: '100%',
-                                            padding: '10px 12px',
-                                            borderRadius: 10,
-                                            border: '1.5px solid #e2e8f0',
-                                            fontSize: 13,
-                                        }}
                                     >
                                         {!auth?.user?.default_pickup_point_id ? (
                                             <option value="">Выберите ПВЗ</option>

@@ -26,9 +26,9 @@ function navItemActive(url, href) {
     return url === href;
 }
 
-export default function SellerLayout({ children, title }) {
+export default function SellerLayout({ children, title, sellerProfile = null }) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const { url, props } = usePage();
+    const { url, props, } = usePage();
     
     const menuItems = [
         { icon: '📊', label: 'Главная', href: '/seller/dashboard' },
@@ -40,13 +40,20 @@ export default function SellerLayout({ children, title }) {
         { icon: '🏷️', label: 'Промокоды', href: '/seller/promocodes' },
         { icon: '⚙️', label: 'Настройки', href: '/seller/settings' },
     ];
-    
+    console.log(sellerProfile);
+  
     return (
         <div className="seller-layout">
+            <div className="seller-mobile-unavailable">
+                <h2>Панель продавца доступна с компьютера</h2>
+                <p>Для управления товарами, заказами и статистикой нужен широкий экран. Откройте панель на ноутбуке или ПК.</p>
+                <Link href="/profile" className="seller-mobile-unavailable__link">Вернуться в профиль</Link>
+            </div>
+
             {/* Левый сайдбар */}
             <aside className={`seller-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
                 <div className="sidebar-header">
-                    <h2>Мой магазин</h2>
+                    <h2>{sellerProfile?.shop_name || 'Мой магазин'}</h2>
                     <button onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
                 </div>
                 

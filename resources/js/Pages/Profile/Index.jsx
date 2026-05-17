@@ -450,6 +450,11 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
           {/* === КОМПАНИИ === */}
           {activeTab === 'company' && (
             <div className="company-page">
+              <div className="company-mobile-unavailable">
+                <h3>Раздел продавца доступен с компьютера</h3>
+                <p>Для добавления компании и работы с панелью продавца нужен широкий экран. Откройте этот раздел на ноутбуке или ПК.</p>
+              </div>
+
               {!sellerProfile && !showCompanyForm && (
                 <div className="company-empty-state">
                   <div className="empty-state-icon">🏢</div>
@@ -549,7 +554,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                     )}
                     {sellerProfile.rating > 0 && (
                       <div className="info-section stats">
-                        <div className="stat-item"><span className="stat-value">⭐ {sellerProfile.rating}</span><span className="stat-label">Рейтинг</span></div>
+                        <div className="stat-item"><span className="stat-value">{sellerProfile.rating}</span><span className="stat-label">Рейтинг</span></div>
                         <div className="stat-item"><span className="stat-value">{sellerProfile.total_sales}</span><span className="stat-label">Продаж</span></div>
                       </div>
                     )}
@@ -984,6 +989,11 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                   <a href="/admin/dashboard" className="admin-goto-btn">
                     {panelTitle} →
                   </a>
+                </div>
+
+                <div className="admin-mobile-unavailable">
+                  <h3>Админ-панель доступна с компьютера</h3>
+                  <p>Для управления пользователями нужен широкий экран. Откройте этот раздел на ноутбуке или ПК.</p>
                 </div>
 
                 {/* Filter tabs */}

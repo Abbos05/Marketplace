@@ -28,6 +28,8 @@
 <body>
 @php
     $total = $transactions->sum('amount');
+    $commissionTotal = $transactions->sum('commission_amount');
+    $payoutTotal = $transactions->sum('seller_payout_amount');
     $badgeClass = 'badge--' . $docType;
 @endphp
 <div class="doc">
@@ -64,7 +66,7 @@
         @if($order->payment_status === 'refunded') Возврат уже оформлен
             @elseif($order->payment_status === 'pending') Не оплачен
             @elseif($order->payment_status === 'paid') Оплачена
-            @else Ошибка оплаты
+            @else Не оплачено
         @endif    </span>
     </div>
 
@@ -74,6 +76,8 @@
                 <th>Товар</th>
                 <th>Продавец ID</th>
                 <th>Сумма</th>
+                <th>Комиссия</th>
+                <th>К выплате</th>
                 <th>Статус</th>
             </tr>
         </thead>
@@ -83,13 +87,19 @@
                     <td>{{ $tx->product?->title ?? '—' }}</td>
                     <td>{{ $tx->seller_id }}</td>
                     <td>{{ number_format($tx->amount, 2, ',', ' ') }} ₽</td>
+                    <td>{{ number_format($tx->commission_amount, 2, ',', ' ') }} ₽</td>
+                    <td>{{ number_format($tx->seller_payout_amount, 2, ',', ' ') }} ₽</td>
                     <td>{{ $tx->statusLabel() }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
-    <div class="total">Итого: {{ number_format($total, 2, ',', ' ') }} ₽</div>
+    <div class="total">
+        Итого: {{ number_format($total, 2, ',', ' ') }} ₽ ·
+        комиссия: {{ number_format($commissionTotal, 2, ',', ' ') }} ₽ ·
+        к выплате: {{ number_format($payoutTotal, 2, ',', ' ') }} ₽
+    </div>
 
     <div class="footer">
         Документ сфорерирован {{ now()->format('d.m.Y H:i') }} · Не является фискальным чеком

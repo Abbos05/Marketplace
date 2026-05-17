@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import ArticleNumber from '@/Components/Product/ArticleNumber';
 import '../../../css/product/product_page.css';
 
 function IconStar({ className = '' }) {
@@ -100,6 +101,8 @@ export default function ProductShow({
   existingOrderId,
   pickupPoints = [],
   flash,
+  can_purchase: canPurchase = true,
+  storefront_block: storefrontBlock = null,
 }) {
   const gallery = useMemo(() => {
     const g = product.gallery;
@@ -131,6 +134,12 @@ export default function ProductShow({
   useEffect(() => {
     setInCart(!!product.in_cart);
   }, [product.in_cart]);
+
+  useEffect(() => {
+    if (flash?.in_cart !== undefined && flash?.in_cart !== null) {
+      setInCart(!!flash.in_cart);
+    }
+  }, [flash?.in_cart]);
 
   useEffect(() => {
     setIsFavorite(!!product.is_favorite);
@@ -173,11 +182,20 @@ export default function ProductShow({
   const ratingAvg =
     product.reviews_avg_rating != null ? Number(product.reviews_avg_rating).toFixed(1) : null;
   const reviewsTotal = Number(product.reviews_total ?? 0);
-  const ratingDisplayShort = reviewsTotal === 0 ? '—' : ratingAvg ?? '—';
+  const ratingDisplayShort = reviewsTotal === 0 ? '0.0' : ratingAvg ?? '0.0';
+  const variantStock = Number(product.variant_stock ?? 0);
+
+  const purchaseBlockMessage =
+    storefrontBlock?.message ??
+    (variantStock <= 0 ? 'Товара нет в наличии.' : 'Товар недоступен для покупки.');
 
   const addToCart = () => {
     if (!auth?.user) {
       router.visit(route('login'));
+      return;
+    }
+    if (!canPurchase) {
+      alert(purchaseBlockMessage);
       return;
     }
     if (!product.variant_id) return;
@@ -186,7 +204,16 @@ export default function ProductShow({
       { variant_id: product.variant_id },
       {
         preserveScroll: true,
-        onSuccess: () => setInCart(true),
+        onSuccess: (page) => {
+          if (page.props.flash?.error) {
+            alert(page.props.flash.error);
+            if (page.props.flash?.in_cart !== undefined) {
+              setInCart(!!page.props.flash.in_cart);
+            }
+            return;
+          }
+          setInCart(page.props.flash?.in_cart !== false);
+        },
       }
     );
   };
@@ -249,6 +276,10 @@ export default function ProductShow({
       router.visit(route('login'));
       return;
     }
+    if (!canPurchase) {
+      alert(purchaseBlockMessage);
+      return;
+    }
     if (auth.user.is_blocked) {
       alert('Доступ ограничен. Обратитесь в поддержку.');
       return;
@@ -285,7 +316,6 @@ export default function ProductShow({
 
   const shortDesc = (product.lead_text ?? product.short_description)?.trim();
   const longDesc = product.description?.trim();
-  const variantStock = Number(product.variant_stock ?? 0);
 
   const variantsCatalog = Array.isArray(product.variants_catalog)
     ? product.variants_catalog
@@ -296,6 +326,11 @@ export default function ProductShow({
 
   const selectedVariantId =
     product.selected_variant_id ?? product.variant_id ?? null;
+
+  const currentSku = useMemo(() => {
+    const row = variantsCatalog.find((r) => r.id === selectedVariantId);
+    return row?.sku ?? product.variant_sku ?? null;
+  }, [variantsCatalog, selectedVariantId, product.variant_sku]);
 
   const pickVariant = (id) => {
     if (id === selectedVariantId) return;
@@ -357,6 +392,11 @@ export default function ProductShow({
 
               <div className="product-page__info">
                 <h1 className="product-page__title">{displayTitle}</h1>
+                {currentSku ? (
+                  <div className="product-page__article" aria-label="Артикул">
+                    <ArticleNumber sku={currentSku} display="plain" copyable />
+                  </div>
+                ) : null}
                 <div className="product-page__rating">
                   <div className="product-page__stars">
                     <IconStar className="product-page__ui-icon product-page__ui-icon--amber" />
@@ -611,7 +651,7 @@ export default function ProductShow({
                     </div>
 
                     {auth?.user ? (
-                      selectedPickup ? (
+                      selectedPickup && (
                         <div className="product-page__pickup-selected">
                           <span className="product-page__pickup-dot" aria-hidden />
                           <div>
@@ -620,12 +660,7 @@ export default function ProductShow({
                             {selectedPickup.region ? <small>{selectedPickup.region}</small> : null}
                           </div>
                         </div>
-                      ) : (
-                        <p className="product-page__pickup-empty">
-                          Выберите удобный ПВЗ перед покупкой. Заказ будет привязан к нему сразу.
-                        </p>
-                      )
-                    ) : (
+                      )) : (
                       <p className="product-page__pickup-empty">
                         Войдите в аккаунт, чтобы выбрать пункт выдачи для заказа.
                       </p>
@@ -636,10 +671,26 @@ export default function ProductShow({
                     ) : null}
                   </div>
 
-                  <div className="product-page__actions">
+                  {storefrontBlock?.message ? (
+                    <p className="product-page__block-notice" role="status">
+                      {storefrontBlock.message}
+                    </p>
+                  ) : null}
+                  {!canPurchase && !storefrontBlock?.message && variantStock <= 0 ? (
+                    <p className="product-page__block-notice" role="status">
+                      Товара нет в наличии.
+                    </p>
+                  ) : null}
+
+                  <div
+                    className={`product-page__actions${
+                      !canPurchase ? ' product-page__actions--disabled' : ''
+                    }`}
+                  >
                     <button
                       type="button"
                       className="product-page__cart-btn"
+                      disabled={!canPurchase}
                       onClick={inCart ? removeFromCart : addToCart}
                     >
                       {inCart ? 'Убрать из' : 'В корзину'}
@@ -671,8 +722,13 @@ export default function ProductShow({
                         Перейти к заказу
                       </button>
                     ) : (
-                      <button type="button" className="product-page__buy-btn" onClick={buyNow}>
-                        Купить
+                      <button
+                        type="button"
+                        className="product-page__buy-btn"
+                        disabled={!canPurchase}
+                        onClick={buyNow}
+                      >
+                        {canPurchase ? 'Купить' : variantStock <= 0 ? 'Нет в наличии' : 'Недоступен'}
                       </button>
                     )}
                   </div>
@@ -739,7 +795,7 @@ export default function ProductShow({
                   </div>
                   <div className="product-page__seller-rating">
                     <IconStar className="product-page__ui-icon product-page__ui-icon--amber" />
-                    <span>{sellerRating ?? '—'}</span>
+                    <span>{sellerRating ?? '0.0'}</span>
                   </div>
                   <button type="button" className="product-page__seller-profile" onClick={showSeller}>
                     Посмотреть

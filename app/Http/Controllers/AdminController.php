@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Product;
 use App\Notifications\MarketplaceAlert;
+use App\Services\OrderLedgerService;
 use App\Services\StripeRefundService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -150,6 +151,9 @@ class AdminController extends Controller
             'total_orders'     => Order::count(),
             'orders_today'     => Order::whereDate('created_at', today())->count(),
             'revenue_total'    => (float) Order::whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_REFUSED])->sum('total'),
+            'platform_commission_total' => (float) OrderItem::query()
+                ->where('commission_status', 'finalized')
+                ->sum('commission_amount'),
             'pending_approvals'=> User::whereHas('sellerProfile')
                                       ->where('role', 'user')->count(),
             'online_count'     => DB::table('sessions')
@@ -430,16 +434,45 @@ class AdminController extends Controller
             'status' => 'required|in:draft,moderation,approved,rejected,archived,hidden',
             'moderation_comment' => 'nullable|string|max:500',
         ]);
+
+        $status = $request->status;
+        $comment = trim((string) $request->moderation_comment);
+
+        if ($status === 'rejected' && $comment === '') {
+            return back()->withErrors([
+                'moderation_comment' => 'При отклонении укажите комментарий для продавца — он увидит его в кабинете.',
+            ]);
+        }
+
         $product->update([
-            'status' => $request->status,
-            'moderation_comment' => $request->moderation_comment,
+            'status' => $status,
+            'moderation_comment' => $comment !== '' ? $comment : null,
+            'is_on_action' => $status === 'approved',
         ]);
+
+        $statusLabels = [
+            'draft' => 'черновик',
+            'moderation' => 'на модерации',
+            'approved' => 'одобрен',
+            'rejected' => 'отклонён',
+            'archived' => 'в архиве',
+            'hidden' => 'скрыт',
+        ];
 
         $seller = User::query()->find($product->seller_id);
         if ($seller) {
+            $message = sprintf(
+                'Товар «%s» переведён в статус: %s.',
+                $product->title,
+                $statusLabels[$status] ?? $status,
+            );
+            if ($comment !== '') {
+                $message .= ' Комментарий модератора: '.$comment;
+            }
+
             $seller->notify(new MarketplaceAlert(
                 'Статус товара обновлён',
-                sprintf('Товар «%s» переведён в статус: %s.', $product->title, $request->status),
+                $message,
                 route('seller.products.edit', $product, false),
             ));
         }
@@ -464,11 +497,14 @@ class AdminController extends Controller
 
         if (in_array($newStatus, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true)) {
             $refund = app(StripeRefundService::class)->handleOrderCanceledOrRefused($order, 'admin_'.$newStatus);
+            app(OrderLedgerService::class)->reverseCommission($order->fresh());
             if ($refund['refunded']) {
                 $message .= '. '.$refund['message'];
             } elseif (! $refund['ok']) {
                 return back()->with('error', $message.'. '.$refund['message']);
             }
+        } elseif ($newStatus === Order::STATUS_ISSUED) {
+            app(OrderLedgerService::class)->finalizeCommission($order->fresh());
         }
 
         $order->loadMissing('buyer');
@@ -541,7 +577,7 @@ class AdminController extends Controller
         $rangeLabel = ($from ? $from->format('Y-m-d') : 'all') . '_' . ($to ? $to->format('Y-m-d') : 'all');
         $filename   = "revenue_{$rangeLabel}.csv";
 
-        $headers = ['№ заказа', 'Код', 'Дата', 'Покупатель', 'Email', 'Телефон', 'Позиций', 'Сумма', 'Скидка', 'Статус', 'Статус оплаты'];
+        $headers = ['№ заказа', 'Код', 'Дата', 'Покупатель', 'Email', 'Телефон', 'Позиций', 'Сумма', 'Скидка', 'Комиссия платформы', 'К выплате продавцам', 'Статус', 'Статус оплаты'];
         $rows = $orders->map(fn($o) => [
             $o->number,
             $o->order_code,
@@ -552,11 +588,19 @@ class AdminController extends Controller
             $o->items->count(),
             number_format($o->total, 2, '.', ''),
             number_format($o->discount ?? 0, 2, '.', ''),
+            number_format($o->items->sum('commission_amount'), 2, '.', ''),
+            number_format($o->items->sum(fn ($i) => $i->seller_payout_amount > 0
+                ? $i->seller_payout_amount
+                : ($i->price_at_purchase * $i->quantity) - $i->commission_amount), 2, '.', ''),
             $o->status,
             $o->payment_status,
         ]);
         $sum  = $orders->sum('total');
-        $rows->push(['', '', '', '', '', '', 'ИТОГО:', number_format($sum, 2, '.', ''), '', '', '']);
+        $commissionSum = $orders->sum(fn ($o) => $o->items->sum('commission_amount'));
+        $payoutSum = $orders->sum(fn ($o) => $o->items->sum(fn ($i) => $i->seller_payout_amount > 0
+            ? $i->seller_payout_amount
+            : ($i->price_at_purchase * $i->quantity) - $i->commission_amount));
+        $rows->push(['', '', '', '', '', '', 'ИТОГО:', number_format($sum, 2, '.', ''), '', number_format($commissionSum, 2, '.', ''), number_format($payoutSum, 2, '.', ''), '', '']);
 
         return $this->streamCsv($filename, $headers, $rows);
     }
@@ -619,11 +663,19 @@ class AdminController extends Controller
             // Продажи
             if ($sellerItems->count() > 0) {
                 fputcsv($out, ['ПРОДАЖИ'], ';');
-                fputcsv($out, ['№ заказа', 'Дата', 'Товар', 'Кол-во', 'Цена', 'Сумма', 'Статус заказа'], ';');
+                fputcsv($out, ['№ заказа', 'Дата', 'Товар', 'Кол-во', 'Цена', 'Сумма', 'Комиссия', 'К выплате', 'Статус заказа'], ';');
                 $totalRevenue = 0;
+                $totalCommission = 0;
+                $totalPayout = 0;
                 foreach ($sellerItems as $i) {
                     $sum = (float) $i->price_at_purchase * (int) $i->quantity;
+                    $commission = (float) $i->commission_amount;
+                    $payout = (float) $i->seller_payout_amount > 0
+                        ? (float) $i->seller_payout_amount
+                        : $sum - $commission;
                     $totalRevenue += $sum;
+                    $totalCommission += $commission;
+                    $totalPayout += $payout;
                     fputcsv($out, [
                         $i->order?->number ?? '—',
                         $i->created_at?->format('Y-m-d H:i'),
@@ -631,10 +683,12 @@ class AdminController extends Controller
                         $i->quantity,
                         number_format($i->price_at_purchase, 2, '.', ''),
                         number_format($sum, 2, '.', ''),
+                        number_format($commission, 2, '.', ''),
+                        number_format($payout, 2, '.', ''),
                         $i->order?->status ?? '—',
                     ], ';');
                 }
-                fputcsv($out, ['ИТОГО продаж:', '', '', '', '', number_format($totalRevenue, 2, '.', ''), ''], ';');
+                fputcsv($out, ['ИТОГО продаж:', '', '', '', '', number_format($totalRevenue, 2, '.', ''), number_format($totalCommission, 2, '.', ''), number_format($totalPayout, 2, '.', ''), ''], ';');
             }
 
             fclose($out);
@@ -673,7 +727,7 @@ class AdminController extends Controller
         $status = $request->input('status', 'all');
         $perPage = 50;
 
-        $query = Product::with(['seller', 'category', 'images'])
+        $query = Product::with(['seller', 'category', 'images', 'variants:id,product_id,sku'])
             ->orderBy('created_at', 'desc');
 
         if ($status !== 'all') {
@@ -687,6 +741,9 @@ class AdminController extends Controller
                       $q2->where('name', 'like', "%{$search}%")
                          ->orWhere('email', 'like', "%{$search}%")
                          ->orWhere('id', $search);
+                  })
+                  ->orWhereHas('variants', function ($q2) use ($search) {
+                      $q2->where('sku', 'like', '%'.$search.'%');
                   });
             });
         }
@@ -709,6 +766,7 @@ class AdminController extends Controller
                 'name'  => $p->seller->name,
                 'email' => $p->seller->email,
             ] : null,
+            'variant_skus'       => $p->variants?->pluck('sku')->filter()->values()->all() ?? [],
         ]);
 
         $counts = [

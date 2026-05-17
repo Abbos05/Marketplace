@@ -141,7 +141,7 @@
             margin: 4px 0;
         }
         .totals .grand-total {
-            font-size: 14px;
+            font-size: 11px;
             font-weight: bold;
             padding-top: 6px;
             border-top: 1px solid #cbd5e1;
@@ -241,6 +241,10 @@
         </tr>
     </table>
 
+    @php
+        $commissionService = app(\App\Services\CommissionService::class);
+    @endphp
+
     {{-- Items grouped by seller --}}
     <div class="section-title">Состав заказа</div>
     @foreach($bySeller as $sellerId => $items)
@@ -257,15 +261,20 @@
                         <th class="num">Кол-во</th>
                         <th class="num">Цена</th>
                         <th class="num">Сумма</th>
+                        <th class="num">Комиссия</th>
+                        <th class="num">К выплате</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($items as $item)
+                        @php $itemSnap = $commissionService->resolveSnapshot($item, persist: true); @endphp
                         <tr>
                             <td>{{ $item->variant?->product?->title ?? '—' }}</td>
                             <td class="num">{{ $item->quantity }}</td>
                             <td class="num">{{ number_format($item->price_at_purchase, 2, ',', ' ') }} ₽</td>
-                            <td class="num">{{ number_format($item->price_at_purchase * $item->quantity, 2, ',', ' ') }} ₽</td>
+                            <td class="num">{{ number_format($itemSnap['gross'], 2, ',', ' ') }} ₽</td>
+                            <td class="num">{{ number_format($itemSnap['commission'], 2, ',', ' ') }} ₽</td>
+                            <td class="num">{{ number_format($itemSnap['seller_payout'], 2, ',', ' ') }} ₽</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -276,7 +285,15 @@
     {{-- Totals --}}
     <div class="totals">
         @php
-            $subtotal = $order->items->sum(fn($i) => (float) $i->price_at_purchase * (int) $i->quantity);
+            $subtotal = 0.0;
+            $commissionTotal = 0.0;
+            $payoutTotal = 0.0;
+            foreach ($order->items as $lineItem) {
+                $lineSnap = $commissionService->resolveSnapshot($lineItem, persist: true);
+                $subtotal += $lineSnap['gross'];
+                $commissionTotal += $lineSnap['commission'];
+                $payoutTotal += $lineSnap['seller_payout'];
+            }
         @endphp
         <div class="total-row">
             <span>Подытог:</span>
@@ -288,6 +305,14 @@
                 <span>− {{ number_format($order->discount, 2, ',', ' ') }} ₽</span>
             </div>
         @endif
+        <div class="total-row">
+            <span>Комиссия платформы:</span>
+            <span>{{ number_format($commissionTotal, 2, ',', ' ') }} ₽</span>
+        </div>
+        <div class="total-row">
+            <span>К выплате продавцам:</span>
+            <span>{{ number_format($payoutTotal, 2, ',', ' ') }} ₽</span>
+        </div>
         <div class="total-row grand-total">
             <span>ИТОГО:</span>
             <span>{{ number_format($order->total, 2, ',', ' ') }} ₽</span>
@@ -322,7 +347,7 @@
         $paymentStatusLabels = [
             'pending' => 'Ожидает оплаты',
             'paid' => 'Оплачен',
-            'failed' => 'Ошибка оплаты',
+            'failed' => 'Не оплачено',
             'refunded' => 'Возвращён',
             // значения Stripe Checkout, если когда-либо попали в поле
             'unpaid' => 'Не оплачен',

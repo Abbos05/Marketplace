@@ -11,6 +11,8 @@ use App\Models\Review;
 use App\Models\ReviewVote;
 use App\Models\SellerProfile;
 use App\Models\User;
+use App\Services\CommissionService;
+use App\Services\OrderLedgerService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +39,7 @@ class DemoCommerceSeeder extends Seeder
             ['buyer_id' => 8, 'status' => Order::STATUS_NEW, 'payment_status' => 'paid', 'days_ago' => 2],
             ['buyer_id' => 8, 'status' => Order::STATUS_NEW, 'payment_status' => 'paid', 'days_ago' => 1],
             ['buyer_id' => 9, 'status' => Order::STATUS_ISSUED, 'payment_status' => 'paid', 'days_ago' => 20],
+            ['buyer_id' => 8, 'status' => Order::STATUS_ISSUED, 'payment_status' => 'paid', 'days_ago' => 12],
             ['buyer_id' => 9, 'status' => Order::STATUS_INTRANSIT, 'payment_status' => 'paid', 'days_ago' => 4],
             ['buyer_id' => 9, 'status' => Order::STATUS_INTRANSIT, 'payment_status' => 'paid', 'days_ago' => 3],
             ['buyer_id' => 9, 'status' => Order::STATUS_NEW, 'payment_status' => 'pending', 'days_ago' => 0],
@@ -73,9 +76,14 @@ class DemoCommerceSeeder extends Seeder
                 'updated_at' => $created,
             ]);
 
+            $isFinalizedSale = $cfg['status'] === Order::STATUS_ISSUED
+                && $cfg['payment_status'] === 'paid';
+
             foreach ($items as $item) {
                 OrderItem::query()->create(array_merge($item, [
                     'order_id' => $order->id,
+                    'commission_status' => $isFinalizedSale ? 'finalized' : ($item['commission_status'] ?? 'pending'),
+                    'commission_finalized_at' => $isFinalizedSale ? $created : null,
                     'created_at' => $created,
                     'updated_at' => $created,
                 ]));
@@ -86,7 +94,12 @@ class DemoCommerceSeeder extends Seeder
             }
 
             if ($cfg['payment_status'] === 'paid') {
-                app(\App\Services\OrderLedgerService::class)->recordPayment($order);
+                $ledger = app(OrderLedgerService::class);
+                if ($isFinalizedSale) {
+                    $ledger->finalizeCommission($order->fresh());
+                } else {
+                    $ledger->recordPayment($order);
+                }
             }
         }
 
@@ -100,6 +113,7 @@ class DemoCommerceSeeder extends Seeder
     {
         $items = [];
         $list = $products->values();
+        $commissionService = app(CommissionService::class);
 
         for ($i = 0; $i < $count; $i++) {
             $product = $list[($startIndex + $i) % $list->count()] ?? null;
@@ -111,12 +125,19 @@ class DemoCommerceSeeder extends Seeder
                 continue;
             }
             $qty = rand(1, 2);
+            $price = (float) $variant->price;
+            $commission = $commissionService->calculateForProduct($product, $price, $qty);
+
             $items[] = [
                 'variant_id' => $variant->id,
                 'seller_id' => $product->seller_id,
                 'quantity' => $qty,
-                'price_at_purchase' => (float) $variant->price,
-                'commission_percent' => 10,
+                'price_at_purchase' => $price,
+                'commission_percent' => $commission['percent'],
+                'commission_fixed_amount' => $commission['fixed_amount'],
+                'commission_amount' => $commission['commission'],
+                'seller_payout_amount' => $commission['seller_payout'],
+                'commission_status' => 'pending',
             ];
         }
 
@@ -200,14 +221,16 @@ class DemoCommerceSeeder extends Seeder
     private function seedFavorites(array $buyerIds, $products): void
     {
         $now = now();
-        $ids = $products->pluck('id')->values();
 
         foreach ($buyerIds as $buyerId) {
-            $picked = $ids->shuffle()->take(5);
-            foreach ($picked as $productId) {
+            $picked = $products->shuffle()->take(5);
+            foreach ($picked as $product) {
+                $variantId = $product->variants->first()?->id;
+
                 DB::table('favorites')->insertOrIgnore([
                     'user_id' => $buyerId,
-                    'product_id' => $productId,
+                    'product_id' => $product->id,
+                    'variant_id' => $variantId,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);

@@ -84,7 +84,7 @@ class ProductDataSeeder extends Seeder
                 $variants[] = [
                     'id' => $variantId,
                     'product_id' => $productId,
-                    'sku' => "SKU-{$productId}-{$i}-" . uniqid(),
+                    'sku' => app(\App\Services\ArticleNumberService::class)->format($variantId),
                     'options' => json_encode($options, JSON_UNESCAPED_UNICODE),
                     'price' => $price,
                     'old_price' => $oldPrice,

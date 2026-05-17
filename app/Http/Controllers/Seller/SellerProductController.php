@@ -84,7 +84,6 @@ class SellerProductController extends Controller
             'short_description' => 'required|string|max:500',
             'description' => 'required|string|max:20000',
             'category_id' => 'required|exists:categories,id',
-            'main_image' => 'required|image|max:10240',
             'images' => 'nullable|array|max:10',
             'images.*' => 'nullable|image|max:10240',
             'variants' => 'required|array|min:1',
@@ -93,6 +92,14 @@ class SellerProductController extends Controller
         ]);
 
         $user = Auth::user();
+
+        foreach (array_keys($request->variants ?? []) as $variantIndex) {
+            if (! $request->hasFile('variant_image_'.$variantIndex)) {
+                return back()->withErrors([
+                    "variants.{$variantIndex}.image" => 'Загрузите фото для каждого варианта',
+                ])->withInput();
+            }
+        }
 
         $allowedAttributeIds = CategoryAttribute::query()
             ->where('category_id', (int) $request->category_id)
@@ -115,6 +122,7 @@ class SellerProductController extends Controller
                 'short_description' => $request->short_description,
                 'min_price' => $minPrice,
                 'status' => 'moderation',
+                'is_on_action' => false,
             ]);
 
             $folder = public_path('img/products/'.$user->id);
@@ -140,7 +148,6 @@ class SellerProductController extends Controller
 
                 $pv = ProductVariant::create([
                     'product_id'   => $product->id,
-                    'sku'          => 'P'.$product->id.'-'.strtoupper(Str::random(10)),
                     'options'      => $options,
                     'price'        => $variant['price'],
                     'old_price'    => null,
@@ -159,28 +166,9 @@ class SellerProductController extends Controller
                         'variant_id' => $pv->id,
                         'url'        => '/img/products/'.$user->id.'/'.$vImgName,
                         'sort_order' => 0,
-                        'is_main'    => false,
+                        'is_main'    => true,
                     ]);
                 }
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Images (product-level: main + gallery)
-            |--------------------------------------------------------------------------
-            */
-
-            if ($request->hasFile('main_image')) {
-                $mainImage = $request->file('main_image');
-                $mainName = time().'_main_'.Str::random(5).'.'.$mainImage->extension();
-                $mainImage->move($folder, $mainName);
-                $relPath = 'img/products/'.$user->id.'/'.$mainName;
-                ProductImage::create([
-                    'product_id' => $product->id,
-                    'url' => '/'.$relPath,
-                    'sort_order' => 0,
-                    'is_main' => true,
-                ]);
             }
 
             if ($request->hasFile('images')) {
@@ -283,6 +271,7 @@ class SellerProductController extends Controller
             'product' => [
                 'id' => $product->id,
                 'status' => $product->status,
+                'moderation_comment' => $product->moderation_comment,
             ],
             'leafCategory' => $product->category,
             'parentCategory' => $product->category->parent,
@@ -326,7 +315,6 @@ class SellerProductController extends Controller
             ],
             'variants.*.price' => 'required|numeric|min:0.01',
             'variants.*.stock' => 'required|integer|min:0',
-            'main_image' => 'nullable|image|max:10240',
             'images' => 'nullable|array|max:10',
             'images.*' => 'nullable|image|max:10240',
             'remove_image_ids' => 'nullable|array',
@@ -349,6 +337,7 @@ class SellerProductController extends Controller
                 'description' => $request->description,
                 'min_price' => $minPrice,
                 'status' => 'moderation',
+                'is_on_action' => false,
             ]);
 
             $allowedAttributeIds = CategoryAttribute::query()
@@ -413,7 +402,7 @@ class SellerProductController extends Controller
                                 'variant_id' => $pv->id,
                                 'url'        => '/img/products/'.$user->id.'/'.$vImgName,
                                 'sort_order' => 0,
-                                'is_main'    => false,
+                                'is_main'    => true,
                             ]);
                         }
 
@@ -423,7 +412,6 @@ class SellerProductController extends Controller
 
                 $pv = ProductVariant::create([
                     'product_id' => $product->id,
-                    'sku'        => 'P'.$product->id.'-'.strtoupper(Str::random(10)),
                     'options'    => $options,
                     'price'      => $newPrice,
                     'old_price'  => null,
@@ -440,8 +428,23 @@ class SellerProductController extends Controller
                         'variant_id' => $pv->id,
                         'url'        => '/img/products/'.$user->id.'/'.$vImgName,
                         'sort_order' => 0,
-                        'is_main'    => false,
+                        'is_main'    => true,
                     ]);
+                }
+            }
+
+            foreach ($request->variants as $variantIndex => $variant) {
+                if (empty($variant['id'])) {
+                    continue;
+                }
+                $pv = ProductVariant::where('product_id', $product->id)->find($variant['id']);
+                if (! $pv) {
+                    continue;
+                }
+                $hasImage = $request->hasFile('variant_image_'.$variantIndex)
+                    || ProductImage::where('product_id', $product->id)->where('variant_id', $pv->id)->exists();
+                if (! $hasImage) {
+                    throw new \InvalidArgumentException('У каждого варианта должно быть фото');
                 }
             }
 
@@ -452,23 +455,6 @@ class SellerProductController extends Controller
                 if ($img) {
                     $img->delete();
                 }
-            }
-
-            if ($request->hasFile('main_image')) {
-                ProductImage::where('product_id', $product->id)->update(['is_main' => false]);
-
-                $mainImage = $request->file('main_image');
-                $mainName = time().'_main_'.Str::random(5).'.'.$mainImage->extension();
-                $mainImage->move($folder, $mainName);
-
-                $relPath = 'img/products/'.$user->id.'/'.$mainName;
-
-                ProductImage::create([
-                    'product_id' => $product->id,
-                    'url' => '/'.$relPath,
-                    'sort_order' => 0,
-                    'is_main' => true,
-                ]);
             }
 
             if ($request->hasFile('images')) {
@@ -547,19 +533,19 @@ class SellerProductController extends Controller
         $activeCount   = $liveVariants->where('is_active', true)->count();
         $hiddenCount   = $liveVariants->where('is_active', false)->count();
 
-        $mainImage = $product->images->firstWhere('is_main', true) ?? $product->images->first();
-
         return Inertia::render('Seller/Products/Manage', [
             'product' => [
                 'id'             => $product->id,
                 'title'          => $product->title,
-                'status'         => $product->status,
+                'status'             => $product->status,
+                'moderation_comment' => $product->moderation_comment,
+                'is_listed'          => (bool) $product->is_on_action,
                 'category'       => $product->category?->name ?? '—',
                 'min_price'      => (float) $product->min_price,
                 'views_count'    => (int) ($product->views_count ?? 0),
                 'sales_count'    => (int) ($product->sales_count ?? 0),
                 'created_at'     => $product->created_at?->format('d.m.Y') ?? '',
-                'main_image'     => $mainImage?->url ?? null,
+                'main_image'     => $product->resolveListingImageUrl(),
                 'total_stock'    => $totalStock,
                 'active_variants'=> $activeCount,
                 'hidden_variants'=> $hiddenCount,
@@ -593,12 +579,22 @@ class SellerProductController extends Controller
         }
 
         if ($product->status === 'hidden') {
-            $product->update(['status' => 'approved']);
+            $product->update([
+                'status' => 'approved',
+                'is_on_action' => true,
+            ]);
+            $message = 'Товар снова показан на витрине';
         } elseif ($product->status === 'approved') {
-            $product->update(['status' => 'hidden']);
+            $product->update([
+                'status' => 'hidden',
+                'is_on_action' => false,
+            ]);
+            $message = 'Товар скрыт с витрины';
+        } else {
+            return back()->with('error', 'Скрыть или показать можно только одобренный или скрытый товар');
         }
 
-        return back()->with('success', 'Видимость товара обновлена');
+        return back()->with('success', $message);
     }
 
     public function toggleVariant(Product $product, ProductVariant $variant)
@@ -629,17 +625,4 @@ class SellerProductController extends Controller
         return back()->with('success', 'Остаток обновлён');
     }
 
-    public function setMainImage(Product $product, ProductImage $image)
-    {
-        $user = Auth::user();
-
-        if ($product->seller_id !== $user->id || $image->product_id !== $product->id) {
-            abort(403);
-        }
-
-        ProductImage::where('product_id', $product->id)->update(['is_main' => false]);
-        $image->update(['is_main' => true]);
-
-        return back()->with('success', 'Главное фото изменено');
-    }
 }

@@ -8,13 +8,15 @@ use App\Models\Product;
 use App\Models\ProductAttributeValue;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
+use App\Support\CatalogProductSeedData;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class DemoCatalogSeeder extends Seeder
 {
     private const DEFAULT_IMAGE = '/img/products/default.png';
+
+    private const PRODUCTS_PER_CATEGORY = 4;
 
     public function run(): void
     {
@@ -26,22 +28,25 @@ class DemoCatalogSeeder extends Seeder
             ->orderBy('id')
             ->get();
 
+        $expectedSlugs = $leaves->pluck('slug')->filter()->values()->all();
+        CatalogProductSeedData::assertCoverage($expectedSlugs, self::PRODUCTS_PER_CATEGORY, 3);
+
         $now = Carbon::now();
         $globalSeq = 0;
 
         foreach ($leaves as $leaf) {
-            for ($p = 1; $p <= 4; $p++) {
+            $templates = CatalogProductSeedData::forCategorySlug((string) $leaf->slug);
+
+            foreach ($templates as $template) {
                 $globalSeq++;
                 $sellerId = ($globalSeq % 2 === 1) ? 6 : 7;
 
-                $title = "{$leaf->name}";
-                $titleDescription = "{$leaf->name} — позиция {$p}";
                 $product = Product::query()->create([
                     'seller_id' => $sellerId,
                     'category_id' => $leaf->id,
-                    'title' => $title,
-                    'description' => "Демо-описание для «{$titleDescription}». Товар для витрины маркетплейса Alvora.",
-                    'short_description' => "Кратко: {$leaf->name}, демо-карточка №{$p}.",
+                    'title' => (string) $template['title'],
+                    'description' => (string) $template['description'],
+                    'short_description' => (string) $template['short_description'],
                     'min_price' => 0,
                     'views_count' => rand(200, 9000),
                     'sales_count' => rand(0, 120),
@@ -51,10 +56,14 @@ class DemoCatalogSeeder extends Seeder
                     'updated_at' => $now,
                 ]);
 
-                $productAttrs = $this->buildProductAttrValues($leaf->id, $globalSeq + $p);
+                $productAttrs = is_array($template['product_attrs'] ?? null)
+                    ? $template['product_attrs']
+                    : [];
                 $this->seedAttributes($product, $leaf->id, $productAttrs);
 
-                $variantRows = $this->buildThreeVariantRows($leaf->id, $globalSeq);
+                $variantRows = is_array($template['variants'] ?? null)
+                    ? $template['variants']
+                    : [];
                 $variantIds = $this->seedVariants($product, $variantRows);
 
                 $imageUrls = $this->resolveCatalogImageUrls($sellerId, $globalSeq);
@@ -67,79 +76,6 @@ class DemoCatalogSeeder extends Seeder
                 $product->update(['min_price' => $minPrice]);
             }
         }
-    }
-
-    /** @return array<string, string> */
-    private function buildProductAttrValues(int $categoryId, int $salt): array
-    {
-        $defs = CategoryAttribute::query()
-            ->where('category_id', $categoryId)
-            ->where('applies_to', 'product')
-            ->orderBy('id')
-            ->get();
-
-        $out = [];
-        foreach ($defs as $def) {
-            $opts = is_string($def->options) ? json_decode($def->options, true) : $def->options;
-            if ($def->type === 'select' && is_array($opts) && $opts !== []) {
-                $idx = $salt % count($opts);
-                $out[$def->name] = (string) $opts[$idx];
-            } elseif ($def->type === 'number') {
-                $out[$def->name] = (string) (5 + ($salt % 5));
-            } else {
-                $out[$def->name] = 'Демо '.$def->name.' #'.($salt % 1000);
-            }
-        }
-
-        return $out;
-    }
-
-    /**
-     * @return list<array{options: array<string, string>, price: float, old_price: ?float, stock: int}>
-     */
-    private function buildThreeVariantRows(int $categoryId, int $salt): array
-    {
-        $defs = CategoryAttribute::query()
-            ->where('category_id', $categoryId)
-            ->where('applies_to', 'variant')
-            ->orderBy('id')
-            ->get();
-
-        $parsed = [];
-        foreach ($defs as $d) {
-            $opts = is_string($d->options) ? json_decode($d->options, true) : $d->options;
-            $parsed[] = [
-                'name' => $d->name,
-                'options' => is_array($opts) ? array_values($opts) : [],
-            ];
-        }
-
-        $rows = [];
-        for ($vi = 0; $vi < 3; $vi++) {
-            $options = [];
-            foreach ($parsed as $j => $p) {
-                $arr = $p['options'];
-                if ($arr === []) {
-                    $fallback = ['Стандарт', 'Плюс', 'Премиум'];
-                    $options[$p['name']] = $fallback[$vi % 3];
-                } else {
-                    $idx = ($vi + $j + $salt) % count($arr);
-                    $options[$p['name']] = (string) $arr[$idx];
-                }
-            }
-
-            $base = 1200.0 + ($categoryId * 19 % 400) + $vi * 750 + ($salt % 97);
-            $old = $vi === 2 ? round($base + 400, 2) : null;
-
-            $rows[] = [
-                'options' => $options,
-                'price' => round($base, 2),
-                'old_price' => $old,
-                'stock' => 18 - $vi * 4,
-            ];
-        }
-
-        return $rows;
     }
 
     /** @return list<string> */
@@ -208,21 +144,21 @@ class DemoCatalogSeeder extends Seeder
         }
 
         return match ($def->name) {
-            'Бренд' => 'NoName',
+            'Бренд' => 'Без бренда',
             'Диагональ экрана', 'Диагональ' => '6',
             default => '—',
         };
     }
 
     /**
-     * @param  list<array{options: array<string, string>, price: float, old_price: ?float, stock: int}>  $variants
+     * @param  list<array{options?: array<string, string>, price: float|int, old_price?: float|int|null, stock?: int}>  $variants
      * @return list<int>
      */
     private function seedVariants(Product $product, array $variants): array
     {
         $ids = [];
 
-        foreach ($variants as $i => $v) {
+        foreach ($variants as $v) {
             $price = (float) $v['price'];
             $oldPrice = isset($v['old_price']) ? (float) $v['old_price'] : null;
             $discount = ($oldPrice && $oldPrice > $price)
@@ -231,7 +167,6 @@ class DemoCatalogSeeder extends Seeder
 
             $variant = ProductVariant::query()->create([
                 'product_id' => $product->id,
-                'sku' => 'SKU-'.$product->id.'-'.($i + 1).'-'.Str::upper(Str::random(4)),
                 'options' => $v['options'] ?? [],
                 'price' => $price,
                 'old_price' => $oldPrice,
@@ -271,14 +206,16 @@ class DemoCatalogSeeder extends Seeder
         }
 
         foreach ($variantIds as $vi => $variantId) {
-            $preview = $urls[$vi] ?? $urls[0];
-            ProductImage::query()->create([
-                'product_id' => $product->id,
-                'variant_id' => $variantId,
-                'url' => $preview,
-                'sort_order' => 100 + $vi,
-                'is_main' => true,
-            ]);
+            for ($imgIdx = 0; $imgIdx < 2; $imgIdx++) {
+                $preview = $urls[($vi + $imgIdx) % count($urls)];
+                ProductImage::query()->create([
+                    'product_id' => $product->id,
+                    'variant_id' => $variantId,
+                    'url' => $preview,
+                    'sort_order' => 100 + ($vi * 10) + $imgIdx,
+                    'is_main' => $imgIdx === 0,
+                ]);
+            }
         }
     }
 }

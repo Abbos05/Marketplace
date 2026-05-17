@@ -75,7 +75,7 @@ class ProductVariant extends Model
         }
 
         $parts = array_values(array_unique(array_filter($parts)));
-        $label = implode(' · ', $parts);
+        $label = implode(' ', $parts);
 
         return $label !== '' ? $label : ('Вариант #'.$this->id);
     }

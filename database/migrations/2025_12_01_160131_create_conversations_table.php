@@ -14,6 +14,10 @@ return new class extends Migration
         Schema::create('conversations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('buyer_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('assigned_staff_id')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
             $table->unsignedBigInteger('seller_id')->nullable();
             $table->unsignedBigInteger('order_id')->nullable();
             $table->string('type', 32)->default('seller_shop');

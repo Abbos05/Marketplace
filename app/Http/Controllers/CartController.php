@@ -31,6 +31,8 @@ class CartController extends Controller
         $cartItems = Cart::with(['variant.product.images'])
             ->where('user_id', $user->id)
             ->get()
+            ->filter(fn (Cart $cartItem) => $cartItem->variant?->product?->isPubliclyVisible())
+            ->values()
             ->map(function ($cartItem) {
                 return [
                     'id' => $cartItem->id,
@@ -82,6 +84,13 @@ class CartController extends Controller
 
         if (! $cartItem) {
             return back();
+        }
+
+        $cartItem->loadMissing('variant.product');
+        if (! $cartItem->variant?->product?->isPubliclyVisible()) {
+            $cartItem->delete();
+
+            return back()->with('error', 'Товар больше недоступен и удалён из корзины.');
         }
 
         $qty = (int) $request->quantity;
@@ -140,6 +149,14 @@ class CartController extends Controller
 
         if (! $variant->is_active) {
             return back()->with('error', 'Этот вариант сейчас недоступен.');
+        }
+
+        $variant->loadMissing('product');
+        if (! $variant->product?->isPurchasable()) {
+            return back()->with([
+                'error' => $variant->product?->storefrontBlockMessage() ?? 'Товар недоступен для заказа.',
+                'in_cart' => false,
+            ]);
         }
 
         $existing = Cart::query()
