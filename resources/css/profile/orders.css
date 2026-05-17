@@ -280,25 +280,24 @@ max-width: 150px;
 
 
 /* Пустая корзина */
-.NoCart {
+.NoOrder {
     text-align: center;
     padding: 50px;
-    background: white;
     border-radius: 12px;
 }
 
-.NoCart__image {
+.NoOrder__image {
     width: 200px;
     margin-bottom: 20px;
 }
 
-.NoCart__title {
+.NoOrder__title {
     font-size: 24px;
     font-weight: 600;
     margin-bottom: 10px;
 }
 
-.NoCart__text {
+.NoOrder__text {
     color: #666;
     max-width: 420px;
     margin: 0 auto 24px;
@@ -306,7 +305,7 @@ max-width: 150px;
     font-size: 15px;
 }
 
-.NoCart__button {
+.NoOrder__button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -325,18 +324,18 @@ max-width: 150px;
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
 }
 
-.NoCart__button:hover {
+.NoOrder__button:hover {
     background: var(--background, #6a5cff);
     transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(106, 92, 255, 0.35);
 }
 
-.NoCart__button:active {
+.NoOrder__button:active {
     transform: translateY(0);
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
 }
 
-.NoCart__button:focus-visible {
+.NoOrder__button:focus-visible {
     outline: 2px solid var(--background, #6a5cff);
     outline-offset: 3px;
 }

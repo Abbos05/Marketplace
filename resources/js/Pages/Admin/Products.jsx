@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import '../../../css/admin/dashboard.css';
@@ -21,10 +21,25 @@ function productStatusColor(s) {
     return 'adm-pstatus-default';
 }
 
-export default function AdminProducts({ auth, products = [], search = '', status = 'all', counts = {} }) {
+export default function AdminProducts({ auth, products = [], pagination = {}, search = '', status = 'all', counts = {} }) {
     const [message, setMessage] = useState(null);
     const [q, setQ] = useState(search);
     const [productComments, setProductComments] = useState({});
+    const [visibleProducts, setVisibleProducts] = useState(products);
+    const [pageInfo, setPageInfo] = useState(pagination);
+
+    useEffect(() => {
+        if ((pagination.current_page ?? 1) <= 1) {
+            setVisibleProducts(products);
+        } else {
+            setVisibleProducts((prev) => {
+                const knownIds = new Set(prev.map((p) => p.id));
+                const fresh = products.filter((p) => !knownIds.has(p.id));
+                return [...prev, ...fresh];
+            });
+        }
+        setPageInfo(pagination);
+    }, [products, pagination]);
 
     const flash = (msg, isError = false) => {
         setMessage({ text: msg, error: isError });
@@ -35,7 +50,21 @@ export default function AdminProducts({ auth, products = [], search = '', status
         router.get('/admin/products', {
             search: overrides.search ?? q,
             status: overrides.status ?? status,
+            page: overrides.page ?? 1,
         }, { preserveScroll: true, preserveState: false });
+    };
+
+    const loadMore = () => {
+        if (!pageInfo.has_more) return;
+        router.get('/admin/products', {
+            search,
+            status,
+            page: (pageInfo.current_page || 1) + 1,
+        }, {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['products', 'pagination'],
+        });
     };
 
     const submitSearch = (e) => {
@@ -114,15 +143,17 @@ export default function AdminProducts({ auth, products = [], search = '', status
                     )}
                 </form>
 
-                {products.length === 0 ? (
+                {visibleProducts.length === 0 ? (
                     <div className="adm-empty">
                         {search ? `Товары по запросу «${search}» не найдены` : 'Товары не найдены'}
                     </div>
                 ) : (
                     <>
-                        <div className="adm-result-count">Показано: {products.length}</div>
+                        <div className="adm-result-count">
+                            Показано: {visibleProducts.length} из {pageInfo.total ?? visibleProducts.length}
+                        </div>
                         <div className="adm-products-admin-list">
-                            {products.map(p => (
+                            {visibleProducts.map(p => (
                                 <div key={p.id} className="adm-product-admin-card">
                                     <img
                                         src={p.image || '/img/products/default.png'}
@@ -185,6 +216,15 @@ export default function AdminProducts({ auth, products = [], search = '', status
                                 </div>
                             ))}
                         </div>
+                        {pageInfo.has_more && (
+                            <button
+                                type="button"
+                                className="showMore__btn adm-products-load-more"
+                                onClick={loadMore}
+                            >
+                                Показать ещё {pageInfo.per_page || 50}
+                            </button>
+                        )}
                     </>
                 )}
             </div>

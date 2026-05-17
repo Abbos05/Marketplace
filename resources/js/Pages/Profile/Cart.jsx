@@ -134,6 +134,12 @@ export default function Cart({ cartItems = [], pickupPoints = [] }) {
             return;
         }
 
+        if (!auth?.user?.phone) {
+            alert('Подтвердите номер телефона в профиле, чтобы оформить заказ.');
+            router.visit(route('profile'));
+            return;
+        }
+
         const resolvedPickup = pickupId || auth?.user?.default_pickup_point_id;
         if (!resolvedPickup) {
             alert('Выберите пункт выдачи в профиле или в списке ниже.');

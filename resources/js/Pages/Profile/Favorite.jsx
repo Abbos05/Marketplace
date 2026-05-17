@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import React, { useMemo, useState } from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import FavoriteProduct from '@/Components/Product/ProductCard';
 import '../../../css/favorite/favorite.css';
 import Recommendations from '@/Components/Product/ProductPage';
-import { lastDayOfMonth } from 'date-fns';
+import { expandCatalogProductRows } from '@/lib/catalogListing';
 
 export default function Favorite({ auth, product}) {
-    const initialProducts = product;
+    const initialProducts = useMemo(() => expandCatalogProductRows(product), [product]);
         const { LikeProducts } = usePage().props;
     console.log(LikeProducts);
     
@@ -27,7 +27,7 @@ export default function Favorite({ auth, product}) {
                     {initialProducts.length > 0 ? (
                         <div className="products__grid">
                             {initialProducts.map(product => (
-                                <FavoriteProduct key={product.id} product={product} />
+                                <FavoriteProduct key={product.listing_key ?? product.id} product={product} />
                             ))}
                         </div>
                     ) : (

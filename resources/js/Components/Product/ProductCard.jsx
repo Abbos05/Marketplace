@@ -101,7 +101,7 @@ export default function ProductCard({ product, hideFooter = false }) {
 
         router.post(
             route('favorites.toggle', product.id),
-            {},
+            variantId != null ? { variant_id: variantId } : {},
             {
                 preserveState: true,
                 preserveScroll: true,
@@ -133,7 +133,7 @@ export default function ProductCard({ product, hideFooter = false }) {
 
     const reviewsCount = Number(product.reviews_count ?? 0);
     const ratingStr = reviewsCount === 0 ? null : formatRating(product);
-    const ratingDisplay = ratingStr ?? '—';
+    const ratingDisplay = ratingStr ?? '0.0';
     const shopName = product.seller_shop_name ?? product.seller?.name ?? 'Магазин';
     const verified = !!product.seller_verified;
     const showPromoBadges = !!product.is_on_action || showOldPrice;

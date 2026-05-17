@@ -229,8 +229,12 @@
 .NoCart {
     text-align: center;
     padding: 50px;
-    background: white;
     border-radius: 12px;
+
+    background: rgba(255, 255, 255, 0.815);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    overflow: hidden;
 }
 
 .NoCart__image {

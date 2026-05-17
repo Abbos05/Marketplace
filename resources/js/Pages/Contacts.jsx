@@ -11,14 +11,48 @@ export default function Contacts() {
       <InfoSection title="Служба поддержки">
         <p>
           Email:{' '}
-          <a href="mailto:support@alvora.ru" className="info-page__link">
-            support@alvora.ru
+          <a href="mailto:supportalvoraplace@gmail.com" className="info-page__link">
+          SupportAlvoraPlace@gmail.com
           </a>
         </p>
         <p>
+          Telegram-канал:{' '}
+          <a href="https://t.me/AlvoraPlace" className="info-page__link" target="_blank" rel="noopener noreferrer">
+            @AlvoraPlace
+          </a>
+        </p>
+        <p>
+          MAX:{' '}
+          <a href="https://max.ru/join/uTTd84ZCWV6LDqeiR1KOFZnBPp-2ar4mgwWMtSsmfmQ" className="info-page__link" target="_blank" rel="noopener noreferrer">
+            Открыть канал ALVORA в MAX
+          </a>
+        </p>
+      </InfoSection>
+
+      <InfoSection title="Основатель платформы">
+        <p>
+          Дадоматов Аббос Нурмахмадович — создатель платформы ALVORA.
+        </p>
+        <p>
+          Email:{' '}
+          <span className="info-page__link">Abbos••••@gmail.com</span>
+        </p>
+        <p>
+          Телефон: <span className="info-page__link">+7 9•• ••• 11 05</span>
+        </p>
+        <p>
+          Полные личные контакты предоставляются через службу поддержки только для рабочих обращений.
+        </p>
+        <p>
           Telegram:{' '}
-          <a href="https://t.me/alvora_support" className="info-page__link" target="_blank" rel="noopener noreferrer">
-            @alvora_support
+          <a href="https://t.me/id_a_005_a" className="info-page__link" target="_blank" rel="noopener noreferrer">
+            t.me/id_a_005_a
+          </a>
+        </p>
+        <p>
+          VK:{' '}
+          <a href="https://vk.com/id_a_i_09_05_i_a" className="info-page__link" target="_blank" rel="noopener noreferrer">
+            vk.com/id_a_i_09_05_i_a
           </a>
         </p>
       </InfoSection>
@@ -30,40 +64,8 @@ export default function Contacts() {
         </p>
       </InfoSection>
 
-      <InfoSection title="Написать нам">
-        <p>Вы также можете отправить сообщение через форму ниже. Ответ придёт на указанный email.</p>
-        <form
-          className="contacts-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-          }}
-          style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}
-        >
-          <input
-            type="text"
-            placeholder="Ваше имя"
-            className="info-page__btn info-page__btn--outline"
-            style={{ textAlign: 'left', cursor: 'text' }}
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            className="info-page__btn info-page__btn--outline"
-            style={{ textAlign: 'left', cursor: 'text' }}
-          />
-          <textarea
-            rows={5}
-            placeholder="Сообщение"
-            className="info-page__btn info-page__btn--outline"
-            style={{ textAlign: 'left', cursor: 'text', resize: 'vertical' }}
-          />
-          <button type="submit" className="info-page__btn info-page__btn--primary" style={{ border: 'none', cursor: 'pointer' }}>
-            Отправить
-          </button>
-        </form>
-      </InfoSection>
 
-      <InfoSection title="Быстрые ссылки">
+      <InfoSection>
         <div className="info-page__actions">
           <Link href="/help" className="info-page__btn info-page__btn--outline">
             Помощь

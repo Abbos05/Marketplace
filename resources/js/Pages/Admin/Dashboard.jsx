@@ -16,7 +16,16 @@ const ORDER_STATUSES = [
 ];
 const ORDER_STATUS_MAP = Object.fromEntries(ORDER_STATUSES.map(s => [s.value, s.label]));
 const PAYMENT_STATUS_MAP = { pending: 'Ожидает', paid: 'Оплачен', failed: 'Ошибка', refunded: 'Возврат' };
-const UNPAID_ALLOWED_STATUSES = ['NEW', 'CANCELED'];
+const UNPAID_ALLOWED_STATUSES = ['NEW', 'INTRANSIT', 'DELIVERED', 'CANCELED', 'REFUSED'];
+const LOGIN_METHOD_LABELS = {
+    password: 'Пароль',
+    phone_otp: 'Код по телефону',
+    email_otp: 'Код по email',
+    phone_password: 'Пароль по телефону',
+    google: 'Google',
+    yandex: 'Yandex',
+    github: 'GitHub',
+};
 
 function orderStatusOptionsFor(order) {
     if (order.payment_status === 'paid') {
@@ -190,7 +199,7 @@ function RevenueExportBar() {
 export default function AdminDashboard({
     auth, stats, pendingSellers = [], users = [],
     orderSearch = '', orderResults = [],
-    sessions = [], currentSessionId,
+    sessions = [], loginHistory = [], currentSessionId,
     revenueChart = [],
 }) {
     const { staffAccess } = usePage().props;
@@ -288,6 +297,16 @@ export default function AdminDashboard({
             || (s.ip_address || '').includes(sessionQuery)
             || String(s.user_id || '').includes(sessionQuery);
     });
+    const visibleLoginHistory = loginHistory.filter(event => {
+        if (!sessionQuery) return true;
+        const q = sessionQuery.toLowerCase();
+        return (event.user_name || '').toLowerCase().includes(q)
+            || (event.user_last_name || '').toLowerCase().includes(q)
+            || (event.user_email || '').toLowerCase().includes(q)
+            || (event.ip_address || '').includes(sessionQuery)
+            || (event.login_method || '').toLowerCase().includes(q)
+            || String(event.user_id || '').includes(sessionQuery);
+    });
 
     const visiblePending = pendingSellers.filter(u => {
         if (!pendingQuery) return true;
@@ -319,9 +338,31 @@ export default function AdminDashboard({
         { key: 'pending',  label: `Заявки продавцов${stats.pending_approvals > 0 ? ` (${stats.pending_approvals})` : ''}` },
         { key: 'users',    label: 'Пользователи' },
         { key: 'orders',   label: 'Поиск заказов' },
+        { key: 'extra',    label: 'Дополнительно' },
     ];
 
-    const goToProducts = () => { window.location.href = '/admin/products'; };
+    const extraLinks = [
+        {
+            title: 'Все товары',
+            description: 'Каталог товаров, модерация, статусы и управление витриной.',
+            href: '/admin/products',
+        },
+        {
+            title: 'Слайдер главной',
+            description: 'Баннеры и промо-слайды на главной странице.',
+            href: '/admin/home-slides',
+        },
+        {
+            title: 'Отзывы',
+            description: 'Модерация отзывов покупателей по товарам.',
+            href: '/admin/reviews',
+        },
+        {
+            title: 'Поддержка (чаты)',
+            description: 'Обращения пользователей и переписки поддержки.',
+            href: '/admin/support',
+        },
+    ];
 
     // Live update of "X min ago" labels every 30s
     const [, force] = useState(0);
@@ -352,10 +393,6 @@ export default function AdminDashboard({
                                 {s.label}
                             </button>
                         ))}
-                        <a href="/admin/products" className="adm-nav-item">Все товары</a>
-                        <a href="/admin/home-slides" className="adm-nav-item">Слайдер главной</a>
-                        <a href="/admin/reviews" className="adm-nav-item">Отзывы</a>
-                        <a href="/admin/support" className="adm-nav-item">Поддержка (чаты)</a>
                         <a href="/profile" className="adm-nav-item adm-nav-back">← Профиль</a>
                     </nav>
                 </aside>
@@ -427,9 +464,30 @@ export default function AdminDashboard({
                                 <button className="adm-shortcut-btn" onClick={() => setActiveSection('orders')}>
                                     Поиск заказов
                                 </button>
-                                <button className="adm-shortcut-btn" onClick={goToProducts}>
-                                    Все товары
+                                <button className="adm-shortcut-btn" onClick={() => setActiveSection('extra')}>
+                                    Дополнительно
                                 </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── EXTRA LINKS ── */}
+                    {activeSection === 'extra' && (
+                        <div>
+                            <h1 className="adm-title">Дополнительно</h1>
+                            <div className="adm-extra-grid">
+                                {extraLinks.map((link) => (
+                                    <button
+                                        key={link.href}
+                                        type="button"
+                                        className="adm-extra-card"
+                                        onClick={() => { window.location.href = link.href; }}
+                                    >
+                                        <span className="adm-extra-card-title">{link.title}</span>
+                                        <span className="adm-extra-card-text">{link.description}</span>
+                                        <span className="adm-extra-card-action">Открыть →</span>
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     )}
@@ -457,7 +515,7 @@ export default function AdminDashboard({
                                 />
                             </div>
 
-                            <div className="adm-table-wrap">
+                            <div className="adm-table-wrap adm-table-wrap--sessions">
                                 <table className="adm-table">
                                     <thead>
                                         <tr>
@@ -527,6 +585,64 @@ export default function AdminDashboard({
                                 </table>
                                 {visibleSessions.length === 0 && (
                                     <div className="adm-empty">Сессии не найдены</div>
+                                )}
+                            </div>
+
+                            <div className="adm-section-subhead">
+                                <h2>История входов</h2>
+                                <span>{visibleLoginHistory.length} записей</span>
+                            </div>
+                            <div className="adm-table-wrap adm-table-wrap--login-history">
+                                <table className="adm-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Пользователь</th>
+                                            <th>Метод</th>
+                                            <th>IP-адрес</th>
+                                            <th>Устройство</th>
+                                            <th>Когда</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {visibleLoginHistory.map(event => {
+                                            const { browser, device } = parseUserAgent(event.user_agent);
+                                            return (
+                                                <tr key={event.id}>
+                                                    <td>
+                                                        {event.user_id ? (
+                                                            <div className="adm-cell-user">
+                                                                <img src={event.user_avatar || '/img/profiles/profile.png'} className="adm-avatar-sm" alt="" />
+                                                                <div>
+                                                                    <div className="adm-user-name">
+                                                                        {[event.user_name, event.user_last_name].filter(Boolean).join(' ') || 'Без имени'}
+                                                                    </div>
+                                                                    <div className="adm-user-sub">{event.user_email || `ID: ${event.user_id}`}</div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="adm-anon-user">Удалённый пользователь</span>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <span className="adm-login-method">
+                                                            {LOGIN_METHOD_LABELS[event.login_method] || event.login_method || 'Вход'}
+                                                        </span>
+                                                    </td>
+                                                    <td><code className="adm-code">{event.ip_address || '—'}</code></td>
+                                                    <td>
+                                                        <div className="adm-device-info">
+                                                            <span>{browser}</span>
+                                                            <span className="adm-user-sub">{device}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>{timeAgo(event.created_at)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                                {visibleLoginHistory.length === 0 && (
+                                    <div className="adm-empty">История входов не найдена</div>
                                 )}
                             </div>
                         </div>
@@ -695,7 +811,7 @@ export default function AdminDashboard({
                                 <input
                                     type="text"
                                     className="admin-search-input"
-                                    placeholder="Номер заказа, код заказа, суточный код (1234 5678), покупатель..."
+                                    placeholder="Точный номер ORD-..., код выдачи (10 символов), суточный код 1234 5678, ID или email"
                                     value={orderQuery}
                                     onChange={(e) => setOrderQuery(e.target.value)}
                                 />
@@ -719,9 +835,10 @@ export default function AdminDashboard({
 
                             {!orderSearch && orderResults.length === 0 && (
                                 <div className="adm-empty">
-                                    Введите номер заказа, код заказа или суточный код покупателя,
-                                    либо нажмите «Сканировать» и наведите камеру на QR / штрихкод.<br />
-                                    Суточный код: <code className="adm-code">1234 5678</code> — покажет все заказы этого пользователя.
+                                    Введите значение целиком — поиск только по точному совпадению (не по части кода).<br />
+                                    Номер заказа <code className="adm-code">ORD-...</code>, код выдачи (10 символов),
+                                    суточный код <code className="adm-code">1234 5678</code>, ID покупателя или email.
+                                    Можно отсканировать QR / штрихкод.
                                 </div>
                             )}
 
@@ -848,7 +965,7 @@ export default function AdminDashboard({
                                                             </select>
                                                             <span className="adm-status-hint">
                                                                 Текущий: {ORDER_STATUS_MAP[o.status]}
-                                                                {o.payment_status !== 'paid' && ' · доставка после оплаты'}
+                                                                {o.payment_status !== 'paid' && ' · выдача после оплаты'}
                                                             </span>
                                                             <a
                                                                 href={`/admin/reports/order/${o.id}`}

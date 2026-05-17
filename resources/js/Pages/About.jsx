@@ -22,6 +22,24 @@ export default function About() {
         </p>
       </InfoSection>
 
+      <InfoSection title="Создатель платформы">
+        <p>
+          ALVORA создана Дадоматовым Аббосом Нурмахмадовичем как marketplace-платформа для удобной
+          торговли, общения покупателей с продавцами и управления заказами в одном личном кабинете.
+        </p>
+        <p>
+          Публичные каналы проекта:{' '}
+          <a href="https://t.me/AlvoraPlace" className="info-page__link" target="_blank" rel="noopener noreferrer">
+            Telegram
+          </a>
+          {' '}и{' '}
+          <a href="https://max.ru/join/uTTd84ZCWV6LDqeiR1KOFZnBPp-2ar4mgwWMtSsmfmQ" className="info-page__link" target="_blank" rel="noopener noreferrer">
+            MAX
+          </a>
+          .
+        </p>
+      </InfoSection>
+
       <InfoSection title="Безопасность и прозрачность">
         <p>
           Оплата проходит через защищённые платёжные сервисы. Отзывы проходят модерацию. Возвраты оформляются

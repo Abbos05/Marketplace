@@ -34,11 +34,11 @@
 .category-header__nav-btn--current {
     cursor: default;
     font-weight: var(--fw-600);
-    color: #2563eb;
+    color: var(--background);
 }
 
 .category-header__nav-btn--current:hover {
-    color: #2563eb;
+    color: var(--backgroundBlack);
 }
 
 .category-header__title {

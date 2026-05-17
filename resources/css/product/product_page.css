@@ -350,6 +350,125 @@
   color: #000;
 }
 
+.product-page__pickup {
+  margin-bottom: 15px;
+  padding: 14px;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef5ff 100%);
+  border: 1px solid #dbe5f0;
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgb(15 23 42 / 6%);
+}
+
+.product-page__pickup.has-error {
+  border-color: #f97373;
+  box-shadow: 0 0 0 3px rgb(239 68 68 / 10%);
+}
+
+.product-page__pickup-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.product-page__pickup-kicker {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.product-page__pickup-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.product-page__pickup-change {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #fff;
+  color: #005bff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.product-page__pickup-change:hover {
+  border-color: #005bff;
+  background: #eff6ff;
+}
+
+.product-page__pickup-selected {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 13px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.product-page__pickup-selected strong,
+.product-page__pickup-option strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  line-height: 1.25;
+  color: #0f172a;
+}
+
+.product-page__pickup-selected span,
+.product-page__pickup-option span {
+  display: block;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #475569;
+}
+
+.product-page__pickup-selected small,
+.product-page__pickup-option small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.product-page__pickup-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: #10c44c;
+  box-shadow: 0 0 0 4px rgb(16 196 76 / 14%);
+}
+
+.product-page__pickup-empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.product-page__pickup-notice {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .product-page__actions {
   display: flex;
   justify-content: space-between;
@@ -529,10 +648,6 @@
   background-color: #019031;
 }
 
-.product-page__seller-rating {
-  /* 313 строка */
-}
-
 .product-page__seller-rating .product-page__ui-icon {
   flex-shrink: 0;
 }
@@ -547,10 +662,6 @@
 .product-page__seller-sales svg {
   width: 18px;
   height: 18px;
-}
-
-.product-page__seller-profile {
-  /* 295 строка, там код */
 }
 
 .product-page__lead {
@@ -899,14 +1010,164 @@
   color: #64748b;
 }
 
-
-/* Адаптивность */
-@media (max-width: 1440px) {
-  .product-page__main {
-    /*  width: calc(100% - 341px); */
-  }
+.product-page__pickup-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
+.product-page__pickup-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(15 23 42 / 48%);
+  cursor: pointer;
+}
+
+.product-page__pickup-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  max-height: min(720px, calc(100vh - 40px));
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 28%);
+  overflow: hidden;
+}
+
+.product-page__pickup-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.product-page__pickup-modal-head h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.product-page__pickup-modal-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.product-page__pickup-list {
+  padding: 16px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.product-page__pickup-option {
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.product-page__pickup-option:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 8px 22px rgb(15 23 42 / 8%);
+}
+
+.product-page__pickup-option.is-active {
+  border-color: #005bff;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #005bff inset;
+}
+
+.product-page__pickup-radio {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.product-page__pickup-option.is-active .product-page__pickup-radio {
+  border: 5px solid #005bff;
+}
+
+.product-page__pickup-option-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-page__pickup-modal-empty {
+  margin: 0;
+  padding: 24px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.product-page__pickup-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 16px 20px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.product-page__pickup-modal-primary,
+.product-page__pickup-modal-secondary {
+  padding: 11px 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.product-page__pickup-modal-primary {
+  border: none;
+  background: #10c44c;
+  color: #fff;
+}
+
+.product-page__pickup-modal-primary:hover:not(:disabled) {
+  background: #019031;
+}
+
+.product-page__pickup-modal-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.product-page__pickup-modal-secondary {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+
+
+/* Адаптивность */
 @media (max-width: 1024px) {
   .product-page__content {
     flex-direction: column;
@@ -930,6 +1191,28 @@
 
   .product-page__thumbnails {
     flex-direction: row;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .product-page__pickup-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .product-page__pickup-modal-panel {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .product-page__pickup-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .product-page__pickup-modal-primary,
+  .product-page__pickup-modal-secondary {
     width: 100%;
   }
 }

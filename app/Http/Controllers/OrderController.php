@@ -70,6 +70,10 @@ class OrderController extends Controller
         $user = auth()->user();
         $items = $request->items;
 
+        if (! $user->phone) {
+            return redirect()->route('profile')->with('error', 'Подтвердите номер телефона в профиле, чтобы оформить заказ.');
+        }
+
         if (!$items || count($items) === 0) {
             return back()->with('error', 'Нет товаров');
         }

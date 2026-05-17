@@ -199,81 +199,11 @@ class AdminController extends Controller
                 'created_at' => $u->created_at,
             ]);
 
-        // Поиск заказов — серверный (включаем удалённых покупателей)
+        // Поиск заказов — только точное совпадение (номер, код, суточный код, ID/email/телефон)
         $orderSearch = trim((string) $request->input('order_search', ''));
-        $orderResults = collect();
-        if ($orderSearch !== '') {
-            $normalizedOrderSearch = preg_replace('/\s+/', '', $orderSearch);
-            $formattedDailyCode = (strlen($normalizedOrderSearch) === 8 && ctype_digit($normalizedOrderSearch))
-                ? substr($normalizedOrderSearch, 0, 4).' '.substr($normalizedOrderSearch, 4, 4)
-                : null;
-
-            $orderResults = Order::with([
-                    'buyer' => fn($q) => $q->withTrashed(),
-                    'items.variant.product.images',
-                ])
-                ->where(function ($q) use ($orderSearch, $normalizedOrderSearch, $formattedDailyCode) {
-                    $q->where('number', 'like', "%{$orderSearch}%")
-                      ->orWhere('order_code', 'like', "%{$orderSearch}%");
-
-                    if ($normalizedOrderSearch !== '' && $normalizedOrderSearch !== $orderSearch) {
-                        $q->orWhere('order_code', 'like', "%{$normalizedOrderSearch}%");
-                    }
-
-                    $q->orWhereHas('buyer', function ($q2) use ($orderSearch, $normalizedOrderSearch, $formattedDailyCode) {
-                          $q2->withTrashed()
-                             ->where(function ($q3) use ($orderSearch, $normalizedOrderSearch, $formattedDailyCode) {
-                                 $q3->where('name', 'like', "%{$orderSearch}%")
-                                    ->orWhere('email', 'like', "%{$orderSearch}%")
-                                    ->orWhere('phone', 'like', "%{$orderSearch}%")
-                                    ->orWhere('id', $orderSearch)
-                                    ->orWhere('daily_pickup_code', 'like', "%{$orderSearch}%");
-
-                                 if ($formattedDailyCode) {
-                                     $q3->orWhere('daily_pickup_code', $formattedDailyCode);
-                                 }
-                                 if ($normalizedOrderSearch !== '' && $normalizedOrderSearch !== $orderSearch) {
-                                     $q3->orWhere('daily_pickup_code', 'like', "%{$normalizedOrderSearch}%");
-                                 }
-                             });
-                      });
-                })
-                ->orderBy('created_at', 'desc')
-                ->limit(50)
-                ->get()
-                ->map(fn($o) => [
-                    'id'               => $o->id,
-                    'number'           => $o->number,
-                    'order_code'       => $o->order_code,
-                    'total'            => $o->total,
-                    'discount'         => $o->discount,
-                    'status'           => $o->status,
-                    'payment_status'   => $o->payment_status,
-                    'delivery_method'  => $o->delivery_method,
-                    'delivery_address' => $o->delivery_address,
-                    'comment'          => $o->comment,
-                    'created_at'       => $o->created_at,
-                    'items_count'      => $o->items->count(),
-                    'buyer'            => $o->buyer ? [
-                        'id'         => $o->buyer->id,
-                        'name'       => $o->buyer->name,
-                        'last_name'  => $o->buyer->last_name,
-                        'email'      => $o->buyer->email,
-                        'phone'      => $o->buyer->phone,
-                        'avatar'     => $o->buyer->avatar,
-                        'role'       => $o->buyer->role,
-                        'is_blocked' => $o->buyer->is_blocked,
-                        'deleted_at' => $o->buyer->deleted_at,
-                    ] : null,
-                    'items'            => $o->items->map(fn($item) => [
-                        'id'                => $item->id,
-                        'quantity'          => $item->quantity,
-                        'price_at_purchase' => $item->price_at_purchase,
-                        'product_name'      => $item->variant?->product?->title ?? '—',
-                        'product_image'     => $item->variant?->product?->images?->firstWhere('is_main', true)?->url ?? null,
-                    ]),
-                ]);
-        }
+        $orderResults = $orderSearch !== ''
+            ? $this->searchOrdersExact($orderSearch)
+            : collect();
 
         // Сессии — джоиним с пользователями
         $sessions = DB::table('sessions')
@@ -298,6 +228,30 @@ class AdminController extends Controller
                 $s->is_online      = $s->last_activity >= $onlineThreshold;
                 $s->last_activity  = Carbon::createFromTimestamp($s->last_activity)->toIso8601String();
                 return $s;
+            });
+
+        $loginHistory = DB::table('account_login_events')
+            ->leftJoin('users', 'account_login_events.user_id', '=', 'users.id')
+            ->select(
+                'account_login_events.id',
+                'account_login_events.user_id',
+                'account_login_events.session_id',
+                'account_login_events.ip_address',
+                'account_login_events.user_agent',
+                'account_login_events.login_method',
+                'account_login_events.created_at',
+                'users.name as user_name',
+                'users.last_name as user_last_name',
+                'users.email as user_email',
+                'users.avatar as user_avatar',
+            )
+            ->orderByDesc('account_login_events.created_at')
+            ->limit(200)
+            ->get()
+            ->map(function ($event) {
+                $event->created_at = Carbon::parse($event->created_at)->toIso8601String();
+
+                return $event;
             });
 
         // Revenue chart — последние 30 дней
@@ -328,6 +282,7 @@ class AdminController extends Controller
             'orderSearch'      => $orderSearch,
             'orderResults'     => $orderResults,
             'sessions'         => $sessions,
+            'loginHistory'     => $loginHistory,
             'currentSessionId' => $request->session()->getId(),
             'revenueChart'     => $revenueChart,
         ]);
@@ -413,8 +368,13 @@ class AdminController extends Controller
                 'rating'         => $user->sellerProfile->rating,
                 'total_sales'    => $user->sellerProfile->total_sales,
             ] : null,
-            'has_orders'     => Order::where('buyer_id', $user->id)->exists(),
-            'has_sales'      => OrderItem::where('seller_id', $user->id)->exists(),
+            'has_orders'     => Order::where('buyer_id', $user->id)
+                ->whereNotIn('status', Order::statusesAllowingUserDeletion())
+                ->exists(),
+            'orders_count'   => Order::where('buyer_id', $user->id)->count(),
+            'has_sales'      => OrderItem::where('seller_id', $user->id)
+                ->whereHas('order', fn ($q) => $q->whereNotIn('status', Order::statusesAllowingUserDeletion()))
+                ->exists(),
             'has_products'   => Product::where('seller_id', $user->id)->exists(),
         ];
 
@@ -429,12 +389,24 @@ class AdminController extends Controller
                 return $s;
             });
 
+        $userLoginHistory = DB::table('account_login_events')
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(function ($event) {
+                $event->created_at = Carbon::parse($event->created_at)->toIso8601String();
+
+                return $event;
+            });
+
         return Inertia::render('Admin/UserDetail', [
             'user'             => $userData,
             'orders'           => $orders,
             'sellerOrders'     => $sellerOrders,
             'products'         => $products,
             'userSessions'     => $userSessions,
+            'userLoginHistory' => $userLoginHistory,
             'currentSessionId' => request()->session()->getId(),
         ]);
     }
@@ -483,7 +455,7 @@ class AdminController extends Controller
         $newStatus = $request->status;
 
         if (! $order->canSetDeliveryStatus($newStatus)) {
-            return back()->with('error', 'Нельзя перевести неоплаченный заказ в статус доставки или выдачи. Сначала нужна оплата.');
+            return back()->with('error', 'Нельзя выдать неоплаченный заказ. Остальные статусы доставки доступны.');
         }
 
         $order->update(['status' => $newStatus]);
@@ -699,6 +671,7 @@ class AdminController extends Controller
     {
         $search = trim((string) $request->input('search', ''));
         $status = $request->input('status', 'all');
+        $perPage = 50;
 
         $query = Product::with(['seller', 'category', 'images'])
             ->orderBy('created_at', 'desc');
@@ -718,7 +691,8 @@ class AdminController extends Controller
             });
         }
 
-        $products = $query->limit(200)->get()->map(fn($p) => [
+        $products = $query->paginate($perPage)->withQueryString();
+        $productItems = $products->getCollection()->map(fn($p) => [
             'id'                 => $p->id,
             'title'              => $p->title,
             'min_price'          => $p->min_price,
@@ -748,10 +722,114 @@ class AdminController extends Controller
         ];
 
         return Inertia::render('Admin/Products', [
-            'products' => $products,
+            'products' => $productItems,
+            'pagination' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+                'has_more' => $products->hasMorePages(),
+            ],
             'search'   => $search,
             'status'   => $status,
             'counts'   => $counts,
         ]);
+    }
+
+    /**
+     * Поиск заказов в админке: только полное совпадение, без LIKE-подстрок.
+     */
+    private function searchOrdersExact(string $orderSearch)
+    {
+        $normalized = preg_replace('/\s+/', '', $orderSearch);
+        $digitsOnly = preg_replace('/\D+/', '', $orderSearch);
+        $orderCode = strtoupper($normalized);
+        $dailyCodeFormatted = (strlen($digitsOnly) === 8)
+            ? substr($digitsOnly, 0, 4).' '.substr($digitsOnly, 4, 4)
+            : null;
+
+        return Order::with([
+            'buyer' => fn ($q) => $q->withTrashed(),
+            'items.variant.product.images',
+        ])
+            ->where(function ($q) use ($orderSearch, $normalized, $orderCode, $dailyCodeFormatted, $digitsOnly) {
+                // Номер заказа (ORD-...) — целиком
+                $q->where('number', $orderSearch);
+                if ($normalized !== '' && $normalized !== $orderSearch) {
+                    $q->orWhere('number', $normalized);
+                }
+
+                // Код выдачи — ровно 10 символов
+                if (strlen($orderCode) === 10) {
+                    $q->orWhere('order_code', $orderCode);
+                }
+
+                // Суточный код покупателя — ровно 8 цифр (1234 5678 или 12345678)
+                if ($dailyCodeFormatted !== null) {
+                    $q->orWhereHas('buyer', fn ($b) => $b->withTrashed()
+                        ->where('daily_pickup_code', $dailyCodeFormatted));
+                }
+
+                // ID покупателя
+                if (ctype_digit($orderSearch) && (int) $orderSearch > 0) {
+                    $q->orWhereHas('buyer', fn ($b) => $b->withTrashed()
+                        ->where('id', (int) $orderSearch));
+                }
+
+                // Email — целиком
+                if (filter_var($orderSearch, FILTER_VALIDATE_EMAIL)) {
+                    $q->orWhereHas('buyer', fn ($b) => $b->withTrashed()
+                        ->where('email', $orderSearch));
+                }
+
+                // Телефон — только при полном номере (от 10 цифр)
+                if (strlen($digitsOnly) >= 10) {
+                    $q->orWhereHas('buyer', function ($b) use ($digitsOnly) {
+                        $b->withTrashed()
+                            ->where(function ($phoneQ) use ($digitsOnly) {
+                                $phoneQ->where('phone', $digitsOnly)
+                                    ->orWhereRaw(
+                                        "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?",
+                                        [$digitsOnly]
+                                    );
+                            });
+                    });
+                }
+            })
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->map(fn ($o) => [
+                'id'               => $o->id,
+                'number'           => $o->number,
+                'order_code'       => $o->order_code,
+                'total'            => $o->total,
+                'discount'         => $o->discount,
+                'status'           => $o->status,
+                'payment_status'   => $o->payment_status,
+                'delivery_method'  => $o->delivery_method,
+                'delivery_address' => $o->delivery_address,
+                'comment'          => $o->comment,
+                'created_at'       => $o->created_at,
+                'items_count'      => $o->items->count(),
+                'buyer'            => $o->buyer ? [
+                    'id'         => $o->buyer->id,
+                    'name'       => $o->buyer->name,
+                    'last_name'  => $o->buyer->last_name,
+                    'email'      => $o->buyer->email,
+                    'phone'      => $o->buyer->phone,
+                    'avatar'     => $o->buyer->avatar,
+                    'role'       => $o->buyer->role,
+                    'is_blocked' => $o->buyer->is_blocked,
+                    'deleted_at' => $o->buyer->deleted_at,
+                ] : null,
+                'items'            => $o->items->map(fn ($item) => [
+                    'id'                => $item->id,
+                    'quantity'          => $item->quantity,
+                    'price_at_purchase' => $item->price_at_purchase,
+                    'product_name'      => $item->variant?->product?->title ?? '—',
+                    'product_image'     => $item->variant?->product?->images?->firstWhere('is_main', true)?->url ?? null,
+                ]),
+            ]);
     }
 }

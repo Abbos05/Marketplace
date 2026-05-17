@@ -7,6 +7,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use App\Notifications\MarketplaceAlert;
+use App\Services\LoginHistoryRecorder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +20,7 @@ class AuthenticatedSessionController extends Controller
      */
     public function showLogin(Request $request)
     {
-        $homeController = new HomeController();
+        $homeController = app(HomeController::class);
         $data = $homeController->index($request, true);
         $data['showModal'] = 'phone_auth';
 
@@ -28,7 +29,7 @@ class AuthenticatedSessionController extends Controller
 
     public function showRegister(Request $request)
     {
-        $homeController = new HomeController();
+        $homeController = app(HomeController::class);
         $data = $homeController->index($request, true);
         $data['showModal'] = 'phone_auth';
 
@@ -46,6 +47,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->save(); // ← добавь эту строку
         $user = $request->user();
         if ($user instanceof User) {
+            app(LoginHistoryRecorder::class)->record($request, $user, 'password');
             $user->notify(new MarketplaceAlert(
                 'Вход в аккаунт',
                 'Вход выполнен '.now()->timezone('Europe/Moscow')->format('d.m.Y H:i').' (MSK). Если это были не вы, смените пароль.',

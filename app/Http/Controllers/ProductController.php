@@ -15,6 +15,7 @@ use App\Models\ReviewVote;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Stripe\Stripe;
@@ -125,6 +126,23 @@ class ProductController extends Controller
         };
 
         $user = Auth::user();
+        $favoriteVariantIds = [];
+        $hasProductFavorite = false;
+
+        if ($user) {
+            $favoriteRows = DB::table('favorites')
+                ->where('user_id', $user->id)
+                ->where('product_id', $product->id)
+                ->get(['variant_id']);
+
+            $favoriteVariantIds = $favoriteRows
+                ->pluck('variant_id')
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+            $hasProductFavorite = $favoriteRows->contains(fn ($row) => $row->variant_id === null);
+        }
 
         $platformCommissionPercent = 10.0;
 
@@ -170,6 +188,7 @@ class ProductController extends Controller
                 'gallery' => $variantGallery,
                 'image' => $variantGallery[0] ?? null,
                 'in_cart' => $inCart,
+                'is_favorite' => in_array((int) $v->id, $favoriteVariantIds, true),
                 'has_ordered' => $hasOrdered,
                 'existing_order_id' => $existingOrderId,
                 'purchase_breakdown' => [
@@ -252,9 +271,9 @@ class ProductController extends Controller
             'user_avatar' => $r->user?->avatar ? Product::normalizeListingUrl($r->user->avatar) : null,
         ])->values()->all();
 
-        $isFavorite = false;
-        if ($user) {
-            $isFavorite = $user->favorites()->where('product_id', $product->id)->exists();
+        $isFavorite = (bool) ($selectedRow['is_favorite'] ?? false);
+        if (! $isFavorite && $variants->count() === 1) {
+            $isFavorite = $hasProductFavorite;
         }
 
         $seller = $product->seller;
@@ -265,6 +284,7 @@ class ProductController extends Controller
         $product->variant_stock = $selectedRow['stock'];
         $product->in_cart = $selectedRow['in_cart'];
         $product->is_favorite = $isFavorite;
+        $product->favorite_variant_ids = $favoriteVariantIds;
         $product->image = $mainImage;
         $product->gallery = $selectedRow['gallery'];
         $product->specs = $specs;
@@ -307,7 +327,11 @@ class ProductController extends Controller
             ->get()
             ->map(fn (PickupPoint $p) => [
                 'id' => $p->id,
+                'title' => $p->title,
+                'address' => $p->address,
+                'region' => $p->region?->name,
                 'label' => $p->title.($p->region ? ' — '.$p->region->name : ''),
+                'delivery_hours' => $p->region?->delivery_hours,
             ]);
 
         return Inertia::render('Product/Show', [

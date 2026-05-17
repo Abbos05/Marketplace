@@ -981,10 +981,6 @@ overflow: hidden;
     flex: 1;
 }
 
-.Profile__recommendated{
-    /* width: max-content !important; */
-
-}
 /* PRODUCTS */
 .Profile__recommendated .products__grid {
     display: grid !important;
@@ -2292,6 +2288,7 @@ overflow: hidden;
 .settings-card-value--clamp {
     display: -webkit-box;
     -webkit-line-clamp: 1;
+    line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
     max-width: 340px;
@@ -2517,6 +2514,114 @@ overflow: hidden;
     cursor: not-allowed;
 }
 
+.settings-session-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.settings-session-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.settings-session-head h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 800;
+    color: #1e293b;
+    font-family: var(--font-family);
+}
+
+.settings-session-head span {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.settings-session-list,
+.settings-login-history {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-session-item,
+.settings-login-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.75);
+}
+
+.settings-session-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+}
+
+.settings-online-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+
+.settings-online-dot.online {
+    background: #22c55e;
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+
+.settings-session-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.settings-session-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.settings-current-badge {
+    color: #16a34a;
+    background: rgba(34, 197, 94, 0.12);
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.settings-session-kick {
+    padding: 7px 14px;
+}
+
+.settings-login-time {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 /* ── Адаптив ─────────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
     .settings-card-header {
@@ -2538,6 +2643,17 @@ overflow: hidden;
     .settings-avatar-upload-row {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .settings-session-head,
+    .settings-session-item,
+    .settings-login-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .settings-session-kick {
+        width: 100%;
     }
 }
 

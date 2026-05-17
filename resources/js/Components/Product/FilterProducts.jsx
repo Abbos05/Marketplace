@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import ProductCard from '@/Components/Product/ProductCard';
+import ScrollReveal, { staggerDelay } from '@/Components/ScrollReveal';
 import CatalogFilterSidebar from '@/Components/Catalog/CatalogFilterSidebar';
 import ActiveFilterChips, { buildFilterChips } from '@/Components/Catalog/ActiveFilterChips';
 import { expandCatalogProductRows } from '@/lib/catalogListing';
@@ -213,11 +214,13 @@ export default function ProductsCatalog({
                             <>
                                 <section className="Category_product">
                                     <div className="products__grid">
-                                        {visibleRows.map((product) => (
-                                            <ProductCard
+                                        {visibleRows.map((product, index) => (
+                                            <ScrollReveal
                                                 key={product.listing_key}
-                                                product={product}
-                                            />
+                                                delay={staggerDelay(index)}
+                                            >
+                                                <ProductCard product={product} />
+                                            </ScrollReveal>
                                         ))}
                                     </div>
                                 </section>

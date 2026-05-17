@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import ProductCard from '@/Components/Product/ProductCard';
+import ScrollReveal, { staggerDelay } from '@/Components/ScrollReveal';
 import { expandCatalogProductRows } from '@/lib/catalogListing';
 import '../../../css/product/product.css';
 
@@ -19,8 +20,10 @@ const ProductPage = ({ products = [] }) => {
     return (
         <section className="products">
             <div className="products__grid">
-                {rows.map((product) => (
-                    <ProductCard key={product.listing_key} product={product} hideFooter />
+                {rows.map((product, index) => (
+                    <ScrollReveal key={product.listing_key} delay={staggerDelay(index)}>
+                        <ProductCard product={product} hideFooter />
+                    </ScrollReveal>
                 ))}
             </div>
         </section>

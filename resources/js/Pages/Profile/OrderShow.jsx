@@ -430,7 +430,7 @@ export default function OrderShow({ auth, order, deliveryTrack = null, documents
                                     <span className={`order-track-toggle__chevron ${deliveryDetailsOpen ? 'is-open' : ''}`} aria-hidden />
                                 </button>
 
-                                {deliveryDetailsOpen && (
+                                { deliveryDetailsOpen && (
                                     <div className="order-track-body">
                                         <div className="order-track-chips">
                                             <span className="order-track-chip">{deliveryTrack.method_label}</span>
@@ -476,6 +476,7 @@ export default function OrderShow({ auth, order, deliveryTrack = null, documents
 
 
                         {/* код получения */}
+                        { order.status !== 'ISSUED' && (
                         <div className="order-block">
                             <h3>Получите товары по коду</h3>
 
@@ -492,6 +493,7 @@ export default function OrderShow({ auth, order, deliveryTrack = null, documents
                                     Один код действует на весь заказ
                                 </p>
                         </div>
+                        )}
                         {documents && (
                             <div className="order-block order-documents">
                                 <h3>Документы</h3>

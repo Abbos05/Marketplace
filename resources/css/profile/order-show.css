@@ -70,8 +70,11 @@
     }
 
     .order-block h3 {
-        margin-bottom: 1px;
+        margin-bottom: 5px;
         font-size: 22px;
+    }
+    .order-documents li:first-child{
+        margin-top: 5px;
     }
 
     .order-blockSc {

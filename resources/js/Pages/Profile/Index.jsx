@@ -16,7 +16,7 @@ import '../../../css/profile/style.css';
 import CompanyFormModal from '@/Components/Company/CompanyFormModal';
 import CompanyProfile from '@/Components/Company/CompanyProfile';
 
-export default function Profile({ auth, products = [], LikeProducts = [], orders = [], myFavorites = [], sellerProfile = null, adminUsers = [], pickupPoints = [] }) {
+export default function Profile({ auth, products = [], LikeProducts = [], orders = [], myFavorites = [], sellerProfile = null, adminUsers = [], pickupPoints = [], userSessions = [], loginHistory = [], currentSessionId = null }) {
   const { staffAccess } = usePage().props;
   const [selectedOrder, setSelectedOrder] = useState(null);
 
@@ -32,7 +32,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
     e.preventDefault();
     patchPickup(route('profile.default-pickup'), {
       preserveScroll: true,
-      onSuccess: () => { setMessage('Пункт выдачи сохранён'); },
+      onSuccess: () => { setEditingCard(null); setMessage('Пункт выдачи сохранён'); },
     });
   };
 
@@ -60,13 +60,14 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
   const [isBlockedOpen, setIsBlockedOpen] = useState(auth.user.is_blocked === 1);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [message, setMessage] = useState(null);
+  const needsProfileVerification = (!auth.user.email || !auth.user.phone) && auth.user.is_active !== 0;
 
   useEffect(() => {
     if (auth.user.is_blocked === 1) setIsBlockedOpen(true);
   }, [auth.user.is_blocked]);
 
   // ─── Настройки: какая карточка открыта для редактирования ───────────────────
-  const [editingCard, setEditingCard] = useState(null); // 'personal' | 'contacts' | 'security'
+  const [editingCard, setEditingCard] = useState(null); // 'personal' | 'contacts' | 'pickup' | 'security' | 'sessions'
 
   // Форма: личные данные (фото + имя + фамилия + описание)
   const [avatarPreview, setAvatarPreview] = useState(auth.user.avatar || '/img/profiles/profile.png');
@@ -111,6 +112,42 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
     return f;
   };
 
+  const loginMethodLabels = {
+    password: 'Пароль',
+    phone_otp: 'Код по телефону',
+    email_otp: 'Код по email',
+    phone_password: 'Пароль по телефону',
+    google: 'Google',
+    yandex: 'Yandex',
+    github: 'GitHub',
+  };
+
+  const parseUserAgent = (ua) => {
+    if (!ua) return { browser: '—', device: '—' };
+    let browser = 'Прочее';
+    let device = 'Десктоп';
+    if (/iPhone|iPad/.test(ua)) device = 'iPhone/iPad';
+    else if (/Android/.test(ua)) device = 'Android';
+    else if (/Mac OS X/.test(ua)) device = 'macOS';
+    else if (/Windows/.test(ua)) device = 'Windows';
+    else if (/Linux/.test(ua)) device = 'Linux';
+    if (/Edg\//.test(ua)) browser = 'Edge';
+    else if (/OPR\/|Opera/.test(ua)) browser = 'Opera';
+    else if (/Chrome\//.test(ua)) browser = 'Chrome';
+    else if (/Firefox\//.test(ua)) browser = 'Firefox';
+    else if (/Safari\//.test(ua)) browser = 'Safari';
+    return { browser, device };
+  };
+
+  const timeAgo = (iso) => {
+    if (!iso) return '—';
+    const diff = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+    if (diff < 60) return `${diff} с назад`;
+    if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
+    return `${Math.floor(diff / 86400)} д назад`;
+  };
+
   const handleContactSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData();
@@ -151,6 +188,21 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
       onSuccess: () => { window.location.href = '/'; }
     });
   };
+
+  const kickOwnSession = (sessionId) => {
+    if (sessionId === currentSessionId) {
+      setMessage('Нельзя завершить текущее устройство');
+      return;
+    }
+    if (!confirm('Завершить вход на этом устройстве?')) return;
+    router.delete(route('profile.sessions.destroy', sessionId), {
+      preserveScroll: true,
+      onSuccess: () => setMessage('Сессия завершена'),
+    });
+  };
+
+  const onlineUserSessions = userSessions.filter((session) => session.is_online);
+  const lastLogin = loginHistory[0] ?? null;
 
   const formatName = (name) => {
     if (!name) return 'Пользователь';
@@ -210,14 +262,14 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
             />
             <div className="name" title={auth.user.name}>
               {formatName(auth.user.name)}
-              {auth.user.email && (
+              {auth.user.email && auth.user.phone && (
                 <img src="/img/profiles/check.png" alt="Верифицирован" className="verify-icon" />
               )}
             </div>
           </div>
 
           <div className="profile-menu">
-            {!auth.user.email && auth.user.is_active !== 0 && (
+            {needsProfileVerification && (
               <div className="verify" onClick={() => setIsPhoneOpen(true)}>
                 Пройти верификацию
               </div>
@@ -266,12 +318,12 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
         {/* ─── RIGHT CONTENT ────────────────────────────────────────────────── */}
         <div className="profile-content">
 
-          {!auth.user.email && auth.user.is_active !== 0 && (
+          {needsProfileVerification && (
             <div className="verify-banner">
               <div className="verify-banner-content">
                 <div className="verify-banner-text">
                   <h2>Заполните профиль</h2>
-                  <p>Укажите имя и email, чтобы открыть все возможности платформы:</p>
+                  <p>Укажите имя, email и подтвердите телефон, чтобы открыть все возможности платформы:</p>
                   <ul>
                     <li>Оформление заказов</li>
                     <li>Покупка товаров со скидкой</li>
@@ -611,7 +663,8 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                       {editingCard !== 'contacts' && (
                         <div className="settings-card-value">
                           <span>{auth.user.email || 'Email не указан'}</span>
-                          {auth.user.phone && <><span className="settings-value-sep">·</span><span>{formatPhone(auth.user.phone)}</span></>}
+                          <span className="settings-value-sep">·</span>
+                          <span>{auth.user.phone ? formatPhone(auth.user.phone) : 'Телефон не подтверждён'}</span>
                         </div>
                       )}
                     </div>
@@ -636,18 +689,27 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                       />
                       {contactErrors.email && <p className="settings-error">{contactErrors.email}</p>}
                     </div>
-                    {auth.user.phone && (
-                      <div className="settings-field">
-                        <label className="settings-label">Телефон</label>
-                        <input
-                          type="tel"
-                          value={formatPhone(auth.user.phone)}
-                          disabled
-                          className="settings-input settings-input--readonly"
-                        />
-                        <p className="settings-hint-text">Номер телефона можно изменить только через службу поддержки</p>
-                      </div>
-                    )}
+                    <div className="settings-field">
+                      <label className="settings-label">Телефон</label>
+                      {auth.user.phone ? (
+                        <>
+                          <input
+                            type="tel"
+                            value={formatPhone(auth.user.phone)}
+                            disabled
+                            className="settings-input settings-input--readonly"
+                          />
+                          <p className="settings-hint-text">Номер телефона можно изменить только через службу поддержки</p>
+                        </>
+                      ) : (
+                        <>
+                          <button type="button" className="settings-save-btn" onClick={() => setIsPhoneOpen(true)}>
+                            Подтвердить телефон
+                          </button>
+                          <p className="settings-hint-text">Без подтверждённого телефона нельзя оформить заказ.</p>
+                        </>
+                      )}
+                    </div>
                     <div className="settings-card-actions">
                       <button type="submit" className="settings-save-btn" disabled={contactProcessing}>
                         {contactProcessing ? 'Сохранение...' : 'Сохранить'}
@@ -671,35 +733,48 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                       </div>
                     </div>
                   </div>
+                  {editingCard !== 'pickup' ? (
+                    <button className="settings-edit-btn" onClick={() => {
+                      setPickupForm('default_pickup_point_id', auth.user.default_pickup_point_id ?? '');
+                      setEditingCard('pickup');
+                    }}>Изменить</button>
+                  ) : (
+                    <button className="settings-cancel-btn" onClick={() => {
+                      setPickupForm('default_pickup_point_id', auth.user.default_pickup_point_id ?? '');
+                      setEditingCard(null);
+                    }}>Отмена</button>
+                  )}
                 </div>
-                <form className="settings-card-body" onSubmit={handlePickupSubmit}>
-                  <div className="settings-field">
-                    <label className="settings-label">ПВЗ по умолчанию</label>
-                    <select
-                      className="settings-input"
-                      value={pickupForm.default_pickup_point_id === '' || pickupForm.default_pickup_point_id == null ? '' : String(pickupForm.default_pickup_point_id)}
-                      onChange={(e) => setPickupForm('default_pickup_point_id', e.target.value === '' ? '' : Number(e.target.value))}
-                    >
-                      <option value="">— выберите позже при заказе —</option>
-                      {pickupPoints.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
-                    {pickupErrors.default_pickup_point_id && (
-                      <p className="settings-error">{pickupErrors.default_pickup_point_id}</p>
-                    )}
-                    <p className="settings-hint-text">
-                      Без пункта выдачи оформить заказ нельзя: укажите здесь или при каждом заказе в корзине.
-                    </p>
-                  </div>
-                  <div className="settings-card-actions">
-                    <button type="submit" className="settings-save-btn" disabled={pickupProcessing}>
-                      {pickupProcessing ? 'Сохранение...' : 'Сохранить ПВЗ'}
-                    </button>
-                  </div>
-                </form>
+                {editingCard === 'pickup' && (
+                  <form className="settings-card-body" onSubmit={handlePickupSubmit}>
+                    <div className="settings-field">
+                      <label className="settings-label">ПВЗ по умолчанию</label>
+                      <select
+                        className="settings-input"
+                        value={pickupForm.default_pickup_point_id === '' || pickupForm.default_pickup_point_id == null ? '' : String(pickupForm.default_pickup_point_id)}
+                        onChange={(e) => setPickupForm('default_pickup_point_id', e.target.value === '' ? '' : Number(e.target.value))}
+                      >
+                        <option value="">— выберите позже при заказе —</option>
+                        {pickupPoints.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                      {pickupErrors.default_pickup_point_id && (
+                        <p className="settings-error">{pickupErrors.default_pickup_point_id}</p>
+                      )}
+                      <p className="settings-hint-text">
+                        Без пункта выдачи оформить заказ нельзя: укажите здесь или при каждом заказе в корзине.
+                      </p>
+                    </div>
+                    <div className="settings-card-actions">
+                      <button type="submit" className="settings-save-btn" disabled={pickupProcessing}>
+                        {pickupProcessing ? 'Сохранение...' : 'Сохранить ПВЗ'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
 
               {/* ── Карточка 3: Безопасность ─────────────────────────────────── */}
@@ -749,7 +824,108 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                 )}
               </div>
 
-              {/* ── Карточка 4: Аккаунт (выход + удаление) ────────────────── */}
+              {/* ── Карточка 4: Устройства и входы ─────────────────────────── */}
+              <div className="settings-card">
+                <div className="settings-card-header">
+                  <div className="settings-card-meta">
+                    <span className="settings-card-icon">🛡️</span>
+                    <div>
+                      <div className="settings-card-title">Устройства и входы</div>
+                      {editingCard !== 'sessions' && (
+                        <div className="settings-card-value">
+                          <span>Сейчас онлайн: {onlineUserSessions.length}</span>
+                          <span className="settings-value-sep">·</span>
+                          <span>Последний вход: {lastLogin ? timeAgo(lastLogin.created_at) : 'нет данных'}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {editingCard !== 'sessions' ? (
+                    <button className="settings-edit-btn" onClick={() => setEditingCard('sessions')}>Изменить</button>
+                  ) : (
+                    <button className="settings-cancel-btn" onClick={() => setEditingCard(null)}>Отмена</button>
+                  )}
+                </div>
+
+                {editingCard === 'sessions' && (
+                  <div className="settings-card-body">
+                    <div className="settings-session-block">
+                      <div className="settings-session-head">
+                        <h4>Активные устройства</h4>
+                        <span>{onlineUserSessions.length} онлайн из {userSessions.length}</span>
+                      </div>
+                      {userSessions.length === 0 ? (
+                        <p className="settings-hint-text">Активных устройств пока нет.</p>
+                      ) : (
+                        <div className="settings-session-list">
+                          {userSessions.map((session) => {
+                            const { browser, device } = parseUserAgent(session.user_agent);
+                            const isCurrent = session.id === currentSessionId;
+                            return (
+                              <div className="settings-session-item" key={session.id}>
+                                <div className="settings-session-main">
+                                  <span className={`settings-online-dot ${session.is_online ? 'online' : ''}`} />
+                                  <div>
+                                    <div className="settings-session-title">
+                                      {browser} · {device}
+                                      {isCurrent && <span className="settings-current-badge">это устройство</span>}
+                                    </div>
+                                    <div className="settings-session-meta">
+                                      <span>{session.ip_address || 'IP не определён'}</span>
+                                      <span>{timeAgo(session.last_activity)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                {!isCurrent && (
+                                  <button
+                                    type="button"
+                                    className="settings-danger-btn settings-session-kick"
+                                    onClick={() => kickOwnSession(session.id)}
+                                  >
+                                    Завершить
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="settings-session-block">
+                      <div className="settings-session-head">
+                        <h4>История входов</h4>
+                        <span>{loginHistory.length} записей</span>
+                      </div>
+                      {loginHistory.length === 0 ? (
+                        <p className="settings-hint-text">История появится после следующего входа в аккаунт.</p>
+                      ) : (
+                        <div className="settings-login-history">
+                          {loginHistory.map((event) => {
+                            const { browser, device } = parseUserAgent(event.user_agent);
+                            return (
+                              <div className="settings-login-row" key={event.id}>
+                                <div>
+                                  <div className="settings-session-title">
+                                    {loginMethodLabels[event.login_method] || event.login_method || 'Вход'}
+                                  </div>
+                                  <div className="settings-session-meta">
+                                    <span>{browser} · {device}</span>
+                                    <span>{event.ip_address || 'IP не определён'}</span>
+                                  </div>
+                                </div>
+                                <span className="settings-login-time">{timeAgo(event.created_at)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Карточка 5: Аккаунт (выход + удаление) ────────────────── */}
               <div className="settings-card settings-card--account">
                 <div className="settings-card-header">
                   <div className="settings-card-meta">
@@ -761,11 +937,14 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                   </div>
                 </div>
                 <div className="settings-card-body settings-account-actions">
-                  {!isStaffUser && (
+                  {!isStaffUser ? (
                     <button className="settings-danger-btn" onClick={() => setIsDeleteOpen(true)}>
                     Удалить аккаунт
                     </button>
-                  )}
+                  )
+                : (
+                  <h4>Вам нельзя удалить аккаунт</h4>
+                )}
                 </div>
               </div>
             </div>

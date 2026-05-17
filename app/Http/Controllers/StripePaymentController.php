@@ -19,6 +19,13 @@ class StripePaymentController extends Controller
     public function createCheckoutSession(Request $request)
     {
         try {
+            if (! $request->user()?->phone) {
+                return response()->json([
+                    'error' => 'Подтвердите номер телефона в профиле, чтобы перейти к оплате.',
+                    'redirect' => route('profile'),
+                ], 422);
+            }
+
             Stripe::setApiKey(env('STRIPE_SECRET'));
             
             // Логируем входящий запрос
@@ -74,6 +81,13 @@ class StripePaymentController extends Controller
     public function createOrderCheckoutSession(Request $request)
     {
         try {
+            if (! $request->user()?->phone) {
+                return response()->json([
+                    'error' => 'Подтвердите номер телефона в профиле, чтобы перейти к оплате.',
+                    'redirect' => route('profile'),
+                ], 422);
+            }
+
             Stripe::setApiKey(env('STRIPE_SECRET'));
             
             \Log::info('Stripe order checkout request:', $request->all());

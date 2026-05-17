@@ -1,7 +1,8 @@
  .favorite__title {
      margin-bottom: 20px;
      padding: 10px;
-
+font-size: 24px;
+font-weight: 600;
  } 
 
  .favorite {
@@ -37,17 +38,16 @@
  }
 
  .NoFeatured__title {
-     font-weight: 700;
-     font-size: 36px;
+    font-size: 24px;
+    font-weight: 600;
      text-align: center;
      color: #000;
  }
 
  .NoFeatured__text {
      font-weight: 500;
-     font-size: 24px;
      text-align: center;
-     color: black;
+     color: #333;
  }
  .products__grid{
     min-width: 100%;

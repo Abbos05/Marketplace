@@ -84,6 +84,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile', [ProfileController::class, 'index'])->name('profile.update');
     Route::post('/profile/update', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/default-pickup', [ProfileController::class, 'updateDefaultPickup'])->name('profile.default-pickup');
+    Route::delete('/profile/sessions/{session}', [ProfileController::class, 'destroySession'])->name('profile.sessions.destroy');
+    Route::post('/profile/phone/send-code', [ProfileController::class, 'sendPhoneCode'])->name('profile.phone.send-code');
+    Route::post('/profile/phone/verify-code', [ProfileController::class, 'verifyPhoneCode'])->name('profile.phone.verify-code');
     Route::post('/profile/update-phone', [ProfileController::class, 'updatePhone'])->name('profile.update.phone');
     // Удаление профиля
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

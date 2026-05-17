@@ -7,10 +7,13 @@ use App\Models\PickupPoint;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
+use Carbon\Carbon;
 use Inertia\Inertia;
 use App\Models\User;
 use App\Notifications\MarketplaceAlert;
@@ -19,7 +22,7 @@ use App\Models\Category;
 use App\Models\Favorite;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
@@ -32,22 +35,8 @@ class ProfileController extends Controller
             ->where('is_on_action', 1)
             ->limit(20)
             ->get();
-        // Добавляем флаг избранного
-        if (auth()->check()) {
-            $userId = auth()->id();
-            $favoriteNftIds = DB::table('favorites')
-                ->where('user_id', $userId)
-                ->whereNotNull('product_id')
-                ->pluck('product_id')
-                ->toArray();
-
-
-            $LikeProducts->each(function ($product) use ($favoriteNftIds) {
-                $product->is_favorite = in_array($product->id, $favoriteNftIds);
-            });
-        } else {
-            $LikeProducts->each(fn($product) => $product->is_favorite = false);
-        }
+        Product::enrichForCatalog($LikeProducts);
+        $this->markFavorites($LikeProducts);
         // Заказы с items и маппингом статусов
         $orders = Order::with('items.variant.product')
             ->where('buyer_id', $user->id)
@@ -75,14 +64,20 @@ class ProfileController extends Controller
             });
             
         // Избранное
-        $myFavorites = Product::select('products.*')
-            ->join('favorites', 'products.id', '=', 'favorites.product_id')
-            ->where('favorites.user_id', $user->id) 
-            ->with(['category', 'seller'])
-            ->orderBy('favorites.created_at', 'desc')
-            ->get();
+        $favoriteProductIds = DB::table('favorites')
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->pluck('product_id')
+            ->unique()
+            ->values();
 
-        $myFavorites->each(fn($p) => $p->is_favorite = true);
+        $myFavorites = Product::forCatalogPresentation()
+            ->whereIn('products.id', $favoriteProductIds)
+            ->get()
+            ->sortBy(fn ($p) => $favoriteProductIds->search($p->id))
+            ->values();
+        Product::enrichForCatalog($myFavorites);
+        $this->markFavorites($myFavorites, true);
 
         $adminUsers = [];
         if ($user->isStaff()) {
@@ -120,6 +115,30 @@ class ProfileController extends Controller
                 'region_name' => $p->region?->name,
             ]);
 
+        $onlineThreshold = time() - 300;
+        $userSessions = DB::table('sessions')
+            ->where('user_id', $user->id)
+            ->orderByDesc('last_activity')
+            ->limit(20)
+            ->get()
+            ->map(function ($session) use ($onlineThreshold) {
+                $session->is_online = $session->last_activity >= $onlineThreshold;
+                $session->last_activity = Carbon::createFromTimestamp($session->last_activity)->toIso8601String();
+
+                return $session;
+            });
+
+        $loginHistory = DB::table('account_login_events')
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->limit(30)
+            ->get()
+            ->map(function ($event) {
+                $event->created_at = Carbon::parse($event->created_at)->toIso8601String();
+
+                return $event;
+            });
+
         return Inertia::render('Profile/Index', [
             'LikeProducts'  => $LikeProducts,
             'auth'          => ['user' => $user],
@@ -129,7 +148,28 @@ class ProfileController extends Controller
             'sellerProfile' => $user->sellerProfile,
             'adminUsers'    => $adminUsers,
             'pickupPoints'  => $pickupPoints,
+            'userSessions'  => $userSessions,
+            'loginHistory'  => $loginHistory,
+            'currentSessionId' => request()->session()->getId(),
         ]);
+    }
+
+    public function destroySession(Request $request, string $sessionId): RedirectResponse
+    {
+        if ($sessionId === $request->session()->getId()) {
+            return back()->with('error', 'Нельзя завершить текущую сессию.');
+        }
+
+        $deleted = DB::table('sessions')
+            ->where('id', $sessionId)
+            ->where('user_id', $request->user()->id)
+            ->delete();
+
+        if (! $deleted) {
+            return back()->with('error', 'Сессия не найдена или уже завершена.');
+        }
+
+        return back()->with('success', 'Сессия завершена.');
     }
 
     public function updateDefaultPickup(Request $request): RedirectResponse
@@ -253,45 +293,29 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
+        $favoriteProductIds = DB::table('favorites')
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->pluck('product_id')
+            ->unique()
+            ->values();
+
         $myFavorites = Product::forCatalogPresentation()
-            ->select('products.*')
-            ->join('favorites', 'products.id', '=', 'favorites.product_id')
-            ->where('favorites.user_id', $user->id)
-            ->orderBy('favorites.created_at', 'desc')
-            ->get();
-
-        $myFavorites->each(fn ($p) => $p->is_favorite = true);
+            ->whereIn('products.id', $favoriteProductIds)
+            ->get()
+            ->sortBy(fn ($p) => $favoriteProductIds->search($p->id))
+            ->values();
         Product::enrichForCatalog($myFavorites);
+        $this->markFavorites($myFavorites, true);
 
 
-        $products = Product::all();
         $LikeProducts = Product::forCatalogPresentation()
             ->where('status', 'approved')
             ->limit(24)
             ->get();
         Product::enrichForCatalog($LikeProducts);
-        if (auth()->check()) {
-            $userId = auth()->id();
-            $favoriteProductIds = DB::table('favorites')
-                ->where('user_id', $userId)
-                ->whereNotNull('product_id')
-                ->pluck('product_id')
-                ->toArray();
+        $this->markFavorites($LikeProducts);
 
-            // Добавляем is_favorite для основных товаров
-            $products->each(function ($product) use ($favoriteProductIds) {
-                $product->is_favorite = in_array($product->id, $favoriteProductIds);
-            });
-
-            // Добавляем is_favorite для рекомендуемых товаров
-            $LikeProducts->each(function ($product) use ($favoriteProductIds) {
-                $product->is_favorite = in_array($product->id, $favoriteProductIds);
-            });
-        } else {
-            // Если пользователь не авторизован, то все товары не в избранном
-            $products->each(fn($product) => $product->is_favorite = false);
-            $LikeProducts->each(fn($product) => $product->is_favorite = false);
-        }
         return Inertia::render('Profile/Favorite', [
             'auth' => ['user' => $user],
             'product' => $myFavorites,
@@ -358,11 +382,9 @@ class ProfileController extends Controller
             'avatar' => 'nullable|image|max:2048',
             'current_password' => 'nullable|string',
             'password' => 'nullable|string|min:4|confirmed',
-            'phone' => 'nullable|string|regex:/^7\d{10}$/|max:11',
         ];
 
         $validated = $request->validate($rules, [
-            'phone.regex' => 'Номер телефона должен начинаться с 7 и содержать 11 цифр.',
             'name.required' => 'Имя обязательно для заполнения.',
             'name.string' => 'Имя должно быть текстом.',
             'name.max' => 'Имя не должно превышать 50 символов.',
@@ -422,36 +444,80 @@ class ProfileController extends Controller
     }
     public function updatePhone(Request $request)
     {
+        return $this->sendPhoneCode($request);
+    }
 
-        $phone = preg_replace('/\D/', '', $request->input('phone'));
+    public function sendPhoneCode(Request $request): JsonResponse
+    {
+        $phone = $this->normalizePhone($request->input('phone'));
         $request->merge(['phone' => $phone]);
-        $validator = Validator::make($request->all(), [
+
+        $validated = $request->validate([
             'phone' => [
                 'required',
                 'string',
                 'regex:/^7\d{10}$/',
                 'max:11',
+                Rule::unique('users', 'phone')->ignore($request->user()->id),
             ],
         ], [
+            'phone.required' => 'Укажите номер телефона.',
             'phone.regex' => 'Номер телефона должен быть в формате 7XXXXXXXXXX (например, 79991234567).',
             'phone.max' => 'Номер телефона не должен превышать 11 символов.',
+            'phone.unique' => 'Этот номер телефона уже привязан к другому аккаунту.',
         ]);
 
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
+        $otp = '000000';
+        $request->session()->put('profile_phone_pending', $validated['phone']);
+        $request->session()->put('profile_phone_otp', $otp);
+        $request->session()->put('profile_phone_otp_expires', now()->addMinutes(10)->timestamp);
 
-        $validatedData = $validator->validated();
-
-        // Получаем текущего аутентифицированного пользователя
-        $user = $request->user();
-        $user->update(['phone' => $validatedData['phone']]);
-
-        // Возвращаем ответ
-        return back()->with('success', 'Номер телефона обновлён.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Код подтверждения отправлен.',
+        ]);
     }
 
+    public function verifyPhoneCode(Request $request): JsonResponse
+    {
+        $request->validate([
+            'code' => ['required', 'string', 'size:6'],
+        ], [
+            'code.required' => 'Введите код подтверждения.',
+            'code.size' => 'Код должен состоять из 6 цифр.',
+        ]);
 
+        $phone = $request->session()->get('profile_phone_pending');
+        $otp = $request->session()->get('profile_phone_otp');
+        $expires = $request->session()->get('profile_phone_otp_expires');
+
+        if (! $phone || $otp !== $request->input('code') || ! $expires || now()->timestamp > $expires) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Неверный или истёкший код подтверждения.',
+            ], 422);
+        }
+
+        $phoneTaken = User::where('phone', $phone)
+            ->whereKeyNot($request->user()->id)
+            ->exists();
+
+        if ($phoneTaken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Этот номер телефона уже привязан к другому аккаунту.',
+            ], 422);
+        }
+
+        $request->user()->update(['phone' => $phone]);
+        $request->session()->forget(['profile_phone_pending', 'profile_phone_otp', 'profile_phone_otp_expires']);
+
+        return response()->json([
+            'success' => true,
+            'phone' => $phone,
+            'message' => 'Номер телефона подтверждён.',
+        ]);
+    }
 
     public function updateEmail(Request $request)
     {
@@ -516,7 +582,7 @@ class ProfileController extends Controller
         return back()->with('success', 'Роль пользователя изменена');
     }
 
-    public function destroy(Request $request, User $user = null): RedirectResponse
+    public function destroy(Request $request, ?User $user = null): RedirectResponse
     {
         if ($user) {
             $actor = auth()->user();
@@ -534,7 +600,7 @@ class ProfileController extends Controller
             }
 
             $hasOrders = \App\Models\Order::where('buyer_id', $user->id)
-                ->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_ISSUED, Order::STATUS_REFUSED])
+                ->whereNotIn('status', Order::statusesAllowingUserDeletion())
                 ->exists();
             if ($hasOrders) {
                 return back()->with('error', 'Нельзя удалить пользователя: есть активные заказы. Дождитесь их завершения.');
@@ -543,7 +609,7 @@ class ProfileController extends Controller
             if ($user->role === 'seller') {
                 $hasProducts = \App\Models\Product::where('seller_id', $user->id)->exists();
                 $hasActiveSales = \App\Models\OrderItem::where('seller_id', $user->id)
-                    ->whereHas('order', fn($q) => $q->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_ISSUED, Order::STATUS_REFUSED]))
+                    ->whereHas('order', fn($q) => $q->whereNotIn('status', Order::statusesAllowingUserDeletion()))
                     ->exists();
                 if ($hasProducts || $hasActiveSales) {
                     return back()->with('error', 'Нельзя удалить продавца: есть товары или активные продажи');
@@ -551,19 +617,71 @@ class ProfileController extends Controller
             }
 
             $user->delete();
-            return back()->with('success', 'Аккаунт деактивирован (можно восстановить)');
+            return back()->with('success', 'Аккаунт деактивирован. Его можно восстановить в течение 30 дней.');
         }
         $user = $request->user();
         if ($user) {
             if (auth()->user()->is_blocked === 1) {
                 return back()->with('error', 'Ваш аккаунт заблакирован');
-            } else {
-                Auth::logout();
-                $user->delete();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-                return Redirect::to('/');
             }
+
+            $hasActiveOrders = Order::where('buyer_id', $user->id)
+                ->whereNotIn('status', Order::statusesAllowingUserDeletion())
+                ->exists();
+
+            if ($hasActiveOrders) {
+                return back()->with('error', 'Нельзя удалить аккаунт: есть активные заказы. Дождитесь доставки, выдачи или отмены.');
+            }
+
+            Auth::logout();
+            $user->delete();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return Redirect::to('/');
         }
+    }
+
+    private function markFavorites(Collection $products, bool $favoriteOnly = false): void
+    {
+        if (! auth()->check()) {
+            $products->each(function ($product) use ($favoriteOnly) {
+                $product->is_favorite = false;
+                $product->favorite_variant_ids = [];
+                $product->favorite_only = $favoriteOnly;
+            });
+
+            return;
+        }
+
+        $favoriteProductIds = DB::table('favorites')
+            ->where('user_id', auth()->id())
+            ->whereNull('variant_id')
+            ->pluck('product_id')
+            ->toArray();
+
+        $favoriteVariantIdsByProduct = DB::table('favorites')
+            ->where('user_id', auth()->id())
+            ->whereNotNull('variant_id')
+            ->select('product_id', 'variant_id')
+            ->get()
+            ->groupBy('product_id')
+            ->map(fn ($rows) => $rows->pluck('variant_id')->map(fn ($id) => (int) $id)->values()->all());
+
+        $products->each(function ($product) use ($favoriteProductIds, $favoriteVariantIdsByProduct, $favoriteOnly) {
+            $variantIds = $favoriteVariantIdsByProduct->get($product->id, []);
+            $product->favorite_variant_ids = $variantIds;
+            $product->favorite_only = $favoriteOnly;
+            $product->is_favorite = in_array($product->id, $favoriteProductIds) || $variantIds !== [];
+        });
+    }
+
+    private function normalizePhone(?string $phone): string
+    {
+        $phone = preg_replace('/\D/', '', (string) $phone);
+        if (str_starts_with($phone, '8')) {
+            $phone = '7' . substr($phone, 1);
+        }
+
+        return $phone;
     }
 }

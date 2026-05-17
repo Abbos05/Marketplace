@@ -136,6 +136,52 @@
 }
 .adm-shortcut-btn:hover { border-color: var(--backgroundBlack); color: var(--background); }
 
+.adm-extra-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+}
+
+.adm-extra-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 18px;
+    min-height: 145px;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.9);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+}
+
+.adm-extra-card:hover {
+    border-color: var(--backgroundBlack);
+    box-shadow: 0 8px 24px rgba(99,102,241,0.12);
+    transform: translateY(-1px);
+}
+
+.adm-extra-card-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--backgroundBlack);
+}
+
+.adm-extra-card-text {
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.adm-extra-card-action {
+    margin-top: auto;
+    color: var(--background);
+    font-size: 13px;
+    font-weight: 800;
+}
+
 /* ── Pending sellers list ── */
 .adm-pending-list {
     display: flex;
@@ -198,6 +244,46 @@
     overflow-x: auto;
     border-radius: 12px;
     border: 1px solid var(--border, #e2e8f0);
+}
+
+.adm-table-wrap--sessions,
+.adm-table-wrap--login-history {
+    max-height: 360px;
+    overflow: auto;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.adm-table-wrap--login-history {
+    max-height: 420px;
+}
+
+.adm-table-wrap--sessions .adm-table th,
+.adm-table-wrap--login-history .adm-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.adm-table-wrap--sessions .adm-table,
+.adm-table-wrap--login-history .adm-table {
+    min-width: 760px;
+}
+
+.adm-table-wrap--sessions::-webkit-scrollbar,
+.adm-table-wrap--login-history::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.adm-table-wrap--sessions::-webkit-scrollbar-thumb,
+.adm-table-wrap--login-history::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.35);
+    border-radius: 999px;
+}
+
+.adm-table-wrap--sessions::-webkit-scrollbar-track,
+.adm-table-wrap--login-history::-webkit-scrollbar-track {
+    background: rgba(226, 232, 240, 0.45);
 }
 .adm-table {
     width: 100%;
@@ -380,13 +466,14 @@
     border-radius: 14px;
     border: 1px solid var(--border, #e2e8f0);
     overflow: hidden;
+    padding: 10px;
 }
 .adm-accordion-head {
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
+    padding: 14px;
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
@@ -394,6 +481,7 @@
     border: none;
     text-align: left;
     transition: background .2s;
+    margin-bottom: 10px;
 }
 .adm-accordion-head:hover { background: rgba(99,102,241,0.04); }
 .adm-accordion-count {
@@ -407,6 +495,33 @@
 }
 .adm-accordion-arrow { color: #94a3b8; font-size: 12px; }
 .adm-accordion-body { padding: 4px 0 16px; }
+
+.adm-detail-filter-row {
+    padding: 0 16px;
+}
+
+.adm-table-wrap--detail-sessions,
+.adm-table-wrap--detail-logins {
+    max-height: 340px;
+    overflow: auto;
+    margin: 0 16px 16px;
+}
+
+.adm-table-wrap--detail-logins {
+    max-height: 380px;
+}
+
+.adm-table-wrap--detail-sessions .adm-table,
+.adm-table-wrap--detail-logins .adm-table {
+    min-width: 680px;
+}
+
+.adm-table-wrap--detail-sessions .adm-table th,
+.adm-table-wrap--detail-logins .adm-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
 
 /* ── Order items inside table ── */
 .adm-order-items { display: flex; flex-direction: column; gap: 4px; }
@@ -603,6 +718,39 @@
 
 /* ── Device info ── */
 .adm-device-info { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+
+.adm-section-subhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 22px 0 12px;
+}
+
+.adm-section-subhead h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--backgroundBlack);
+}
+
+.adm-section-subhead span {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.adm-login-method {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(99,102,241,0.1);
+    color: var(--background);
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
 
 /* ── Anonymous user ── */
 .adm-anon-user { font-style: italic; color: #94a3b8; }
@@ -897,6 +1045,12 @@
 
 /* ── Orders list (detail page) ── */
 .adm-orders-list { display: flex; flex-direction: column; gap: 10px; padding: 8px 16px 16px; }
+.adm-orders-list--scroll {
+    max-height: 520px;
+    overflow-y: auto;
+    margin: 0 0 16px;
+    padding-right: 8px;
+}
 .adm-order-row {
     border: 1px solid var(--border, #e2e8f0);
     border-radius: 12px;
@@ -1012,6 +1166,32 @@
     gap: 10px;
     padding: 8px 16px 16px;
 }
+
+.adm-products-load-more {
+    display: block;
+    margin: 4px auto 18px;
+    align-items: center;
+    justify-content: center;
+    min-width: 200px;
+    padding: 14px 32px;
+    margin-top: 4px;
+    border: none;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+} 
+.adm-products-load-more:hover {
+    background: var(--background, #6a5cff);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(106, 92, 255, 0.28);
+}
+
 .adm-product-admin-card {
     display: flex;
     gap: 14px;

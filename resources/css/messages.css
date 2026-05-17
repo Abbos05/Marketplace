@@ -26,7 +26,7 @@
 
 .msg-shell {
   max-height: 580px;
-  height: 100%;
+  height: 580px;
   display: flex;
   background: #fff;
   border: 1px solid var(--border);
@@ -219,12 +219,12 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  color: var(--background);
+  color: black;
   text-underline-offset: 3px;
 }
 
 .msg-topbar-title--btn:hover {
-  color: #1e40af;
+  color: #545454;
 }
 
 .msg-avatar-btn {
@@ -407,13 +407,14 @@
 
 .msg-inner {
   padding: 1rem 0.85rem;
-  min-height: min-content;
+  height: 100%;
 }
 
 .msg-fon {
   border: 1px solid #e2e8f0;
   border-radius: 14px;
-  min-height: min-content;
+  min-height: 100%;
+  height: max-content;
 }
 .msg-date-sep {
   text-align: center;

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\LoginHistoryRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,7 +29,16 @@ class PhoneAuthController extends Controller
             $phone = '7' . substr($phone, 1);
         }
 
-        $user = User::where('phone', $phone)->first();
+        $users = $this->usersByPhone($phone);
+        if ($users->count() > 1) {
+            return $this->duplicatePhoneResponse();
+        }
+
+        $user = $users->first();
+        if ($user?->trashed()) {
+            return $this->deletedAccountResponse();
+        }
+
         $isNew = $user === null;
 
         if ($isNew) {
@@ -72,7 +82,16 @@ class PhoneAuthController extends Controller
             return response()->json(['success' => false, 'message' => 'Неверный или истёкший код'], 422);
         }
 
-        $user = User::where('phone', $phone)->first();
+        $users = $this->usersByPhone($phone);
+        if ($users->count() > 1) {
+            return $this->duplicatePhoneResponse();
+        }
+
+        $user = $users->first();
+        if ($user?->trashed()) {
+            return $this->deletedAccountResponse();
+        }
+
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'Пользователь не найден'], 422);
         }
@@ -80,6 +99,7 @@ class PhoneAuthController extends Controller
         $this->clearOtp($request, $phone);
         Auth::login($user);
         $request->session()->regenerate();
+        app(LoginHistoryRecorder::class)->record($request, $user, 'phone_otp');
 
         return response()->json(['success' => true, 'redirect' => route('profile')]);
     }
@@ -99,20 +119,49 @@ class PhoneAuthController extends Controller
             $phone = '7' . substr($phone, 1);
         }
 
-        $user = User::where('phone', $phone)->first();
+        $users = $this->usersByPhone($phone);
+        if ($users->count() > 1) {
+            return $this->duplicatePhoneResponse();
+        }
+
+        $user = $users->first();
+        if ($user?->trashed()) {
+            return $this->deletedAccountResponse();
+        }
+
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'Пользователь не найден'], 422);
         }
 
+        $email = strtolower($request->email);
+
         // Для существующих пользователей проверяем совпадение email
-        if ($user->email && strtolower($user->email) !== strtolower($request->email)) {
+        if ($user->email && strtolower($user->email) !== $email) {
             return response()->json(['success' => false, 'message' => 'Email не совпадает с зарегистрированным'], 422);
+        }
+
+        if (! $user->email) {
+            $emailOwner = User::withTrashed()
+                ->where('email', $email)
+                ->whereKeyNot($user->id)
+                ->first();
+
+            if ($emailOwner?->trashed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Аккаунт с этой почтой был удалён. Обратитесь в поддержку для восстановления доступа.',
+                ], 403);
+            }
+
+            if ($emailOwner) {
+                return response()->json(['success' => false, 'message' => 'Этот email уже привязан к другому аккаунту'], 422);
+            }
         }
 
         // Сохраняем email и OTP для этого шага
         $otp = '000000';
         $request->session()->put("email_otp_{$phone}", $otp);
-        $request->session()->put("email_otp_{$phone}_email", $request->email);
+        $request->session()->put("email_otp_{$phone}_email", $email);
         $request->session()->put("email_otp_{$phone}_expires", now()->addMinutes(10)->timestamp);
 
         // TODO: отправить реальное письмо с кодом, когда подключат email-сервис
@@ -149,19 +198,45 @@ class PhoneAuthController extends Controller
             return response()->json(['success' => false, 'message' => 'Неверный или истёкший код'], 422);
         }
 
-        $user = User::where('phone', $phone)->first();
+        $users = $this->usersByPhone($phone);
+        if ($users->count() > 1) {
+            return $this->duplicatePhoneResponse();
+        }
+
+        $user = $users->first();
+        if ($user?->trashed()) {
+            return $this->deletedAccountResponse();
+        }
+
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'Пользователь не найден'], 422);
         }
 
         // Если email ещё не сохранён — сохраняем
         if (!$user->email) {
+            $emailOwner = User::withTrashed()
+                ->where('email', strtolower($request->email))
+                ->whereKeyNot($user->id)
+                ->first();
+
+            if ($emailOwner?->trashed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Аккаунт с этой почтой был удалён. Обратитесь в поддержку для восстановления доступа.',
+                ], 403);
+            }
+
+            if ($emailOwner) {
+                return response()->json(['success' => false, 'message' => 'Этот email уже привязан к другому аккаунту'], 422);
+            }
+
             $user->update(['email' => strtolower($request->email)]);
         }
 
         $request->session()->forget(["email_otp_{$phone}", "email_otp_{$phone}_email", "email_otp_{$phone}_expires"]);
         Auth::login($user);
         $request->session()->regenerate();
+        app(LoginHistoryRecorder::class)->record($request, $user, 'email_otp');
 
         return response()->json(['success' => true, 'redirect' => route('profile')]);
     }
@@ -181,13 +256,23 @@ class PhoneAuthController extends Controller
             $phone = '7' . substr($phone, 1);
         }
 
-        $user = User::where('phone', $phone)->first();
+        $users = $this->usersByPhone($phone);
+        if ($users->count() > 1) {
+            return $this->duplicatePhoneResponse();
+        }
+
+        $user = $users->first();
+        if ($user?->trashed()) {
+            return $this->deletedAccountResponse();
+        }
+
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json(['success' => false, 'message' => 'Неверный пароль'], 422);
         }
 
         Auth::login($user);
         $request->session()->regenerate();
+        app(LoginHistoryRecorder::class)->record($request, $user, 'phone_password');
 
         return response()->json(['success' => true, 'redirect' => route('profile')]);
     }
@@ -205,5 +290,26 @@ class PhoneAuthController extends Controller
     private function clearOtp(Request $request, string $phone): void
     {
         $request->session()->forget(["phone_otp_{$phone}", "phone_otp_{$phone}_expires"]);
+    }
+
+    private function usersByPhone(string $phone)
+    {
+        return User::withTrashed()->where('phone', $phone)->limit(2)->get();
+    }
+
+    private function duplicatePhoneResponse(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Этот номер привязан к нескольким аккаунтам. Войдите по email или через соцсеть и укажите уникальный номер в профиле.',
+        ], 409);
+    }
+
+    private function deletedAccountResponse(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Аккаунт с этим номером был удалён. Обратитесь в поддержку для восстановления доступа.',
+        ], 403);
     }
 }

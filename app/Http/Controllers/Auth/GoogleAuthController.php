@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\LoginHistoryRecorder;
 use Laravel\Socialite\Facades\Socialite;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\Log; // Добавляем импорт
 
@@ -23,7 +25,7 @@ class GoogleAuthController extends Controller
             ->redirect();
     }
 
-    public function handleGoogleCallback()
+    public function handleGoogleCallback(Request $request)
     {
         try {
             $guzzleClient = new GuzzleClient([
@@ -35,21 +37,32 @@ class GoogleAuthController extends Controller
                 ->user();
             // Форматируем имя пользователя
             $formattedName = $this->formatUserName($googleUser->name);
-            $user = User::where('email', $googleUser->email)->first();
+            $email = $googleUser->getEmail() ?? $googleUser->email;
+            if (! $email) {
+                return redirect('/login')->with('error', 'Google не передал email. Выберите аккаунт с подтвержденной почтой.');
+            }
+
+            $user = User::withTrashed()->where('email', $email)->first();
+            if ($user?->trashed()) {
+                return redirect('/login')->with('error', 'Аккаунт с этой почтой был удалён. Обратитесь в поддержку для восстановления доступа.');
+            }
+
             if (!$user) {
                 $userData = [
                     'newPassw' => true,
                     'name' => $formattedName,
                     'avatar' => $googleUser->avatar,
-                    'email' => $googleUser->email,
+                    'email' => $email,
                     'password' => Hash::make('temp_password_' . rand(1000, 9999)),
                 ];
                 $user = User::create($userData);
             }
 
             Auth::login($user);
+            $request->session()->regenerate();
+            app(LoginHistoryRecorder::class)->record($request, $user, 'google');
             return redirect('/profile')->with('success', 'Успешный вход через Google');
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return redirect('/')->with('error', 'Ошибка авторизации через Google: ' . $e->getMessage());
         }
     }

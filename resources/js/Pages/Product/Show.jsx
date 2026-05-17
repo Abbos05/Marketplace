@@ -115,6 +115,9 @@ export default function ProductShow({
   const [checkoutPickupId, setCheckoutPickupId] = useState(
     () => auth?.user?.default_pickup_point_id ?? ''
   );
+  const [isPickupModalOpen, setIsPickupModalOpen] = useState(false);
+  const [pickupModalIntent, setPickupModalIntent] = useState('edit');
+  const [pickupNotice, setPickupNotice] = useState('');
   const [detailTab, setDetailTab] = useState('description');
 
   useEffect(() => {
@@ -131,9 +134,13 @@ export default function ProductShow({
 
   useEffect(() => {
     setIsFavorite(!!product.is_favorite);
-  }, [product.is_favorite]);
+  }, [product.is_favorite, product.selected_variant_id, product.variant_id]);
 
   const purchaseBreakdown = product.purchase_breakdown ?? null;
+  const pickupPointList = Array.isArray(pickupPoints) ? pickupPoints : [];
+  const selectedPickup = pickupPointList.find(
+    (point) => String(point.id) === String(checkoutPickupId)
+  ) ?? null;
 
   const baseReviewsList = Array.isArray(product.reviews_list) ? product.reviews_list : [];
   const [reviewOverrides, setReviewOverrides] = useState({});
@@ -207,7 +214,7 @@ export default function ProductShow({
 
     router.post(
       route('favorites.toggle', product.id),
-      {},
+      product.variant_id ? { variant_id: product.variant_id } : {},
       {
         preserveState: true,
         preserveScroll: true,
@@ -218,6 +225,23 @@ export default function ProductShow({
         onFinish: () => setIsToggling(false),
       }
     );
+  };
+
+  const submitOrder = (pickupId) => {
+    router.post(
+      route('order.create'),
+      {
+        items: [{ variant_id: product.variant_id, quantity: 1 }],
+        promo_code: null,
+        pickup_point_id: pickupId,
+      },
+      { preserveScroll: true }
+    );
+  };
+
+  const openPickupModal = (intent = 'edit') => {
+    setPickupModalIntent(intent);
+    setIsPickupModalOpen(true);
   };
 
   const buyNow = () => {
@@ -240,19 +264,12 @@ export default function ProductShow({
 
     const pickupId = checkoutPickupId || auth?.user?.default_pickup_point_id;
     if (!pickupId) {
-      alert('Выберите пункт выдачи в профиле или в списке ниже.');
+      setPickupNotice('Выберите пункт выдачи, чтобы мы знали куда доставить заказ.');
+      openPickupModal('checkout');
       return;
     }
 
-    router.post(
-      route('order.create'),
-      {
-        items: [{ variant_id: product.variant_id, quantity: 1 }],
-        promo_code: null,
-        pickup_point_id: pickupId,
-      },
-      { preserveScroll: true }
-    );
+    submitOrder(pickupId);
   };
 
   const goToOrder = () => {
@@ -576,44 +593,47 @@ export default function ProductShow({
                     ) : null}
                   </div>
 
-                  {auth?.user && Array.isArray(pickupPoints) && pickupPoints.length > 0 ? (
-                    <div style={{ marginBottom: 14 }}>
-                      <label
-                        htmlFor="product-checkout-pickup"
-                        style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#475569' }}
-                      >
-                        Пункт выдачи
-                      </label>
-                      <select
-                        id="product-checkout-pickup"
-                        className="product-page__credit-btn"
-                        style={{ width: '100%', cursor: 'pointer', textAlign: 'left' }}
-                        value={checkoutPickupId === '' || checkoutPickupId == null ? '' : String(checkoutPickupId)}
-                        onChange={(e) =>
-                          setCheckoutPickupId(e.target.value === '' ? '' : Number(e.target.value))
-                        }
-                      >
-                        {!auth.user.default_pickup_point_id ? (
-                          <option value="">Выберите ПВЗ</option>
-                        ) : null}
-                        {pickupPoints.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.label}
-                          </option>
-                        ))}
-                      </select>
+                  <div className={`product-page__pickup${pickupNotice ? ' has-error' : ''}`}>
+                    <div className="product-page__pickup-head">
+                      <div>
+                        <span className="product-page__pickup-kicker">Доставка</span>
+                        <h3 className="product-page__pickup-title">Пункт выдачи</h3>
+                      </div>
+                      {auth?.user && pickupPointList.length > 0 ? (
+                        <button
+                          type="button"
+                          className="product-page__pickup-change"
+                          onClick={() => openPickupModal('edit')}
+                        >
+                          {selectedPickup ? 'Изменить' : 'Выбрать'}
+                        </button>
+                      ) : null}
                     </div>
-                  ) : null}
 
-                  <div className="product-page__credit">
-                    <button
-                      type="button"
-                      className="product-page__credit-btn"
-                      onClick={() => alert('Сервис «Оплатить позже» в разработке')}
-                    >
-                      Оплатить позже
-                    </button>
-                    <span className="product-page__credit-hint">без % в месяц</span>
+                    {auth?.user ? (
+                      selectedPickup ? (
+                        <div className="product-page__pickup-selected">
+                          <span className="product-page__pickup-dot" aria-hidden />
+                          <div>
+                            <strong>{selectedPickup.title ?? selectedPickup.label}</strong>
+                            {selectedPickup.address ? <span>{selectedPickup.address}</span> : null}
+                            {selectedPickup.region ? <small>{selectedPickup.region}</small> : null}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="product-page__pickup-empty">
+                          Выберите удобный ПВЗ перед покупкой. Заказ будет привязан к нему сразу.
+                        </p>
+                      )
+                    ) : (
+                      <p className="product-page__pickup-empty">
+                        Войдите в аккаунт, чтобы выбрать пункт выдачи для заказа.
+                      </p>
+                    )}
+
+                    {pickupNotice ? (
+                      <p className="product-page__pickup-notice">{pickupNotice}</p>
+                    ) : null}
                   </div>
 
                   <div className="product-page__actions">
@@ -732,6 +752,87 @@ export default function ProductShow({
 
 
       </section>
+      {isPickupModalOpen ? (
+        <div className="product-page__pickup-modal" role="dialog" aria-modal="true" aria-labelledby="pickup-modal-title">
+          <button
+            type="button"
+            className="product-page__pickup-modal-backdrop"
+            aria-label="Закрыть выбор пункта выдачи"
+            onClick={() => setIsPickupModalOpen(false)}
+          />
+          <div className="product-page__pickup-modal-panel">
+            <div className="product-page__pickup-modal-head">
+              <div>
+                <span className="product-page__pickup-kicker">Доставка заказа</span>
+                <h2 id="pickup-modal-title">Выберите пункт выдачи</h2>
+              </div>
+              <button
+                type="button"
+                className="product-page__pickup-modal-close"
+                aria-label="Закрыть"
+                onClick={() => setIsPickupModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            {pickupPointList.length > 0 ? (
+              <div className="product-page__pickup-list">
+                {pickupPointList.map((point) => {
+                  const active = String(point.id) === String(checkoutPickupId);
+                  return (
+                    <button
+                      key={point.id}
+                      type="button"
+                      className={`product-page__pickup-option${active ? ' is-active' : ''}`}
+                      onClick={() => {
+                        setCheckoutPickupId(point.id);
+                        setPickupNotice('');
+                      }}
+                    >
+                      <span className="product-page__pickup-radio" aria-hidden />
+                      <span className="product-page__pickup-option-text">
+                        <strong>{point.title ?? point.label}</strong>
+                        {point.address ? <span>{point.address}</span> : null}
+                        {point.region ? <small>{point.region}</small> : null}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="product-page__pickup-modal-empty">
+                Сейчас нет доступных пунктов выдачи. Попробуйте оформить заказ позже.
+              </p>
+            )}
+
+            <div className="product-page__pickup-modal-actions">
+              <button
+                type="button"
+                className="product-page__pickup-modal-secondary"
+                onClick={() => setIsPickupModalOpen(false)}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="product-page__pickup-modal-primary"
+                disabled={!checkoutPickupId}
+                onClick={() => {
+                  if (!checkoutPickupId) return;
+                  setIsPickupModalOpen(false);
+                  setPickupNotice('');
+                  if (pickupModalIntent === 'checkout') {
+                    submitOrder(checkoutPickupId);
+                  }
+                }}
+              >
+                {pickupModalIntent === 'checkout' ? 'Продолжить покупку' : 'Выбрать пункт'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </MainLayout>
   );
 }

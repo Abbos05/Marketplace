@@ -16,11 +16,19 @@ return [
         'social' => [
             [
                 'label' => 'VK',
-                'url' => env('FOOTER_VK_URL', 'https://vk.com'),
+                'url' => env('FOOTER_VK_URL', 'https://vk.com/id_a_i_09_05_i_a'),
             ],
             [
-                'label' => 'Telegram',
-                'url' => env('FOOTER_TELEGRAM_URL', 'https://t.me'),
+                'label' => 'Telegram-канал',
+                'url' => env('FOOTER_TELEGRAM_URL', 'https://t.me/AlvoraPlace'),
+            ],
+            [
+                'label' => 'MAX',
+                'url' => env('FOOTER_MAX_URL', 'https://max.ru/join/uTTd84ZCWV6LDqeiR1KOFZnBPp-2ar4mgwWMtSsmfmQ'),
+            ],
+            [
+                'label' => 'Instagram',
+                'url' => env('FOOTER_INSTAGRAM_URL', 'https://www.instagram.com/id_a_l_00_05_l_a/'),
             ],
         ],
     ],

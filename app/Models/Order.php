@@ -53,12 +53,25 @@ class Order extends Model
         ];
     }
 
-    /** Для неоплаченного заказа админ/продавец могут выставить только эти статусы. */
+    /** Для неоплаченного заказа админ может менять доставку, но не может завершить выдачу. */
     public static function statusesAllowedWhenUnpaid(): array
     {
         return [
             self::STATUS_NEW,
+            self::STATUS_INTRANSIT,
+            self::STATUS_DELIVERED,
             self::STATUS_CANCELED,
+            self::STATUS_REFUSED,
+        ];
+    }
+
+    /** Статусы, при которых аккаунт покупателя уже можно удалить. */
+    public static function statusesAllowingUserDeletion(): array
+    {
+        return [
+            self::STATUS_ISSUED,
+            self::STATUS_CANCELED,
+            self::STATUS_REFUSED,
         ];
     }
 
@@ -69,7 +82,7 @@ class Order extends Model
 
     public function canSetDeliveryStatus(string $status): bool
     {
-        if (in_array($status, self::deliveryStatuses(), true)) {
+        if ($status === self::STATUS_ISSUED) {
             return $this->isPaid();
         }
 

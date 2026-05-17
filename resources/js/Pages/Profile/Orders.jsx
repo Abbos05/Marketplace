@@ -51,12 +51,14 @@ export default function Orders({ auth, orders = [], dailyPickupCode = '' }) {
         navigator.clipboard.writeText(text);
     };
 
-    const activeOrders = orders.filter(o =>
-        !['DELIVERED', 'CANCELED', 'REFUSED'].includes(o.status)
+    // Активные: ещё не получены (в пути / в пункте выдачи)
+    const activeOrders = orders.filter((o) =>
+        ['NEW', 'INTRANSIT', 'DELIVERED'].includes(o.status)
     );
 
-    const completedOrders = orders.filter(o =>
-        ['DELIVERED', 'CANCELED', 'REFUSED'].includes(o.status)
+    // Архив: выдан, отменён, отказ
+    const completedOrders = orders.filter((o) =>
+        ['ISSUED', 'CANCELED', 'REFUSED'].includes(o.status)
     );
 
     const [tab, setTab] = useState('active');
@@ -89,14 +91,14 @@ export default function Orders({ auth, orders = [], dailyPickupCode = '' }) {
                         className={tab === 'active' ? 'active' : ''}
                         onClick={() => setTab('active')}
                     >
-                        Активные
+                        Активные{activeOrders.length > 0 ? ` (${activeOrders.length})` : ''}
                     </button>
 
                     <button
                         className={tab === 'completed' ? 'active' : ''}
                         onClick={() => setTab('completed')}
                     >
-                        Архив
+                        Архив{completedOrders.length > 0 ? ` (${completedOrders.length})` : ''}
                     </button>
                 </div>
                 {/* СПИСОК */}
@@ -139,13 +141,26 @@ export default function Orders({ auth, orders = [], dailyPickupCode = '' }) {
                             </div>
                         );
                     }) : (
-                        <div className="NoCart">
-                            <img className='NoCart__image' src="https://ir-3.ozone.ru/s3/cms/82/t5b/wc1200/box-open-empty_yellow.png" alt="NoCart" />
-                            <p className='NoCart__title'>У вас пока нет актуальных заказов
+                        <div className="NoOrder">
+                            <img className='NoOrder__image' src="https://ir-3.ozone.ru/s3/cms/82/t5b/wc1200/box-open-empty_yellow.png" alt="NoOrder" />
+                            <p className='NoOrder__title'>
+                                {tab === 'active'
+                                    ? 'Нет активных заказов'
+                                    : 'В архиве пока пусто'}
                             </p>
-                            <p className="NoCart__text">Когда появятся, будут отображаться здесь. Остальные заказы находятся в завершённых
+                            <p className="NoOrder__text">
+                                {tab === 'active'
+                                    ? 'Заказы в пути и ожидающие выдачи — здесь. Полученные — во вкладке «Архив».'
+                                    : 'Выданные и отменённые заказы появятся в этом разделе.'}
                             </p>
-                            <button className='NoCart__button' onClick={() => router.visit('/')}>К покупкам</button>
+                            {tab === 'active' && completedOrders.length > 0 && (
+                                <button type="button" className='NoOrder__button' onClick={() => setTab('completed')}>
+                                    Перейти в архив
+                                </button>
+                            )}
+                            {tab === 'active' && completedOrders.length === 0 && (
+                                <button className='NoOrder__button' onClick={() => router.visit('/')}>К покупкам</button>
+                            )}
                         </div>
                     )}
                 </div>

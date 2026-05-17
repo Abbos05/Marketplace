@@ -292,6 +292,8 @@ const Header = ({ setIsModalOpen }) => {
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" className="products__basket">
                     <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" />
+                    <line x1="8" y1="9" x2="17" y2="9" stroke="currentColor" stroke-width="2.6"/>
+                    <line x1="8" y1="13" x2="15" y2="13" stroke="currentColor" stroke-width="2.2"/>
                   </svg>
                   <p>Сообщения</p>
                   {Number(hubBadge) > 0 && (
@@ -363,7 +365,7 @@ const Header = ({ setIsModalOpen }) => {
               </Link>
             </li>
 
-            {/* <li className="wallet-btnRelative">
+            <li className="wallet-btnRelative">
               <div className="wallet-btn">
                 <Link href="/favorites" className="header-wallet">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M3 10.163C3 7.262 5.13 5 8 5c1.929 0 3.244 1.102 4 2.066C12.756 6.102 14.071 5 16 5c2.87 0 5 2.264 5 5.163 0 4.561-4.568 7.856-8.243 9.66a1.71 1.71 0 0 1-1.514 0C7.568 18.02 3 14.724 3 10.163"></path></svg>
@@ -373,7 +375,7 @@ const Header = ({ setIsModalOpen }) => {
               </div>
 
 
-            </li> */}
+            </li>
 
             <HeaderMenu setIsModalOpen={setIsModalOpen} />
           </div>

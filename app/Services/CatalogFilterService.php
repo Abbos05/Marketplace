@@ -501,19 +501,32 @@ class CatalogFilterService
     public function markFavorites(Collection $products): void
     {
         if (! auth()->check()) {
-            $products->each(fn ($p) => $p->is_favorite = false);
+            $products->each(function ($p) {
+                $p->is_favorite = false;
+                $p->favorite_variant_ids = [];
+            });
 
             return;
         }
 
         $favoriteProductIds = DB::table('favorites')
             ->where('user_id', auth()->id())
-            ->whereNotNull('product_id')
+            ->whereNull('variant_id')
             ->pluck('product_id')
             ->toArray();
 
-        $products->each(function ($product) use ($favoriteProductIds) {
-            $product->is_favorite = in_array($product->id, $favoriteProductIds);
+        $favoriteVariantIdsByProduct = DB::table('favorites')
+            ->where('user_id', auth()->id())
+            ->whereNotNull('variant_id')
+            ->select('product_id', 'variant_id')
+            ->get()
+            ->groupBy('product_id')
+            ->map(fn ($rows) => $rows->pluck('variant_id')->map(fn ($id) => (int) $id)->values()->all());
+
+        $products->each(function ($product) use ($favoriteProductIds, $favoriteVariantIdsByProduct) {
+            $variantIds = $favoriteVariantIdsByProduct->get($product->id, []);
+            $product->favorite_variant_ids = $variantIds;
+            $product->is_favorite = in_array($product->id, $favoriteProductIds) || $variantIds !== [];
         });
     }
 }

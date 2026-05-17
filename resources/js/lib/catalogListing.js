@@ -19,7 +19,16 @@ export function expandCatalogProductRows(products) {
             ];
         }
 
-        return cat.map((v) => ({
+        const favoriteVariantIds = Array.isArray(p.favorite_variant_ids)
+            ? p.favorite_variant_ids.map((id) => Number(id))
+            : [];
+        const useProductFavoriteForVariants =
+            p.favorite_only && favoriteVariantIds.length === 0 && !!p.is_favorite;
+        const visibleVariants = p.favorite_only && favoriteVariantIds.length > 0
+            ? cat.filter((v) => favoriteVariantIds.includes(Number(v.id)))
+            : cat;
+
+        return visibleVariants.map((v) => ({
             ...p,
             listing_key: `${p.id}-${v.id}`,
             listing_variant_id: v.id,
@@ -27,6 +36,7 @@ export function expandCatalogProductRows(products) {
             price: v.price,
             old_price: v.old_price,
             discount_percent: v.discount_percent,
+            is_favorite: favoriteVariantIds.includes(Number(v.id)) || useProductFavoriteForVariants,
             title:
                 cat.length > 1 && v.label
                     ? `${p.title || 'Товар'} · ${v.label}`

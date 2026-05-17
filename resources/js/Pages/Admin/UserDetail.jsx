@@ -15,7 +15,7 @@ const ORDER_STATUSES = [
     { value: 'REFUSED', label: 'Отказ от получения' },
 ];
 const ORDER_STATUS_MAP = Object.fromEntries(ORDER_STATUSES.map(s => [s.value, s.label]));
-const UNPAID_ALLOWED_STATUSES = ['NEW', 'CANCELED'];
+const UNPAID_ALLOWED_STATUSES = ['NEW', 'INTRANSIT', 'DELIVERED', 'CANCELED', 'REFUSED'];
 
 function orderStatusOptionsFor(order) {
     if (order.payment_status === 'paid') {
@@ -40,6 +40,15 @@ const PRODUCT_STATUSES = [
 const PRODUCT_STATUS_MAP = Object.fromEntries(PRODUCT_STATUSES.map(s => [s.value, s.label]));
 
 const PAYMENT_STATUS_MAP = { pending: 'Ожидает', paid: 'Оплачен', failed: 'Ошибка', refunded: 'Возврат' };
+const LOGIN_METHOD_LABELS = {
+    password: 'Пароль',
+    phone_otp: 'Код по телефону',
+    email_otp: 'Код по email',
+    phone_password: 'Пароль по телефону',
+    google: 'Google',
+    yandex: 'Yandex',
+    github: 'GitHub',
+};
 
 function formatPhone(p) {
     if (!p) return '';
@@ -128,7 +137,7 @@ function UserReportBar({ userId }) {
     );
 }
 
-export default function UserDetail({ auth, user, orders, sellerOrders, products, userSessions = [], currentSessionId }) {
+export default function UserDetail({ auth, user, orders, sellerOrders, products, userSessions = [], userLoginHistory = [], currentSessionId }) {
     const { staffAccess } = usePage().props;
     const panelTitle = staffAccess?.panelTitle ?? 'Панель администратора';
     const canManage = canManageUserAsStaff(auth?.user, user);
@@ -137,6 +146,10 @@ export default function UserDetail({ auth, user, orders, sellerOrders, products,
     const [selectedRole, setSelectedRole]   = useState(user.role);
     const [productComments, setProductComments] = useState({});
     const [expandedOrder, setExpandedOrder] = useState(null);
+    const [sessionQuery, setSessionQuery] = useState('');
+    const [loginQuery, setLoginQuery] = useState('');
+    const [buyerOrderQuery, setBuyerOrderQuery] = useState('');
+    const [buyerOrderFilter, setBuyerOrderFilter] = useState('all');
 
     const flash = (msg, isError = false) => {
         setMessage({ text: msg, error: isError });
@@ -145,6 +158,41 @@ export default function UserDetail({ auth, user, orders, sellerOrders, products,
 
     const isProtected = user.id === 1 || user.id === auth?.user?.id;
     const isDeleted   = !!user.deleted_at;
+    const visibleSessions = userSessions.filter((s) => {
+        if (!sessionQuery) return true;
+        const q = sessionQuery.toLowerCase();
+        const parsed = parseUserAgent(s.user_agent);
+        return (s.ip_address || '').includes(sessionQuery)
+            || (parsed.browser || '').toLowerCase().includes(q)
+            || (parsed.device || '').toLowerCase().includes(q)
+            || String(s.id || '').toLowerCase().includes(q);
+    });
+    const visibleLoginHistory = userLoginHistory.filter((event) => {
+        if (!loginQuery) return true;
+        const q = loginQuery.toLowerCase();
+        const parsed = parseUserAgent(event.user_agent);
+        const method = LOGIN_METHOD_LABELS[event.login_method] || event.login_method || 'Вход';
+        return (event.ip_address || '').includes(loginQuery)
+            || method.toLowerCase().includes(q)
+            || (parsed.browser || '').toLowerCase().includes(q)
+            || (parsed.device || '').toLowerCase().includes(q)
+            || String(event.id || '').toLowerCase().includes(q);
+    });
+    const visibleBuyerOrders = orders.filter((order) => {
+        if (buyerOrderFilter === 'new' && order.status !== 'NEW') return false;
+        if (buyerOrderFilter === 'active' && ['ISSUED', 'CANCELED', 'REFUSED'].includes(order.status)) return false;
+        if (buyerOrderFilter === 'completed' && order.status !== 'ISSUED') return false;
+        if (buyerOrderFilter === 'cancelled' && !['CANCELED', 'REFUSED'].includes(order.status)) return false;
+
+        if (!buyerOrderQuery) return true;
+        const q = buyerOrderQuery.toLowerCase();
+        return String(order.id || '').includes(q)
+            || String(order.number || '').toLowerCase().includes(q)
+            || String(order.total || '').includes(q)
+            || (ORDER_STATUS_MAP[order.status] || order.status || '').toLowerCase().includes(q)
+            || (PAYMENT_STATUS_MAP[order.payment_status] || order.payment_status || '').toLowerCase().includes(q)
+            || (order.items || []).some((item) => (item.product_name || '').toLowerCase().includes(q));
+    });
 
     const blockUser = () => {
         router.put(`/admin/users/${user.id}/block`, {}, {
@@ -367,66 +415,150 @@ export default function UserDetail({ auth, user, orders, sellerOrders, products,
                 <UserReportBar userId={user.id} />
 
                 {/* ── Sessions history ── */}
-                <Accordion title="История сессий" count={userSessions.length}>
+                <Accordion title="История сессий" count={visibleSessions.length}>
                     {userSessions.length === 0 ? (
                         <p className="adm-empty">Сессий нет</p>
                     ) : (
-                        <div className="adm-table-wrap">
-                            <table className="adm-table">
-                                <thead>
-                                    <tr>
-                                        <th>IP-адрес</th>
-                                        <th>Устройство</th>
-                                        <th>Активность</th>
-                                        <th>Действия</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {userSessions.map(s => {
-                                        const { browser, device } = parseUserAgent(s.user_agent);
-                                        const isCurrent = s.id === currentSessionId;
-                                        return (
-                                            <tr key={s.id}>
-                                                <td><code className="adm-code">{s.ip_address || '—'}</code></td>
-                                                <td>
-                                                    <div className="adm-device-info">
-                                                        <span>{browser}</span>
-                                                        <span className="adm-user-sub">{device}</span>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div className="adm-activity-cell">
-                                                        <span className={`adm-online-dot ${s.is_online ? 'online' : ''}`} />
-                                                        <span>{timeAgo(s.last_activity)}</span>
-                                                        {isCurrent && <span className="adm-current-badge"> (текущая)</span>}
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    {!isCurrent && (
-                                                        <button
-                                                            className="adm-action-btn adm-btn-reject"
-                                                            onClick={() => kickSession(s.id)}
-                                                        >
-                                                            Кикнуть
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                        <>
+                            <div className="adm-filter-row adm-detail-filter-row">
+                                <input
+                                    type="text"
+                                    className="admin-search-input adm-flex-search"
+                                    placeholder="Поиск по IP, браузеру, устройству..."
+                                    value={sessionQuery}
+                                    onChange={(e) => setSessionQuery(e.target.value)}
+                                />
+                            </div>
+                            <div className="adm-table-wrap adm-table-wrap--detail-sessions">
+                                <table className="adm-table">
+                                    <thead>
+                                        <tr>
+                                            <th>IP-адрес</th>
+                                            <th>Устройство</th>
+                                            <th>Активность</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {visibleSessions.map(s => {
+                                            const { browser, device } = parseUserAgent(s.user_agent);
+                                            const isCurrent = s.id === currentSessionId;
+                                            return (
+                                                <tr key={s.id}>
+                                                    <td><code className="adm-code">{s.ip_address || '—'}</code></td>
+                                                    <td>
+                                                        <div className="adm-device-info">
+                                                            <span>{browser}</span>
+                                                            <span className="adm-user-sub">{device}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div className="adm-activity-cell">
+                                                            <span className={`adm-online-dot ${s.is_online ? 'online' : ''}`} />
+                                                            <span>{timeAgo(s.last_activity)}</span>
+                                                            {isCurrent && <span className="adm-current-badge"> (текущая)</span>}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        {!isCurrent && (
+                                                            <button
+                                                                className="adm-action-btn adm-btn-reject"
+                                                                onClick={() => kickSession(s.id)}
+                                                            >
+                                                                Кикнуть
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                                {visibleSessions.length === 0 && (
+                                    <div className="adm-empty">Сессии по фильтру не найдены</div>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </Accordion>
+
+                <Accordion title="История входов" count={visibleLoginHistory.length}>
+                    {userLoginHistory.length === 0 ? (
+                        <p className="adm-empty">Истории входов нет</p>
+                    ) : (
+                        <>
+                            <div className="adm-filter-row adm-detail-filter-row">
+                                <input
+                                    type="text"
+                                    className="admin-search-input adm-flex-search"
+                                    placeholder="Поиск по IP, методу входа, браузеру..."
+                                    value={loginQuery}
+                                    onChange={(e) => setLoginQuery(e.target.value)}
+                                />
+                            </div>
+                            <div className="adm-table-wrap adm-table-wrap--detail-logins">
+                                <table className="adm-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Метод</th>
+                                            <th>IP-адрес</th>
+                                            <th>Устройство</th>
+                                            <th>Когда</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {visibleLoginHistory.map(event => {
+                                            const { browser, device } = parseUserAgent(event.user_agent);
+                                            return (
+                                                <tr key={event.id}>
+                                                    <td>
+                                                        <span className="adm-login-method">
+                                                            {LOGIN_METHOD_LABELS[event.login_method] || event.login_method || 'Вход'}
+                                                        </span>
+                                                    </td>
+                                                    <td><code className="adm-code">{event.ip_address || '—'}</code></td>
+                                                    <td>
+                                                        <div className="adm-device-info">
+                                                            <span>{browser}</span>
+                                                            <span className="adm-user-sub">{device}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>{timeAgo(event.created_at)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                                {visibleLoginHistory.length === 0 && (
+                                    <div className="adm-empty">Входы по фильтру не найдены</div>
+                                )}
+                            </div>
+                        </>
                     )}
                 </Accordion>
 
                 {/* ── Buyer orders ── */}
-                <Accordion title="Заказы покупателя" count={orders.length} defaultOpen={orders.length > 0}>
+                <Accordion title="Заказы покупателя" count={visibleBuyerOrders.length} defaultOpen={orders.length > 0}>
                     {orders.length === 0 ? (
                         <p className="adm-empty">Заказов нет</p>
                     ) : (
-                        <div className="adm-orders-list">
-                            {orders.map(o => (
+                        <>
+                            <div className="adm-filter-row adm-detail-filter-row">
+                                <button className={`adm-filter-pill ${buyerOrderFilter === 'all' ? 'active' : ''}`} onClick={() => setBuyerOrderFilter('all')}>Все ({orders.length})</button>
+                                <button className={`adm-filter-pill ${buyerOrderFilter === 'new' ? 'active' : ''}`} onClick={() => setBuyerOrderFilter('new')}>Новые ({orders.filter(o => o.status === 'NEW').length})</button>
+                                <button className={`adm-filter-pill ${buyerOrderFilter === 'active' ? 'active' : ''}`} onClick={() => setBuyerOrderFilter('active')}>Активные ({orders.filter(o => !['ISSUED', 'CANCELED', 'REFUSED'].includes(o.status)).length})</button>
+                                <button className={`adm-filter-pill ${buyerOrderFilter === 'completed' ? 'active' : ''}`} onClick={() => setBuyerOrderFilter('completed')}>Выданы ({orders.filter(o => o.status === 'ISSUED').length})</button>
+                                <button className={`adm-filter-pill ${buyerOrderFilter === 'cancelled' ? 'active' : ''}`} onClick={() => setBuyerOrderFilter('cancelled')}>Отмены ({orders.filter(o => ['CANCELED', 'REFUSED'].includes(o.status)).length})</button>
+                                <input
+                                    type="text"
+                                    className="admin-search-input adm-flex-search"
+                                    placeholder="Поиск по номеру, сумме, статусу, товару..."
+                                    value={buyerOrderQuery}
+                                    onChange={(e) => setBuyerOrderQuery(e.target.value)}
+                                />
+                            </div>
+                            <div className="adm-orders-list adm-orders-list--scroll">
+                            {visibleBuyerOrders.map(o => (
                                 <div key={o.id} className="adm-order-row">
                                     {/* Order header — click to expand */}
                                     <div
@@ -502,7 +634,7 @@ export default function UserDetail({ auth, user, orders, sellerOrders, products,
                                                     </select>
                                                     <span className="adm-status-hint">
                                                         Текущий: {ORDER_STATUS_MAP[o.status]}
-                                                        {o.payment_status !== 'paid' && ' · доставка после оплаты'}
+                                                        {o.payment_status !== 'paid' && ' · выдача после оплаты'}
                                                     </span>
                                                     <a
                                                         href={`/admin/reports/order/${o.id}`}
@@ -548,7 +680,11 @@ export default function UserDetail({ auth, user, orders, sellerOrders, products,
                                     )}
                                 </div>
                             ))}
-                        </div>
+                                {visibleBuyerOrders.length === 0 && (
+                                    <div className="adm-empty">Заказы по фильтру не найдены</div>
+                                )}
+                            </div>
+                        </>
                     )}
                 </Accordion>
 

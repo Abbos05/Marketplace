@@ -21,6 +21,101 @@
   --backgroundBlack: #d30035;
   --text-gray: #667685;
 
+    /* Размеры от маленького к большому */
+    --size-0: 0;
+    --size-2xs: 2px;
+    --size-xs: 4px;
+    --size-sm: 8px;
+    --size-md: 12px;
+    --size-base: 16px;
+    --size-lg: 20px;
+    --size-xl: 24px;
+    --size-2xl: 32px;
+    --size-3xl: 40px;
+    --size-4xl: 48px;
+    --size-5xl: 64px;
+    --size-6xl: 80px;
+    --size-7xl: 96px;
+    --size-full: 100%;
+
+    /* Отступы */
+    --space-0: 0;
+    --space-2xs: 2px;
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-base: 16px;
+    --space-lg: 20px;
+    --space-xl: 24px;
+    --space-2xl: 32px;
+    --space-3xl: 40px;
+    --space-4xl: 48px;
+    --space-5xl: 64px;
+    --space-6xl: 80px;
+
+    /* Размеры текста */
+    --fs-2xs: 10px;
+    --fs-xs: 12px;
+    --fs-sm: 14px;
+    --fs-md: 16px;
+    --fs-base: 18px;
+    --fs-lg: 20px;
+    --fs-xl: 24px;
+    --fs-2xl: 28px;
+    --fs-3xl: 32px;
+    --fs-4xl: 40px;
+    --fs-5xl: 48px;
+    --fs-6xl: 56px;
+    --fs-7xl: 64px;
+
+    /* Межстрочный интервал */
+    --lh-tight: 1.15;
+    --lh-sm: 1.25;
+    --lh-md: 1.4;
+    --lh-base: 1.5;
+    --lh-lg: 1.65;
+    --lh-xl: 1.8;
+
+    /* Скругления */
+    --radius-none: 0;
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+    --radius-3xl: 20px;
+    --radius-4xl: 24px;
+    --radius-full: 999px;
+
+    /* Контейнеры */
+    --container-xs: 360px;
+    --container-sm: 540px;
+    --container-md: 720px;
+    --container-lg: 960px;
+    --container-xl: 1140px;
+    --container-2xl: 1320px;
+    --container-3xl: 1460px;
+
+    /* Иконки */
+    --icon-xs: 14px;
+    --icon-sm: 16px;
+    --icon-md: 20px;
+    --icon-lg: 24px;
+    --icon-xl: 32px;
+    --icon-2xl: 40px;
+    --icon-3xl: 48px;
+
+    /* Поля, кнопки, инпуты */
+    --control-height-sm: 34px;
+    --control-height-md: 42px;
+    --control-height-lg: 50px;
+    --control-height-xl: 58px;
+    --control-padding-sm: 8px 12px;
+    --control-padding-md: 10px 16px;
+    --control-padding-lg: 13px 20px;
+    --control-padding-xl: 16px 24px;
+
     --fw-100: 100;
     --fw-200: 200;
     --fw-300: 300;

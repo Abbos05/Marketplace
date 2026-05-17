@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\HomeSlide;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\CatalogFilterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -161,11 +162,45 @@ class HomeController extends Controller
         return Inertia::render('Product/CategoryMenu', $data);
     }
 
-    public function favorites(Product $product)
+    public function favorites(Request $request, Product $product)
     {
         $user = Auth::user();
         if ($user) {
-            $user->favorites()->toggle($product->id);
+            $data = $request->validate([
+                'variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
+            ]);
+
+            $variantId = $data['variant_id'] ?? null;
+            if ($variantId !== null) {
+                $variantBelongsToProduct = ProductVariant::query()
+                    ->whereKey($variantId)
+                    ->where('product_id', $product->id)
+                    ->exists();
+
+                abort_unless($variantBelongsToProduct, 404);
+            }
+
+            $favoriteQuery = DB::table('favorites')
+                ->where('user_id', $user->id)
+                ->where('product_id', $product->id);
+
+            $variantId === null
+                ? $favoriteQuery->whereNull('variant_id')
+                : $favoriteQuery->where('variant_id', $variantId);
+
+            $favoriteExists = $favoriteQuery->exists();
+
+            if ($favoriteExists) {
+                $favoriteQuery->delete();
+            } else {
+                DB::table('favorites')->insert([
+                    'user_id' => $user->id,
+                    'product_id' => $product->id,
+                    'variant_id' => $variantId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
         // Важно: возвращаемся с обновлёнными данными

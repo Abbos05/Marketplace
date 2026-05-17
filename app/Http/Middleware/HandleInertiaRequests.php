@@ -58,6 +58,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'review_vote' => fn () => $request->session()->get('review_vote'),
             ],
+            'csrfToken' => fn () => csrf_token(),
             'auth' => [
                 'user' => fn () => $request->user()?->loadMissing(['defaultPickupPoint.region']),
             ],
