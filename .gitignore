@@ -33,6 +33,7 @@ yarn-error.log
 
 # Файлы проекта ALVORA
 /public/uploads/
+/public/img/chat/
 /public/images/temp/
 /storage/app/public/
 /storage/app/temp/

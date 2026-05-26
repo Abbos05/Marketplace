@@ -16,7 +16,7 @@ if (!isset($user)) $user = Auth::user() ?>
         <h1>403</h1>
         <h2>Уважаемый <span>Пользовател!</span></h2>
         <p>У вас нет разрешения на доступ к этой странице.</p>
-        <a href="{{ route('profiles.edit', ['id' => $user->id])}}">Назад</a>
+        <a href="{{ route('profile', ['id' => $user->id])}}">Назад</a>
     </div>
 </body>
 
@@ -65,7 +65,7 @@ if (!isset($user)) $user = Auth::user() ?>
     a {
         color: #3498db;
         text-decoration: none;
-        font-weight: bold;
+        font-weight: var(--fw-700);
     }
 
     a:hover {

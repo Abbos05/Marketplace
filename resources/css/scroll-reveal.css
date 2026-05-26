@@ -1,0 +1,40 @@
+/* Появление карточек при прокрутке (scroll reveal) */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.products__grid > .scroll-reveal,
+.shop-products__grid > .scroll-reveal {
+  width: 100%;
+  max-width: 270px;
+}
+
+@media (max-width: 1024px) {
+  .products__grid > .scroll-reveal,
+  .shop-products__grid > .scroll-reveal {
+    max-width: none;
+  }
+}
+
+/* Scroll reveal вместо анимации при загрузке всей сетки */
+.shop-products__grid > .scroll-reveal {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

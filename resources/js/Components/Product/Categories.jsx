@@ -14,7 +14,6 @@ const Category = ({ categories = [] }) => {
 
     return (
         <section className="category">
-            <div className="container">
                 <div className="category_header" id="category-block">
                     <h2>
                         Просмотр по <span>каталогам</span>
@@ -24,7 +23,7 @@ const Category = ({ categories = [] }) => {
                     {categories.map((category) => (
                         <div key={category.id} className="category_item" onClick={() => router.visit(`/category/${category.id}`)}>
                             <img
-                                src={category.img ?? '/img/products/default.jpg'}
+                                src={category.icon ?? '/img/products/default.png'}
                                 alt={category.name}
                                 className="category_image"
                             />
@@ -32,7 +31,6 @@ const Category = ({ categories = [] }) => {
                         </div>
                     ))}
                 </div>
-            </div>
         </section>
     );
 };

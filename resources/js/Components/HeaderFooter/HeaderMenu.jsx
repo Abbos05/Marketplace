@@ -1,18 +1,78 @@
-// resources/js/Components/HeaderMenu.jsx
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { Link, usePage, router } from '@inertiajs/react';
+import { resolveAvatarUrl } from '@/lib/avatarUrl';
+import { clearPhoneAuthFlow } from '@/lib/phoneAuthSession';
 
-const HeaderMenu = ({ setIsModalOpen, setIsLogin }) => {
-  const { auth: { user } } = usePage().props;
+const PROFILE_MENU_HOVER_KEY = 'headerProfileMenuHover';
+
+const ProfileIcon = () => (
+  <svg className="header-profile-trigger__icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden>
+    <path
+      fill="currentColor"
+      d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+    />
+  </svg>
+);
+
+const ChevronIcon = ({ open }) => (
+  <svg
+    className={`header-profile-trigger__chevron${open ? ' is-open' : ''}`}
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    aria-hidden
+  >
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
+function displayUserName(name) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return 'Пользователь';
+  if (trimmed.length <= 14) return trimmed;
+  return `${trimmed.slice(0, 13)}`;
+}
+function getUserDisplayName(user) {
+  const firstName = (user.name || '').trim();
+  const lastName = (user.last_name || '').trim();
+  
+  // Функция для капитализации первой буквы
+  const capitalize = (str) => {
+    if (!str) return '';
+    return str[0].toUpperCase() + str.slice(1).toLowerCase();
+  };
+  
+  // Если имя длинное (≥14 символов) - показываем только имя с троеточием
+  if (firstName.length >= 14) {
+    return `${capitalize(firstName.slice(0, 13))}...`;
+  }
+  
+  // Если имя короткое - показываем имя и первую букву фамилии
+  if (firstName && lastName) {
+    return `${capitalize(firstName)} ${capitalize(lastName[0])}.`;
+  }
+  
+  return capitalize(firstName) || capitalize(lastName) || 'Пользователь';
+}
+
+const HeaderMenu = ({ setIsModalOpen }) => {
+  const { props, url } = usePage();
+  const { auth: { user } = {}, pvzAccess } = props;
   const isAuthenticated = !!user;
 
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState('dark');
-  const [showTermsModal, setShowTermsModal] = useState(false); // ← новое модальное окно
-
   const menuRef = useRef(null);
+  const pointerInsideRef = useRef(false);
+  const closeTimerRef = useRef(null);
+  const suppressCloseUntilRef = useRef(0);
+  const lastPointerRef = useRef({ x: 0, y: 0 });
 
-  // Тема
+  const avatarUrl = isAuthenticated ? resolveAvatarUrl(user.avatar) : null;
+
   useEffect(() => {
     const saved = localStorage.getItem('theme') || 'dark';
     setTheme(saved);
@@ -26,9 +86,9 @@ const HeaderMenu = ({ setIsModalOpen, setIsLogin }) => {
     document.documentElement.classList.toggle('light-theme', newTheme === 'light');
   };
 
-  // Логаут
   const handleLogout = () => {
     setIsOpen(false);
+    clearPhoneAuthFlow();
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '/logout';
@@ -44,9 +104,48 @@ const HeaderMenu = ({ setIsModalOpen, setIsLogin }) => {
     form.submit();
   };
 
-  // Закрытие по клику вне
+  useEffect(() => {
+    const onMove = (e) => {
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener('mousemove', onMove, { passive: true });
+    return () => window.removeEventListener('mousemove', onMove);
+  }, []);
+
+  const isPointerOverMenu = useCallback(() => {
+    const el = menuRef.current;
+    if (!el) return false;
+    if (el.matches(':hover')) return true;
+
+    const rect = el.getBoundingClientRect();
+    const { x, y } = lastPointerRef.current;
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }, []);
+
+  const syncMenuFromPointer = useCallback(() => {
+    if (isPointerOverMenu() || sessionStorage.getItem(PROFILE_MENU_HOVER_KEY) === '1') {
+      pointerInsideRef.current = true;
+      setIsOpen(true);
+      sessionStorage.removeItem(PROFILE_MENU_HOVER_KEY);
+    }
+  }, [isPointerOverMenu]);
+
+  const scheduleMenuSync = useCallback(() => {
+    syncMenuFromPointer();
+    requestAnimationFrame(syncMenuFromPointer);
+    setTimeout(syncMenuFromPointer, 0);
+    setTimeout(syncMenuFromPointer, 60);
+  }, [syncMenuFromPointer]);
+
+  useLayoutEffect(() => {
+    if (sessionStorage.getItem(PROFILE_MENU_HOVER_KEY) === '1') {
+      scheduleMenuSync();
+    }
+  }, [scheduleMenuSync]);
+
   useEffect(() => {
     const handleClickOutside = (e) => {
+      if (Date.now() < suppressCloseUntilRef.current) return;
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setIsOpen(false);
       }
@@ -55,93 +154,180 @@ const HeaderMenu = ({ setIsModalOpen, setIsLogin }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen]);
+
+  useEffect(() => {
+    scheduleMenuSync();
+  }, [url, scheduleMenuSync]);
+
+  useEffect(() => {
+    const removeFinish = router.on('finish', () => {
+      scheduleMenuSync();
+    });
+    return () => removeFinish();
+  }, [scheduleMenuSync]);
+
+  const openMenu = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    pointerInsideRef.current = true;
+    setIsOpen(true);
+  };
+
+  const closeMenu = () => {
+    pointerInsideRef.current = false;
+    setIsOpen(false);
+  };
+
+  const handleProfileTriggerClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    pointerInsideRef.current = true;
+    suppressCloseUntilRef.current = Date.now() + 900;
+    sessionStorage.setItem(PROFILE_MENU_HOVER_KEY, '1');
+    setIsOpen(true);
+
+    router.visit('/profile', {
+      preserveScroll: true,
+      onFinish: scheduleMenuSync,
+    });
+  };
+
   return (
-    <>
-      <li className="header-menu" ref={menuRef}>
-        <div className="header-menu-icon" onClick={() => setIsOpen(!isOpen)}>
-          <div className={`wallet-plus ${isOpen ? 'openMenu' : ''} wallet-btn`}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M7.5 14c1.5.005 1.5 1 4.5 1s3-1 4.5-1c1 0 3.5 2.5 3.5 3.5S17.483 21 11.991 21C6.5 21 4 18.5 4 17.5s2.5-3.503 3.5-3.5M12 3C9 3 7 5 7 8s2 5 5 5 5-2 5-5-2-5-5-5"></path></svg>
-            <p>Профиль</p>
-          </div>
-
-        </div>
-
-        {isOpen && (
-          <ul className="header-menu-dropdown">
-            {/* Профиль */}
-            {isAuthenticated ? (
-              <>
-                <li className="header-menu-profile-item">
-                  <Link href="/profile" className="header-menu-profile" onClick={() => setIsOpen(false)}>
-                    <img
-                      src={user.avatar ? `/${user.avatar}` : '/img/profiles/profile.png'}
-                      alt={user.name}
-                      className="header-menu-avatar"
-                    />
-                    <div className="header-menu-profile-info">
-                      <span className="header-menu-username">{user.name}</span>
-                      {user.phone && <img src="/img/profiles/check.png" alt="verified" className="verified-check" />}
-                    </div>
-                  </Link>
-                </li>
-                <li className="header-menu-divider"></li>
-              </>
+    <li
+      className="header-menu"
+      ref={menuRef}
+      onMouseEnter={() => {
+        if (closeTimerRef.current) {
+          clearTimeout(closeTimerRef.current);
+          closeTimerRef.current = null;
+        }
+        openMenu();
+      }}
+      onMouseLeave={() => {
+        closeTimerRef.current = setTimeout(() => {
+          if (Date.now() < suppressCloseUntilRef.current) return;
+          closeMenu();
+        }, 140);
+      }}
+    >
+      <button
+        type="button"
+        className={`header-profile-trigger${isOpen ? ' is-open' : ''}`}
+        onClick={isAuthenticated ? handleProfileTriggerClick : null}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
+      >
+        {isAuthenticated ? (
+          <>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="header-profile-trigger__avatar" />
             ) : (
-              <li className="header-menu-item auth-item">
-                <Link
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setIsModalOpen(true);
-                    setIsLogin(true);
-                    setIsOpen(false);
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                    <polyline points="10 17 15 12 10 7" />
-                    <line x1="15" y1="12" x2="3" y2="12" />
-                  </svg>
-                  Войти / Регистрация
+              <ProfileIcon />
+            )}
+            <span className="header-profile-trigger__name">{displayUserName(user.name)}</span>
+
+          </>
+        ) : (
+          <>
+            <ProfileIcon />
+            <span className="header-profile-trigger__name">Профиль</span>
+          </>
+        )}
+      </button>
+
+      {isOpen && (
+        <ul className="header-menu-dropdown" role="menu">
+          {isAuthenticated ? (
+            <>
+              <li className="header-menu-item header-menu-item--profile" role="none">
+                <Link href="/profile" role="menuitem" onClick={() => setIsOpen(false)}>
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="header-menu-dropdown-avatar" />
+                  ) : (
+                    <ProfileIcon />
+                  )}
+                  <span className="header-menu-dropdown-user">
+                  <span className="header-menu-dropdown-name">
+  {getUserDisplayName(user)}
+</span>
+                    {user.phone && <span className="header-menu-dropdown-meta">Телефон подтверждён</span>}
+                  </span>
                 </Link>
               </li>
-            )}
-
-            {/* Основные ссылки */}
-            <li className="header-menu-item">
-              <Link href="/about" onClick={() => setIsOpen(false)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                О проекте
+              {pvzAccess?.isPvz && (
+                <li className="header-menu-item" role="none">
+                  <Link href="/pvz" role="menuitem" onClick={() => setIsOpen(false)}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    Панель ПВЗ
+                  </Link>
+                </li>
+              )}
+              {user?.role === 'seller' && (
+                <li className="header-menu-item" role="none">
+                  <Link href="/seller/dashboard" role="menuitem" onClick={() => setIsOpen(false)}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="7" width="20" height="14" rx="2" />
+                      <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+                    </svg>
+                    Панель продавца
+                  </Link>
+                </li>
+              )}
+            </>
+          ) : (
+            <li className="header-menu-item auth-item" role="none">
+              <Link
+                href="#"
+                role="menuitem"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsModalOpen(true);
+                  setIsOpen(false);
+                }}
+              >
+                <ProfileIcon />
+                Войти / Регистрация
               </Link>
             </li>
+          )}
 
-            <li className="header-menu-item">
-              <Link href="/contacts" onClick={() => setIsOpen(false)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                  <polyline points="22,6 12,13 2,6" />
-                </svg>
-                Контакты
-              </Link>
-            </li>
+          <li className="header-menu-divider" role="separator" />
+          <li className="header-menu-item" role="none">
+            <Link href="/help" role="menuitem" onClick={() => setIsOpen(false)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              Поддержка
+            </Link>
+          </li>
+          <li className="header-menu-item" role="none">
+            <Link href="/contacts" role="menuitem" onClick={() => setIsOpen(false)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+              Контакты
+            </Link>
+          </li>
 
-            <li className="header-menu-item">
-              <Link href="/support" onClick={() => setIsOpen(false)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                Поддержка
-              </Link>
-            </li>
-
-            {/* Правила — теперь модальное окно */}
-            <li className="header-menu-item" onClick={() => { setShowTermsModal(true); setIsOpen(false); }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <li className="header-menu-item" role="none">
+            <Link href="/terms" role="menuitem" onClick={() => setIsOpen(false)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="8" y1="6" x2="21" y2="6" />
                 <line x1="8" y1="12" x2="21" y2="12" />
                 <line x1="8" y1="18" x2="21" y2="18" />
@@ -150,79 +336,33 @@ const HeaderMenu = ({ setIsModalOpen, setIsLogin }) => {
                 <circle cx="4" cy="18" r="2" />
               </svg>
               Правила
+            </Link>
+          </li>
+          <li className="header-menu-item" role="none">
+            <Link href="/about" role="menuitem" onClick={() => setIsOpen(false)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              О проекте
+            </Link>
+          </li>
+
+
+          {/* {isAuthenticated && (
+            <li className="header-menu-item logout-item" role="none" onClick={handleLogout}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Выйти
             </li>
-
-            {/* Переключатель темы */}
-            <li className="header-menu-item theme-toggle-item" onClick={toggleTheme}>
-              <div className="theme-toggle">
-                {theme === 'dark' ? (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="5" />
-                    <line x1="12" y1="1" x2="12" y2="3" />
-                    <line x1="12" y1="21" x2="12" y2="23" />
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                    <line x1="1" y1="12" x2="3" y2="12" />
-                    <line x1="21" y1="12" x2="23" y2="12" />
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                  </svg>
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                  </svg>
-                )}
-                <span>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</span>
-              </div>
-            </li>
-
-            {/* Выход */}
-            {isAuthenticated && (
-              <>
-                {/* <li className="header-menu-divider"></li> */}
-                <li className="header-menu-item logout-item" onClick={handleLogout}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <polyline points="16 17 21 12 16 7" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                  </svg>
-                  Выйти
-                </li>
-              </>
-            )}
-          </ul>
-        )}
-      </li>
-
-      {/* КРАСИВОЕ МОДАЛЬНОЕ ОКНО С ПРАВИЛАМИ */}
-      {showTermsModal && (
-        <div className="alt-modal-overlay" onClick={() => setShowTermsModal(false)}>
-          <div className="alt-modal-terms" onClick={(e) => e.stopPropagation()}>
-
-
-            <h2 className="alt-modal-title">Правила платформы ALVORA</h2>
-
-            <div className="alt-modal-content">
-              <p><strong>1.</strong> Запрещается продажа контента, нарушающего авторские права.</p>
-              <p><strong>2.</strong> Все NFT проходят модерацию перед публикацией.</p>
-              <p><strong>3.</strong> Комиссия платформы — 0% с каждой сделки.</p>
-              <p><strong>4.</strong> Вывод средств доступен от 50 ₽, обработка — моментально.</p>
-              <p><strong>5.</strong> Запрещены любые виды мошенничества и манипуляций ценами.</p>
-              <p><strong>6.</strong> Администрация оставляет за собой право блокировки аккаунта при нарушении правил.</p>
-              <p className="mt-8 text-yellow-400 font-semibold">
-                Используя ALVORA, вы соглашаетесь с данными правилами.
-              </p>
-            </div>
-
-            <div className="alt-modal-footer">
-              <button className="alt-btn-golden" onClick={() => setShowTermsModal(false)}>
-                Согласен
-              </button>
-            </div>
-          </div>
-        </div>
+          )} */}
+        </ul>
       )}
-    </>
+    </li>
   );
 };
 

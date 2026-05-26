@@ -1,29 +1,31 @@
-/* TopNFT */
-
+.Category_product{
+  margin-bottom: 15px;
+}
 .products {
   margin: 0 auto;
   width: 100%;
-  margin-top: 25px;
   padding-bottom: 25px;
 }
 
 .products__grid {
-  max-width: max-content;
+  width: 100%;
+  max-width: 100%;
   border: 1px solid #808d9a7b;
   padding: 20px;
   min-height: 300px;
   border-radius: 21px;
   background: white;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 270px));
   align-items: stretch;
-  flex-wrap: wrap;
-  justify-content: start;
-  column-gap: 11px;
+  justify-content: space-between;
+  column-gap: 12px;
   row-gap: 20px;
 }
 
 .products__card {
   transition: 0.3s all;
+  width: 100%;
   max-width: 270px;
   overflow: hidden;
   border-radius: 18px;
@@ -31,6 +33,7 @@
   display: flex;
   flex-direction: column;
   justify-self: stretch;
+  height: 100%;
 }
 
 .products__card:hover {
@@ -43,10 +46,12 @@
 
 .products__image-wrapper {
   border-radius: 19px;
-  width: 270px;
-  height: 350px;
+  width: 100%;
+  aspect-ratio: 270 / 350;
+  height: auto;
   overflow: hidden;
   position: relative;
+  background: #f5f7fa;
 }
 
 .products__image-wrapper .products__image-float {
@@ -67,7 +72,7 @@
 }
 
 .products__image-wrapper svg:hover {
-cursor: pointer;
+  cursor: pointer;
 }
 
 .noActive {
@@ -90,6 +95,7 @@ cursor: pointer;
 .noActive:hover path {
   fill: red;
 }
+
 .active {
   cursor: pointer;
 }
@@ -101,16 +107,16 @@ cursor: pointer;
 }
 
 .active path {
-  fill: red;
-  stroke: red;
+  fill: var(--background);
+  stroke: rgb(255, 255, 255);
   stroke-width: 2px;
 }
 
 /* Навешиваемся на контейнер, а не на path */
 .active:hover path {
-  fill: rgb(183, 0, 0);
-  stroke: rgb(183, 0, 0);
+opacity: 0.8;
 }
+
 .product__img-stock {
   position: absolute;
   bottom: 5%;
@@ -123,11 +129,15 @@ cursor: pointer;
 }
 
 .product__stock__item {
-  font-size: 12px;
+  font-size: var(--size-md);
   color: white;
   background-color: red;
   border-radius: 6px;
   padding: 4px 8px;
+}
+
+.product__stock__item--promo {
+  background-color: #7c3aed;
 }
 
 .products__image {
@@ -139,7 +149,7 @@ cursor: pointer;
 
 .products__info {
   margin-top: 10px;
-  margin-left: 7px;
+  padding: 0 7px;
   max-width: 100%;
   overflow: hidden;
   font-size: 14px !important;
@@ -150,28 +160,28 @@ cursor: pointer;
   flex-direction: column;
   gap: 5px;
 
-  
+
 }
 
 .products__prices {
   display: flex;
   align-items: center;
   justify-content: start;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 4px;
 
 }
 
 .products__prices .products__current-price {
-  font-weight: 600;
-  font-size: 22px;
+  font-weight: var(--fw-600);
+  font-size: var(--size-22);
   color: var(--background);
 }
 
 
 .products__prices .products__old-price {
-  font-weight: 600;
-  font-size: 18px;
+  font-weight: var(--fw-600);
+  font-size: var(--size-18);
 }
 
 .products__prices .products__old-price span:first-child {
@@ -186,22 +196,22 @@ cursor: pointer;
 }
 
 .products__stock {
-  font-weight: 500;
-  font-size: 12px;
+  font-weight: var(--fw-500);
+  font-size: var(--size-md);
   color: var(--background);
 
 }
 
 .products__seller .products__shop-name {
-  font-weight: 500;
+  font-weight: var(--fw-500);
   color: #000;
 
 }
 
 .products__title-text {
-  font-weight: 600;
+  font-weight: var(--fw-600);
   color: #000;
-  font-size: 16px;
+  font-size: var(--size-base);
   display: -webkit-box;
   overflow: hidden;
   padding-right: 5px;
@@ -235,22 +245,24 @@ cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: var(--fw-600);
+  font-size: var(--size-m);
   color: #808D9A;
 }
 
 .info_dop {
-  font-weight: 500;
-  font-size: 32px;
+  font-weight: var(--fw-600);
+  font-size: var(--size-xl);
   color: black;
-  margin-bottom: -10px;
+  margin-bottom: 15px;
+  
 }
+
 .products__ratin-stars {
   color: #000 !important;
 }
 
-.products__btn{
+.products__btn {
   max-width: 100%;
   display: flex;
   align-items: stretch;
@@ -259,11 +271,12 @@ cursor: pointer;
   margin-top: auto;
   width: 100%;
 }
+
 .products__btn button {
   border-radius: 10px;
   background: var(--background);
   cursor: pointer;
-  
+
   width: 100%;
   padding: 10px;
   text-align: center;
@@ -273,8 +286,8 @@ cursor: pointer;
   justify-content: center;
   gap: 7px;
   font-family: var(--font-family);
-  font-weight: 500;
-  font-size: 18px;
+  font-weight: var(--fw-500);
+  font-size: var(--size-18);
   color: #fff;
   text-align: center;
   border: none;
@@ -290,576 +303,219 @@ cursor: pointer;
   opacity: 0.8;
 }
 
-/* Адаптивность */
-@media (max-width: 768px) {
+/* Адаптивность карточек товара */
+@media (max-width: 1024px) {
+  .products__grid {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 18px 12px;
+    padding: 16px;
+  }
+
   .products__card {
-    width: calc(50% - 15px);
-    /* 2 карточки в ряд */
-    height: auto;
-    margin-right: 15px;
-  }
-
-  .top_nft_image {
-    width: 100%;
-    height: auto;
-  }
-
-  .top_nft_details {
-    width: 100%;
+    max-width: none;
   }
 }
 
-/* // TopNFT */
+@media (max-width: 640px) {
+  .products {
+    margin-top: 0px;
+  }
 
+  .products__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 10px;
+    padding: 10px;
+    border-radius: 16px;
+  }
 
+  .products__card {
+    border-radius: 14px;
+    padding-bottom: 8px;
+  }
 
+  .products__image-wrapper {
+    border-radius: 14px;
+  }
 
-/* NFT */
-.NFTFon {
-  clear: both;
-  height: 350px;
-}
+  .products__image-wrapper svg {
+    width: 22px;
+    height: 22px;
+    top: 8px;
+    right: 8px;
+  }
 
-.NFTFon img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: bottom;
-}
+  .product__img-stock {
+    bottom: 8px;
+    left: 8px;
+    gap: 5px;
+  }
 
-.NFT_block {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  overflow: hidden;
-  color: white;
-  padding: 25px;
-}
+  .product__stock__item {
+    font-size: var(--size-s);
+    padding: 3px 7px;
+  }
 
-.NFT_item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  overflow: hidden;
-}
+  .products__info {
+    margin-top: 8px;
+    padding: 0 3px;
+    gap: 4px;
+  }
 
-.NFT_item_btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
+  .products__prices .products__current-price {
+    font-size: var(--size-18);
+    line-height: 1.15;
+  }
 
-.NFT_item_btn button {
-  border: none;
-  backdrop-filter: blur(20px);
-  background: rgba(17, 25, 39, 0.1);
-  border-radius: 8px;
-  width: 45px;
-  height: 45px;
-  border: 1px solid #1c253342;
-  cursor: pointer;
-}
+  .products__prices .products__old-price {
+    font-size: var(--size-m);
+  }
 
-.NFT_item_btn button:hover {
-
-  background: rgb(9, 28, 61);
-
-}
-
-.NFT_item_btn img {
-  cursor: pointer;
-}
-
-.NFT_avatar {
-  width: 120px;
-  height: 120px;
-  background-size: cover;
-  object-fit: cover;
-  margin-bottom: 25px;
-}
-
-.NFT_block>div {
-  margin-bottom: 10px;
-}
-
-.NFT_description {
-  font-weight: 500;
-  font-size: 16px;
-  line-height: 162%;
-  text-transform: capitalize;
-  color: #848a9c;
-  margin-bottom: 6px;
-  max-height: 160px;
-  overflow: hidden;
-
-}
-
-
-.NFT_list a {
-  color: #848a9c;
-  transition: .3s color;
-}
-
-.NFT_list a:hover {
-  color: #fff;
-
-}
-
-.NFT_list a.list_active {
-  color: #fff;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #ffd438;
-
-}
-
-.NFT_btn {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.NFT_cash span {
-  font-size: 20px;
-}
-
-/* // profiles */
-/* filtr */
-.NFT__filter__title {
-  font-weight: 400;
-  font-size: 24px;
-  line-height: 180%;
-  color: #fff;
-}
-
-.NFT__filter {
-  display: flex;
-  align-items: top;
-  justify-content: start;
-  gap: 20px;
-}
-
-.NFT__filter select,
-.NFT__filter input {
-
-  padding: 12px 15px;
-  border: 1px solid #1C2533;
-  background-color: #111927;
-  border-radius: 8px;
-  color: #fff;
-  outline: none;
-
-  text-transform: capitalize;
-  font-size: 16px;
-  line-height: 162%;
-  letter-spacing: .13em;
-  font-weight: 400;
-
-}
-
-
-/* // filtr */
-
-.nfts {
-  margin-top: 25px;
-  padding-bottom: 25px;
-}
-
-.filter_nfts_header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 18px;
-  color: #fff;
-
-}
-
-.price-range-inputs {
-  display: flex;
-  gap: 10px;
-}
-
-.filter_nfts_header h2 {
-  font-weight: 600;
-  font-size: 54px;
-  line-height: 119%;
-  text-shadow: 0 2px 10px 0 rgba(245, 247, 82, 0.4);
-}
-
-.filter_nfts_header span {
-  color: #ffd438;
-}
-
-.nfts_block {
-  display: flex;
-  align-items: center;
-  justify-content: start;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-
-.nfts_block,
-.nonesNFT {
-  color: rgba(255, 255, 255, 0.541) !important;
-  font-size: 24px;
-  display: flex !important;
-}
-
-::-webkit-scrollbar {
-  width: 0px;
-}
-
-.nft_item {
-  border-radius: 20px;
-  width: 333px;
-  max-height: 500px;
-  backdrop-filter: blur(50px);
-  padding: 15px;
-  cursor: pointer;
-  transition: 0.3s background;
-
-  overflow: hidden;
-}
-
-.nft_item:hover {
-  background: transparent;
-}
-
-.nft_item>img {
-  border-radius: 20px;
-  width: 303px;
-  height: 245px;
-  object-fit: cover;
-  transition: 1s;
-}
-
-.nft_item>img:hover {
-  transform: scale(1.15);
-
-}
-
-.nft_collection {
-  margin-top: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 400;
-  font-size: 16px;
-  line-height: 175%;
-  text-transform: capitalize;
-  color: #848a9c;
-}
-
-.nft_title {
-  margin-top: 5px;
-  font-weight: 700;
-  font-size: 18px;
-  line-height: 144%;
-  color: #fff;
-}
-
-.nft_details {
-  margin-top: 15px;
-  border-radius: 8px;
-  width: 303px;
-  background: #0e1424;
-  overflow: hidden;
-  display: flex;
-  padding: 10px 20px;
-  color: white;
-  gap: 16px;
-}
-
-.nft_details {
-  color: #fff;
-  font-size: 16px;
-  text-transform: capitalize;
-}
-
-.nft_owner p:first-child,
-.nft_price p:first-child {
-  font-weight: 400;
-  line-height: 165%;
-  color: #848a9c;
-}
-
-
-
-
-
-.showMore__btn {
+  .products__seller .products__shop-name {
+    display: block;
     max-width: 100%;
-    width: max-content;
-    padding: 10px 40px;
-    display: grid;
-    place-items: center;
-    margin: 0 auto;
-
-    border-radius: 10px;
-    background: var(--background);
-    font-family: var(--font-family);
-    font-weight: 500;
-    font-size: 18px;
-    color: #fff;
-    text-align: center;
-    transition: var(--trans-3);
-    border: none;
-    outline: none;
-    cursor: pointer;
-    transform:none;
-}
-.showMore__btn--active {
-    transform: translate(141px);
-}
-.showMore__btn:active {
-    opacity: 0.7;
-}
-
-.showMore__btn:hover {
-    background: #003cac;
-}
-/* ==== АДАПТИВНОСТЬ ==== */
-@media (max-width: 480px) {
-
-  .top_nfts,
-  .nfts {
-    margin-top: 50px;
-    padding-bottom: 25px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--size-md);
   }
 
-  /* Заголовки */
-  .top_nfts_header,
-  .filter_nfts_header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin-bottom: 30px;
-    color: #fff;
+  .products__title-text {
+    font-size: var(--size-m);
+    line-height: 1.25;
+    padding-right: 0;
   }
 
-  .top_nfts_header h2,
-  .filter_nfts_header h2 {
-    font-weight: 600;
-    font-size: clamp(36px, 8vw, 54px);
-    line-height: 119%;
-    text-shadow: 0 2px 10px rgba(245, 247, 82, 0.4);
+  .products__rating {
+    gap: 7px;
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow: hidden;
   }
 
-  .top_nfts_header span,
-  .filter_nfts_header span {
-    color: #ffd438;
+  .products__rating>div {
+    gap: 4px;
+    font-size: var(--size-md);
+    min-width: 0;
   }
 
-  /* Кнопки переключения слайдера Top NFT */
-  .top_nfts_controls {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    stroke-width: 2px;
-    stroke: #848a9c;
+  .products__rating img {
+    width: 14px;
+    height: 14px;
     flex-shrink: 0;
   }
 
-  .top_nfts_controls button {
-    width: 50px;
-    height: 50px;
-    border: 1px solid #1c2533;
-    border-radius: 12px;
-    background: #111927;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-
-  .top_nfts_controls button:hover {
-    background: #1c2533;
-  }
-
-  .top_nfts_controls button:active {
-    opacity: 0.7;
-  }
-
-  /* ==== ГОРИЗОНТАЛЬНЫЙ СЛАЙДЕР TOP NFT ==== */
-  .top_nfts_block {
-    overflow: hidden;
-    border-radius: 20px;
-  }
-
-  .top_nfts_container {
-    display: flex;
-    gap: 20px;
-    transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    padding: 10px 0;
-    width: auto !important;
-    /* УБИРАЕМ calc(100% * 3) — это был убийца мобильных */
-  }
-
-  /* Карточка Top NFT */
-  .top_nft_item {
-    flex: 0 0 auto;
-    width: clamp(280px, 90vw, 333px);
-    /* от 280px до 333px */
-    height: auto;
-    min-height: 420px;
-    border: 1px solid #1c2533;
-    border-radius: 20px;
-    backdrop-filter: blur(50px);
-    background: rgba(17, 25, 39, 0.1);
-    padding: 15px;
-    cursor: pointer;
-    transition: 0.3s background;
-  }
-
-  .top_nft_item:hover {
-    background: transparent;
-  }
-
-  .top_nft_image,
-  .nft_item>img {
-    border-radius: 20px;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 303 / 245;
-    object-fit: cover;
-  }
-
-  .top_nft_details,
-  .nft_details {
-    margin-top: 15px;
-    border-radius: 8px;
-    width: 100%;
-    background: #0e1424;
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    font-size: 15px;
-    color: #fff;
-  }
-
-  /* ==== ОБЫЧНЫЙ ГРИД NFT (ниже Top) ==== */
-  .nfts_block {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-    padding: 10px 0;
-  }
-
-  .nft_item {
-    border: 1px solid #1c2533;
-    border-radius: 20px;
-    width: 100%;
-    max-height: none;
-    backdrop-filter: blur(50px);
-    background: rgba(17, 25, 39, 0.1);
-    padding: 15px;
-    cursor: pointer;
-    transition: 0.3s background;
-    overflow: hidden;
-  }
-
-  .nft_item:hover {
-    background: transparent;
-  }
-
-  .nft_collection,
-  .top_nft_collection {
-    margin-top: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 15px;
-    color: #848a9c;
-    overflow: hidden;
-  }
-
-  .nft_collection span,
-  .top_nft_collection span {
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-    flex: 1;
-  }
-
-  .nft_title,
-  .top_nft_title {
-    margin-top: 6px;
-    font-weight: 700;
-    font-size: 18px;
-    color: #fff;
+  .products__reviews span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  /* Статусы карточек */
-  .NFT-status--moderation {
-    border: 1px solid #ffd438 !important;
+  .products__btn button {
+    min-height: 38px;
+    padding: 8px 6px;
+    border-radius: 9px;
+    font-size: var(--size-md);
+    gap: 5px;
   }
 
-  .NFT-status--sold {
-    border: 1px solid #1c2533 !important;
-  }
-
-  .NFT-status--rejection {
-    border: 1px solid red !important;
-  }
-
-  .top_nfts_controls button {
-    width: 44px;
-    height: 44px;
-  }
-
-  .top_nft_item {
-    width: calc(100vw - 40px);
-    /* одна карточка занимает почти весь экран */
-  }
-
-  .nfts_block {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .top_nfts_header,
-  .filter_nfts_header {
-    flex-direction: column;
-    align-items: flex-start;
-    text-align: center;
-  }
-
-  .top_nfts_controls {
-    align-self: center;
+  .products__btn svg {
+    width: 18px;
+    height: 18px;
   }
 }
 
-@media (min-width: 481px) and (max-width: 768px) {
-  .nfts_block {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 360px) {
+  .products__grid {
+    gap: 14px 8px;
+    padding: 8px;
+  }
+
+  .products__prices .products__current-price {
+    font-size: var(--size-base);
+  }
+
+  .products__title-text {
+    font-size: var(--size-md);
+  }
+
+  .products__rating {
+    gap: 5px;
   }
 }
 
-@media (min-width: 1024px) {
-  .nfts_block {
-    grid-template-columns: repeat(3, 1fr);
-  }
+
+.showMore__btn {
+  max-width: 100%;
+  width: max-content;
+  padding: 10px 40px;
+  display: block;
+  margin: 0 auto;
+  border-radius: 10px;
+  font-family: var(--font-family);
+  font-weight: var(--fw-500);
+  font-size: var(--size-18);
+  text-align: center;
+  background: transparent;
+  color: #FF2E63;
+  border: 1px solid #FF2E63;
+  transition: var(--trans-3);
+  outline: none;
+  cursor: pointer;
+  transform: none;
 }
 
-@media (min-width: 1440px) {
-  .nfts_block {
-    grid-template-columns: repeat(4, 1fr);
-  }
+.products__title-text {
+  cursor: pointer;
 }
 
-/* Убираем скроллбар у блоков */
-.nfts_block,
-.top_nfts_block {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.products__variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 4px;
 }
 
-.nfts_block::-webkit-scrollbar,
-.top_nfts_block::-webkit-scrollbar {
-  display: none;
+.products__variant-chip {
+  font: inherit;
+  font-size: var(--size-md);
+  line-height: 1.2;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+.products__variant-chip:hover {
+  border-color: #94a3b8;
+  background: #fff;
+}
+
+.products__variant-chip--active {
+  border-color: #0ea5e9;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  font-weight: var(--fw-600);
+}
+
+.showMore__btn--active {
+  transform: translate(141px);
+}
+
+.showMore__btn:active {
+  opacity: 0.7;
+}
+
+
+.showMore__btn:hover {
+  background: #FF2E63;
+  color: white;
+  cursor: pointer;
+
+}
+

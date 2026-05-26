@@ -60,7 +60,9 @@ export default function PaymentModal({
             const result = await response.json();
             console.log('Response:', result);
             
-            if (result.url) {
+            if (result.redirect) {
+                window.location.href = result.redirect;
+            } else if (result.url) {
                 window.location.href = result.url;
             } else if (result.error) {
                 setError(result.error);

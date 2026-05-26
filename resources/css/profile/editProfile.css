@@ -11,8 +11,8 @@
 }
 .profileEdit h1 {
     margin-bottom: 34px;
-    font-weight: 500;
-    font-size: 32px;
+    font-weight: var(--fw-500);
+    font-size: var(--size-2xl);
     color: #000;
 }
 
@@ -57,7 +57,7 @@
 .bg-green-900{
     background-color: #04b70a;
     color: white;
-    font-weight: 500;
+    font-weight: var(--fw-500);
 
 }
 #description{
@@ -125,15 +125,15 @@
 }
 
 .profile__edit__data__item form div label {
-    font-weight: 400;
-    font-size: 18px;
+    font-weight: var(--fw-400);
+    font-size: var(--size-18);
     color: #000;
 }
 
 .profile__edit__data__item div input {
     width: 100%;
-    font-weight: 400;
-    font-size: 16px;
+    font-weight: var(--fw-400);
+    font-size: var(--size-base);
     color: rgb(0, 0, 0);
     padding: 10px;
     border: 1px solid rgba(0, 0, 0, 0.5);

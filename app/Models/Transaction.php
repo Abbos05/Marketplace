@@ -9,15 +9,39 @@ class Transaction extends Model
 {
     use HasFactory;
 
+    public const TYPE_PAYMENT = 'payment';
+
+    public const TYPE_REFUND = 'refund';
+
+    public const TYPE_CANCEL = 'cancel';
+
     protected $table = 'transactions';
 
     protected $fillable = [
-        'buyer_id', 'seller_id', 'product_id', 'amount', 'status',
+        'order_id',
+        'buyer_id',
+        'seller_id',
+        'product_id',
+        'amount',
+        'gross_amount',
+        'commission_amount',
+        'seller_payout_amount',
+        'type',
+        'status',
+        'description',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'gross_amount' => 'decimal:2',
+        'commission_amount' => 'decimal:2',
+        'seller_payout_amount' => 'decimal:2',
     ];
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'order_id');
+    }
 
     public function buyer()
     {
@@ -32,5 +56,24 @@ class Transaction extends Model
     public function product()
     {
         return $this->belongsTo(Product::class, 'product_id');
+    }
+
+    public function typeLabel(): string
+    {
+        return match ($this->type) {
+            self::TYPE_REFUND => 'Возврат средств',
+            self::TYPE_CANCEL => 'Отмена заказа',
+            default => 'Оплата',
+        };
+    }
+
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            'refunded' => 'Возвращено',
+            'failed' => 'Не выполнено',
+            'pending' => 'В обработке',
+            default => 'Успешно',
+        };
     }
 }

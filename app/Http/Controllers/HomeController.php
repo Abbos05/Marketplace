@@ -1,180 +1,221 @@
 <?php
 
 namespace App\Http\Controllers;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 use App\Models\Category;
-use Inertia\Inertia;
+use App\Models\HomeSlide;
 use App\Models\Product;
-use App\Models\User;
+use App\Models\ProductVariant;
+use App\Http\Controllers\Concerns\PreparesCatalogRecommendations;
+use App\Http\Controllers\Concerns\RedirectsArticleSearch;
+use App\Services\CatalogFilterService;
+use App\Services\HomeCatalogFeedService;
+use App\Services\PromotionCatalogService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-
+use Inertia\Inertia;
 
 class HomeController extends Controller
 {
-  public function index(Request $request, $returnDataOnly = false, $id = null)
-{
-    $search = request('search');
-    $sort = request('sort', 'price_desc');
-    $price_from = $request->query('price_from');
-    $price_to = $request->query('price_to');
+    use PreparesCatalogRecommendations;
+    use RedirectsArticleSearch;
 
-    $validSorts = ['price_desc', 'price_asc', 'date_desc', 'date_asc'];
-    $sort = in_array($sort, $validSorts) ? $sort : 'price_desc';
+    public function __construct(
+        private CatalogFilterService $catalogFilters,
+        private HomeCatalogFeedService $homeFeed,
+        private PromotionCatalogService $promotionCatalog,
+    ) {}
 
-    // Основной запрос
-    $query = Product::with('user', 'category')
-        ->where('is_on_action', 1);
+    public function index(Request $request, $returnDataOnly = false, $id = null)
+    {
+        $search = request('search');
+        $category = Category::rootsForCatalogNav();
+        if ($search) {
+            if ($redirect = $this->redirectIfArticleSearch($search)) {
+                return $redirect;
+            }
+            $baseFactory = fn () => Product::forCatalogPresentation()
+                ->visibleInCatalog();
 
-    // Поиск
-    if ($search) {
-        $query->where(function ($q) use ($search) {
-            $q->where('title', 'like', "%{$search}%")
-              ->orWhere('description', 'like', "%{$search}%");
-        });
-    }
+            $result = $this->catalogFilters->process($request, $baseFactory, [
+                'allow_category_facet' => true,
+                'search_fields' => ['title', 'short_description'],
+            ]);
 
-    // Фильтр по цене
-    if ($request->filled('price_from')) {
-        $query->where('min_price', '>=', (float)$price_from);
-    }
-    if ($request->filled('price_to')) {
-        $query->where('min_price', '<=', (float)$price_to);
-    }
+            $products = $result['products'];
 
-    // Сортировка
-    switch ($sort) {
-        case 'price_asc':
-            $query->orderBy('min_price', 'asc');
-            break;
-        case 'price_desc':
-            $query->orderBy('min_price', 'desc');
-            break;
-        case 'date_asc':
-            $query->orderBy('created_at', 'asc');
-            break;
-        case 'date_desc':
-            $query->orderBy('created_at', 'desc');
-            break;
-        default:
-            $query->orderBy('min_price', 'desc');
-    }
+            $filters = $result['filters'];
+            $facets = $result['facets'];
+            $total = $result['total'];
+            $pagination = $result['pagination'];
+            $sort = $filters['sort'];
+            $this->catalogFilters->markFavorites($products);
+        } else {
+            $products = $this->homeFeed->build();
 
-    $products = $query->take(50)->get();
-    $category = Category::has('products')->with('products')->get();
+            Product::enrichForCatalog($products);
+            $filters = $this->catalogFilters->parseFilters($request);
+            $facets = ['price' => ['min' => null, 'max' => null], 'categories' => [], 'attributes' => []];
+            $total = $products->count();
+            $pagination = null;
+            $sort = $filters['sort'];
+            $this->catalogFilters->markFavorites($products);
+            $products = $products->shuffle();
 
-    // Рекомендуемые товары
-    $LikeProducts = Product::with('user', 'category')
-        ->where('status', 'approved')
-        ->take(12)
-        ->get();
+        }
 
-    // 🔥🔥🔥 ДОБАВЛЯЕМ ФЛАГ ИЗБРАННОГО (как в рабочем коде) 🔥🔥🔥
-    if (auth()->check()) {
-        $userId = auth()->id();
-        $favoriteProductIds = DB::table('favorites')
-            ->where('user_id', $userId)
-            ->whereNotNull('product_id')
-            ->pluck('product_id')
-            ->toArray();
-        
-        // Добавляем is_favorite для основных товаров
-        $products->each(function ($product) use ($favoriteProductIds) {
-            $product->is_favorite = in_array($product->id, $favoriteProductIds);
-        });
-        
-        // Добавляем is_favorite для рекомендуемых товаров
-        $LikeProducts->each(function ($product) use ($favoriteProductIds) {
-            $product->is_favorite = in_array($product->id, $favoriteProductIds);
-        });
-    } else {
-        // Если пользователь не авторизован, то все товары не в избранном
-        $products->each(fn($product) => $product->is_favorite = false);
-        $LikeProducts->each(fn($product) => $product->is_favorite = false);
-    }
+        $homeSlides = HomeSlide::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(fn (HomeSlide $s) => $s->toFrontendArray())
+            ->values()
+            ->all();
 
-    $data = [
-        'LikeProducts' => $LikeProducts,
-        'category' => $category,
-        'auth' => auth()->user() ? ['user' => auth()->user()] : ['user' => null],
-        'canResetPassword' => true,
-        'mysqlNftsData' => $products,
-        'categoryData' => $category,
-        'search' => $search,
-        'sort' => $sort,
-        'filters' => [
+      
+
+        $LikeProducts = $this->catalogRecommendations();
+
+        $data = [
+            'LikeProducts' => $LikeProducts,
+            'category' => $category,
+            'auth' => auth()->user() ? ['user' => auth()->user()] : ['user' => null],
+            'canResetPassword' => true,
+            'mysqlProductsData' => $products,
+            'categoryData' => $category,
             'search' => $search,
             'sort' => $sort,
-            'price_from' => $price_from,
-            'price_to' => $price_to,
-        ]
-    ];
+            'filters' => $filters,
+            'facets' => $facets,
+            'total' => $total,
+            'pagination' => $pagination ?? null,
+            'homeSlides' => $homeSlides,
+        ];
 
-    if ($returnDataOnly) return $data;
-    return Inertia::render('Home', $data);
-}
+        if ($returnDataOnly)
+            return $data;
+        return Inertia::render('Home', $data);
+    }
 
     public function category($returnDataOnly = false)
     {
         $search = request('search');
         $sort = request('sort', 'price_desc');
-    
-    
+
+
         $validSorts = ['price_desc', 'price_asc', 'date_desc', 'date_asc'];
         $sort = in_array($sort, $validSorts) ? $sort : 'price_desc';
-    
 
-        $query = Product::with('user', 'category')
-            ->where('is_on_action', 1);
-    
+
+        $query = Product::forCatalogPresentation()
+            ->visibleInCatalog();
+
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('tags', 'like', "%{$search}%");
+                    ->orWhere('tags', 'like', "%{$search}%");
             });
         }
-    
+
         switch ($sort) {
-            case 'price_asc':  $query->orderBy('price', 'asc'); break;
-            case 'price_desc': $query->orderBy('price', 'desc'); break;
-            case 'date_asc':   $query->orderBy('created_at', 'asc'); break;
-            case 'date_desc':  $query->orderBy('created_at', 'desc'); break;
-            default:           $query->orderBy('price', 'desc');
+            case 'price_asc':
+                $query->orderBy('min_price', 'asc');
+                break;
+            case 'price_desc':
+                $query->orderBy('min_price', 'desc');
+                break;
+            case 'date_asc':
+                $query->orderBy('created_at', 'asc');
+                break;
+            case 'date_desc':
+                $query->orderBy('created_at', 'desc');
+                break;
+            default:
+                $query->orderBy('min_price', 'desc');
         }
-    
-        $products= $query->take(50)->get();
-    
-        $bestNfts = Product::with('user')
-            ->where('is_on_action', 1)
+
+        $products = $query->take(50)->get();
+        Product::enrichForCatalog($products);
+
+        $bestProducts = Product::forCatalogPresentation()
+            ->visibleInCatalog()
             ->orderBy('created_at', 'desc')
             ->take(9)
             ->get();
-    
-        $category = Category::has('nfts')->with('nfts')->get();
-    
+        Product::enrichForCatalog($bestProducts);
+
+        $category = Category::rootsForCatalogNav();
+
+        $homeSlides = HomeSlide::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(fn (HomeSlide $s) => $s->toFrontendArray())
+            ->values()
+            ->all();
+
         $data = [
             'auth' => auth()->user() ? ['user' => auth()->user()] : ['user' => null],
             'canResetPassword' => true,
-            'mysqlNftsData' => $products,
-            'bestNftsData' => $bestNfts,
             'categoryData' => $category,
             'search' => $search,
             'sort' => $sort,
+            'homeSlides' => $homeSlides,
         ];
-    
-        if ($returnDataOnly) return $data;
-    
+
+        if ($returnDataOnly)
+            return $data;
+
         return Inertia::render('Product/CategoryMenu', $data);
     }
 
- public function favorites(Product $product)
+    public function favorites(Request $request, Product $product)
     {
         $user = Auth::user();
-        if ($user) {
-            $user->favorites()->toggle($product->id);
+
+        if (! $product->canBeViewedBy($user)) {
+            abort(404);
         }
-        
+
+        if ($user) {
+            $data = $request->validate([
+                'variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
+            ]);
+
+            $variantId = $data['variant_id'] ?? null;
+            if ($variantId !== null) {
+                $variantBelongsToProduct = ProductVariant::query()
+                    ->whereKey($variantId)
+                    ->where('product_id', $product->id)
+                    ->exists();
+
+                abort_unless($variantBelongsToProduct, 404);
+            }
+
+            $favoriteQuery = DB::table('favorites')
+                ->where('user_id', $user->id)
+                ->where('product_id', $product->id);
+
+            $variantId === null
+                ? $favoriteQuery->whereNull('variant_id')
+                : $favoriteQuery->where('variant_id', $variantId);
+
+            $favoriteExists = $favoriteQuery->exists();
+
+            if ($favoriteExists) {
+                $favoriteQuery->delete();
+            } else {
+                DB::table('favorites')->insert([
+                    'user_id' => $user->id,
+                    'product_id' => $product->id,
+                    'variant_id' => $variantId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
         // Важно: возвращаемся с обновлёнными данными
         return back();
     }

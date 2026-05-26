@@ -1,97 +1,126 @@
-import React, { useState } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import React from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import { resolveAvatarUrl } from '@/lib/avatarUrl';
 import '../../../css/product/ShopPage.css';
 import ProductsCatalog from '@/Components/Product/FilterProducts';
 
+function formatCount(n) {
+    return new Intl.NumberFormat('ru-RU').format(Number(n) || 0);
+}
+
+function formatRating(rating) {
+    if (rating === null || rating === undefined || rating === '') {
+        return null;
+    }
+    const value = Number(rating);
+    if (Number.isNaN(value) || value <= 0) {
+        return null;
+    }
+    return value.toFixed(1);
+}
+
 export default function Seller({ auth }) {
+    const { seller, sellerId, products, filters, facets = {}, total = 0, pagination = null } =
+        usePage().props;
 
-    const { seller, products, filters } = usePage().props;
-
-    // Используем хук состояния для хранения количества отображаемых элементов
-    const [displayCount, setDisplayCount] = useState(12);
-    // Функция для увеличения количества отображаемых элементов
-    const showMore = () => {
-        // Увеличиваем количество на 10, но не больше, чем длина массива products
-        setDisplayCount(prevCount => Math.min(prevCount + 10, products.length));
-    };
+    const ratingLabel = formatRating(seller?.rating);
+    const avatarUrl = resolveAvatarUrl(seller?.img);
 
     return (
         <MainLayout auth={auth}>
-            <Head title={`${seller?.name || 'Страница Продавца'} - Маркетплейс`} />
-            <div className='seller'>
-                <div className="seller__inner">
-                    <div className="seller__main">
-                        {/* Блок с аватаром */}
-                        <div className="seller__avatar">
-                            {seller?.img ? (
-                                <img src={products?.img || "/img/products/default.jpg"} onClick={() => { window.open(products?.img || "/img/products/default.jpg", "_blank"); }} alt={`${seller.name}'s avatar`} className="seller__avatar-img" />
-                            ) : (
-                                <div className="seller__avatar-placeholder">
-                                    <span>{seller?.name?.charAt(0) || 'A'}</span>
-                                </div>
-                            )}
-                        </div>
+            <Head title={`${seller?.name || 'Магазин'} — Маркетплейс`} />
 
-                        {/* Блок с информацией о продавце */}
-                        <div className="seller__info">
-                            <h2 className="seller__name ">{seller?.name || "LabuMarket"}</h2>
-                            <div className="seller__details">
-                                <div className="seller__shop seller__details--shop">
-                                    <span className="seller__shop-value">Магазин</span>
-                                </div>
-                                <div className="seller__stat seller__stat--rating">
-                                    <svg width="16px" height="16px" viewBox="0 -0.5 33 33" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns: xlink="http://www.w3.org/1999/xlink">
-                                        <g id="Vivid.JS" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-                                            <g id="Vivid-Icons" transform="translate(-903.000000, -411.000000)" fill="#000">
-                                                <g id="Icons" transform="translate(37.000000, 169.000000)">
-                                                    <g id="star" transform="translate(858.000000, 234.000000)">
-                                                        <g transform="translate(7.000000, 8.000000)" id="Shape">
-                                                            <polygon points="27.865 31.83 17.615 26.209 7.462 32.009 9.553 20.362 0.99 12.335 12.532 10.758 17.394 0 22.436 10.672 34 12.047 25.574 20.22">
-                                                            </polygon>
-                                                        </g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </svg>
-                                    <span className="seller__stat-value">{seller?.rating ?? '5.0'}</span>
-                                </div>
-                                <div className="seller__stat seller__stat--reviews">
-                                    <span className="seller__stat-value">{seller?.review ?? 0}</span>
-                                    <span className="seller__stat-label"> отзывов</span>
-                                </div>
-                                <div className="seller__stat seller__stat--orders">
-                                    <span className="seller__stat-value">{seller?.orders ?? 0}</span>
-                                    <span className="seller__stat-label"> заказов</span>
+            <div className="seller-page">
+                <section className="seller-hero">
+                    <div className="seller-hero__inner">
+                        <div className="seller-hero__main">
+                            <div className="seller-hero__avatar">
+                                {avatarUrl ? (
+                                    <img
+                                        src={avatarUrl}
+                                        alt=""
+                                        className="seller-hero__avatar-img"
+                                    />
+                                ) : (
+                                    <span className="seller-hero__avatar-letter">
+                                        {seller?.name?.charAt(0)?.toUpperCase() || 'М'}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="seller-hero__info">
+                                <span className="seller-hero__badge">Магазин</span>
+                                <h1 className="seller-hero__name">{seller?.name || 'Магазин'}</h1>
+
+                                <div className="seller-hero__stats">
+                                    {ratingLabel && (
+                                        <div className="seller-hero__stat seller-hero__stat--rating">
+                                            <span className="seller-hero__stat-icon" aria-hidden>★</span>
+                                            <span className="seller-hero__stat-value">{ratingLabel}</span>
+                                            <span className="seller-hero__stat-label">рейтинг</span>
+                                        </div>
+                                    )}
+                                    <div className="seller-hero__stat">
+                                        <span className="seller-hero__stat-value">
+                                            {formatCount(seller?.reviews_count)}
+                                        </span>
+                                        <span className="seller-hero__stat-label">отзывов</span>
+                                    </div>
+                                    <div className="seller-hero__stat">
+                                        <span className="seller-hero__stat-value">
+                                            {formatCount(seller?.orders)}
+                                        </span>
+                                        <span className="seller-hero__stat-label">заказов</span>
+                                    </div>
+                                    <div className="seller-hero__stat seller-hero__stat--muted">
+                                        <span className="seller-hero__stat-value">
+                                            {formatCount(seller?.likes)}
+                                        </span>
+                                        <span className="seller-hero__stat-label">в избранном</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Блок с действиями */}
-                    <div className="seller__actions">
-                        <button className="seller__button seller__button--message">
-                            <span className="seller__message-icon">
-                                <img src="/img/products/reviews-icon.png" alt="Отзывы" />
-                            </span>
-                            Написать</button>
-                        <div className="seller__likes">
-                            <span className="seller__likes-icon">❤️</span>
-                            <span className="seller__likes-count">{seller?.likes ?? "1 000"}</span>
+                        <div className="seller-hero__actions">
+                            <button
+                                type="button"
+                                className="seller-hero__btn seller-hero__btn--primary"
+                                onClick={() => {
+                                    if (!auth?.user) {
+                                        window.location.href = '/login';
+                                        return;
+                                    }
+                                    if (seller?.id && auth.user.id === seller.id) {
+                                        return;
+                                    }
+                                    if (!seller?.id) {
+                                        return;
+                                    }
+                                    router.post(route('messages.open'), {
+                                        type: 'seller_shop',
+                                        seller_id: seller.id,
+                                    });
+                                }}
+                            >
+                                Написать продавцу
+                            </button>
                         </div>
                     </div>
-                </div>
+                </section>
+
                 <ProductsCatalog
-                    dataProduct={products.slice(0, displayCount) || []}
+                    dataProduct={products || []}
                     seller={seller}
+                    sellerId={sellerId ?? seller?.id}
                     isSellerProfile={true}
                     filters={filters || {}}
+                    facets={facets}
+                    total={total}
+                    pagination={pagination}
                 />
-                {displayCount < products.length && (
-                    <button className="showMore__btn showMore__btn--active" onClick={showMore}>Показать еще</button>
-                )}
             </div>
-        </MainLayout >
+        </MainLayout>
     );
 }

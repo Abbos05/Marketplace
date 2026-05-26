@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,7 @@ class ProductVariant extends Model
 
     protected $fillable = [
         'product_id', 'sku', 'options', 'price', 'old_price',
-        'discount_percent', 'action_start', 'action_end', 'stock',
+        'discount_percent', 'action_start', 'action_end', 'stock', 'views_count',
         'weight_grams', 'region_id', 'is_active',
     ];
 
@@ -26,6 +27,7 @@ class ProductVariant extends Model
         'action_start' => 'datetime',
         'action_end' => 'datetime',
         'stock' => 'integer',
+        'views_count' => 'integer',
         'is_active' => 'boolean',
     ];
 
@@ -57,6 +59,27 @@ class ProductVariant extends Model
     public function reviews()
     {
         return $this->hasMany(Review::class, 'variant_id');
+    }
+
+    /** Подпись варианта для карточек и страницы товара (из options). Только значения, без «Цвет:», «Размер:». */
+    public function displayLabel(): string
+    {
+        $opts = $this->options;
+        if (! is_array($opts) || $opts === []) {
+            return 'Вариант #'.$this->id;
+        }
+
+        $parts = [];
+        foreach ($opts as $val) {
+            if (is_string($val) && $val !== '') {
+                $parts[] = $val;
+            }
+        }
+
+        $parts = array_values(array_unique(array_filter($parts)));
+        $label = implode(' ', $parts);
+
+        return $label !== '' ? $label : ('Вариант #'.$this->id);
     }
 
     // Актуальная цена с учётом скидки

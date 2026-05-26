@@ -14,12 +14,16 @@ class Review extends Model
 
     protected $fillable = [
         'product_id', 'variant_id', 'user_id', 'order_id',
-        'rating', 'comment', 'is_moderated',
+        'rating', 'comment', 'is_moderated', 'moderation_comment',
+        'moderated_at', 'moderated_by', 'likes_count', 'dislikes_count',
     ];
 
     protected $casts = [
         'rating' => 'integer',
         'is_moderated' => 'boolean',
+        'moderated_at' => 'datetime',
+        'likes_count' => 'integer',
+        'dislikes_count' => 'integer',
     ];
 
     public function product()
@@ -40,5 +44,29 @@ class Review extends Model
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id');
+    }
+
+    public function moderator()
+    {
+        return $this->belongsTo(User::class, 'moderated_by');
+    }
+
+    public function votes()
+    {
+        return $this->hasMany(ReviewVote::class);
+    }
+
+    public function images()
+    {
+        return $this->hasMany(ReviewImage::class)->orderBy('sort_order');
+    }
+
+    public function hasPhotos(): bool
+    {
+        if ($this->relationLoaded('images')) {
+            return $this->images->isNotEmpty();
+        }
+
+        return $this->images()->exists();
     }
 }

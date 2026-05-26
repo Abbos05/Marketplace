@@ -1,15 +1,16 @@
- .favorite__title {
+.favorite__title {
      margin-bottom: 20px;
      padding: 10px;
+     font-size: var(--size-xl);
+     font-weight: var(--fw-600);
+}
 
- } 
-
- .favorite {
+.favorite {
      max-width: 100%;
      margin-bottom: 25px;
- }
+}
 
- .NoFeatured {
+.NoFeatured {
      min-width: 100%;
      max-width: max-content;
      padding: 50px;
@@ -27,28 +28,101 @@
      border: 1px solid #808d9a7b;
      border-radius: 21px;
 
+}
 
- }
-
- .NoFeatured__image {
+.NoFeatured__image {
      width: max-content;
      height: max-content;
+     max-width: 220px;
      object-fit: cover;
- }
+}
 
- .NoFeatured__title {
-     font-weight: 700;
-     font-size: 36px;
+.NoFeatured__title {
+    font-size: var(--size-xl);
+    font-weight: var(--fw-600);
      text-align: center;
      color: #000;
- }
+}
 
- .NoFeatured__text {
-     font-weight: 500;
-     font-size: 24px;
+.NoFeatured__text {
+     font-weight: var(--fw-500);
      text-align: center;
-     color: black;
- }
- .products__grid{
+     color: #333;
+}
+
+.favorite .products__grid{
     min-width: 100%;
- }
+}
+
+@media (max-width: 768px) {
+    .favorite {
+        margin-bottom: 18px;
+    }
+
+    .favorite__title {
+        margin-bottom: 12px;
+        padding: 6px 2px;
+        font-size: var(--size-lg);
+    }
+
+    .favorite .products__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+        padding: 10px !important;
+        border-radius: 16px;
+    }
+
+    .NoFeatured {
+        min-width: 0;
+        max-width: 100%;
+        padding: 34px 18px;
+        border-radius: 16px;
+        row-gap: 14px;
+    }
+
+    .NoFeatured__image {
+        width: 160px;
+        max-width: 70%;
+        height: auto;
+    }
+
+    .NoFeatured__title {
+        font-size: var(--size-lg);
+    }
+
+    .NoFeatured__text {
+        max-width: 320px;
+        font-size: var(--size-m);
+        line-height: 1.45;
+    }
+}
+
+@media (max-width: 420px) {
+    .favorite .products__grid {
+        gap: 8px !important;
+        padding: 8px !important;
+    }
+
+.category-header h2{
+    font-size: var(--size-xl);
+    line-height: 1.2;
+    margin-bottom: 5px;
+    font-weight: var(--fw-600);    
+}
+
+    .NoFeatured {
+        padding: 28px 14px;
+    }
+
+    .NoFeatured__image {
+        width: 130px;
+    }
+
+    .NoFeatured__title {
+        font-size: var(--size-base);
+    }
+
+    .NoFeatured__text {
+        font-size: var(--size-l);
+    }
+}

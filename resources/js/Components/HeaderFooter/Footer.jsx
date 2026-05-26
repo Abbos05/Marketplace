@@ -1,99 +1,135 @@
-import React from 'react';
-import {Link} from '@inertiajs/react';
-const Footer = () => {
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Подписка отправлена');
-  };
+import React, { useMemo } from 'react';
+import { Link, usePage } from '@inertiajs/react';
+import { FOOTER_COLUMNS, FOOTER_LEGAL } from '@/lib/footerLinks';
+import { isStaff } from '@/lib/staffAccess';
+import '../../../css/footer.css';
+
+function FooterLink({ href, label, auth }) {
+  const { auth: pageAuth } = usePage().props;
+  const resolvedHref = auth && !pageAuth?.user ? '/login' : href;
 
   return (
-    <footer className="footer">
-      <div className="container">
-        <div className="footer-block">
-          <div className="footer-info">
-            <br />
-            <div className="footer-logo">
-              <Link href="/" className="header-logo-name">
-                <svg class="logo" viewBox="0 0 400 100" width="100%" height="100%">
-                  <text x="50%" y="62%" text-anchor="middle" dominant-baseline="middle"
-                    fill="currentColor">
-                    Alvora
-                  </text>
-                </svg>
-              </Link>
-            </div>
-            <div className="footer-info-item">
-              <p className="footer-info-course">Оставайтесь в курсе</p>
-              <p className="footer-info-course-info">
-                Подпишитесь на нашу рассылку, чтобы быть в курсе наших новейших выпусков функций, обновлений товара, а также
-                советов и рекомендаций по навигации в ALVORA.
-              </p>
-              <form onSubmit={handleSubmit}>
-                <div className="footer-form-course">
-                  <img src="/img/footer/mail.png" alt="mail" />
-                  <input type="email" placeholder="Введите адрес эл. почты" />
-                  <button type="submit">Отправить</button>
-                </div>
-                <div className="footer-social">
-                  <a href="#">
-                    <img src="/img/footer/Vk.png" alt="VK" />
+    <li>
+      <Link href={resolvedHref} className="site-footer__link">
+        {label}
+      </Link>
+    </li>
+  );
+}
+
+function FooterColumn({ title, links }) {
+  return (
+    <div className="site-footer__col site-footer__desktop-only">
+      <p className="site-footer__col-title">{title}</p>
+      <ul className="site-footer__links">
+        {links.map((item) => (
+          <FooterLink key={item.href + item.label} {...item} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function FooterAccordion({ title, links }) {
+  return (
+    <details className="site-footer__accordion site-footer__mobile-only">
+      <summary>{title}</summary>
+      <ul className="site-footer__links">
+        {links.map((item) => (
+          <FooterLink key={item.href + item.label} {...item} />
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+const Footer = () => {
+  const { categories = [], footerSocial = [], auth, staffAccess } = usePage().props;
+  const isStaffUser = staffAccess?.isStaff ?? isStaff(auth?.user);
+
+  const footerColumns = useMemo(() => {
+    if (!isStaffUser) return FOOTER_COLUMNS;
+    return {
+      ...FOOTER_COLUMNS,
+      sellers: {
+        ...FOOTER_COLUMNS.sellers,
+        links: FOOTER_COLUMNS.sellers.links.filter((l) => l.href !== '/profile?tab=company'),
+      },
+    };
+  }, [isStaffUser]);
+  const catalogLinks = categories.slice(0, 8).map((c) => ({
+    label: c.name,
+    href: `/category/${c.id}`,
+  }));
+
+  const year = new Date().getFullYear();
+
+  return (
+    <footer className="site-footer">
+      <div className="site-footer__inner">
+        <div className="site-footer__top">
+          <div className="site-footer__brand">
+            <Link href="/" className="header-logo-name">
+              <svg className="logo" viewBox="0 0 400 100" width="100%" height="100%">
+                <text x="50%" y="62%" textAnchor="middle" dominantBaseline="middle" fill="currentColor">
+                  Alvora
+                </text>
+              </svg>
+            </Link>
+            <p className="site-footer__tagline">
+              Маркетплейс для покупателей и продавцов: каталог, заказы, доставка в пункты выдачи.
+            </p>
+            {footerSocial.length > 0 && (
+              <div className="site-footer__social">
+                {footerSocial.map((item) => (
+                  <a
+                    key={item.label}
+                    href={item.url}
+                    className="site-footer__social-link"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {item.label}
                   </a>
-                  <a href="#">
-                    <img src="/img/footer/telegram.png" alt="telegram" />
-                  </a>
-                  <a href="#">
-                    <img src="/img/footer/discord.png" alt="discord" />
-                  </a>
-                  <a href="#">
-                    <img src="/img/footer/max.png" alt="max" />
-                  </a>
-                </div>
-              </form>
-            </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="footer-link">
-            <div className="footer-link-category">
-              <div className="footer-link-category-item">
-                <p>Категория</p>
-                <a href={`/category/1`}>NFT Art</a>
-                <a href={`/category/2`}>Sports Memorabilia</a>
-                <a href={`/category/3`}>Collectibles</a>
-                <a href={`/category/4`}>Digital Photography</a>
-                <a href={`/category/5`}>Domain Names</a>
-                <a href={`/category/6`}>Virtual Fashion</a>
-                <a href={`/category/7`}>Game Assets</a>
-                <a href={`/category/8`}>Music & Audio</a>
-                <a href={`/category/9`}>Metaverse Real Estate</a>
-                <a href={`/category/10`}>AI Generations</a>
-              </div>
-              <div className="footer-link-category-item">
-                <p>Профиль</p>
-                <a href="/profile">Профиль</a>
-                <a href="/profiles?filter=myFavorites">Избранное</a>
-                <a href="/profiles?filter=myNfts">Мои nft</a>
-                <a href="/profiles?filter=myHistory">История покупики</a>
-              </div>
-              <div className="footer-link-category-item">
-                <p>Ресурсы</p>
-                <a href="#">Помощь</a>
-                <a href="#">Достижение</a>
-                <a href="#">Партнерство</a>
-              </div>
-              <div className="footer-link-category-item">
-                <p>О компании</p>
-                <a href="/about">О проекте</a>
-                <a href="/contacts">Контакты</a>
-              </div>
-            </div>
+
+          <FooterColumn {...footerColumns.buyers} />
+          <FooterColumn {...footerColumns.sellers} />
+          <FooterColumn {...footerColumns.company} />
+
+          <div className="site-footer__col site-footer__desktop-only">
+            <p className="site-footer__col-title">Каталог</p>
+            <ul className="site-footer__links">
+              <FooterLink href="/category" label="Все категории" />
+              {catalogLinks.map((item) => (
+                <FooterLink key={item.href} {...item} />
+              ))}
+            </ul>
+          </div>
+
+          <div className="site-footer__mobile-only">
+            <FooterAccordion {...footerColumns.buyers} />
+            <FooterAccordion {...footerColumns.sellers} />
+            <FooterAccordion {...footerColumns.company} />
+            <FooterAccordion
+              title="Каталог"
+              links={[{ label: 'Все категории', href: '/category' }, ...catalogLinks]}
+            />
           </div>
         </div>
-        <div className="footer-security">
-          <div className="footer-security-info">
-            <p>©2025 ALVORA Inc</p>
-          </div>
-          <div className="footer-security-link">
-            <a href="#">Политика безопасности</a>
-          </div>
+
+        <div className="site-footer__bottom">
+          <p className="site-footer__copy">© {year} ALVORA</p>
+          <nav className="site-footer__legal" aria-label="Юридическая информация">
+            {FOOTER_LEGAL.map((item) => (
+              <Link key={item.label} href={item.href} className="site-footer__legal-link">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
     </footer>

@@ -64,7 +64,7 @@
     a {
         color: #3498db;
         text-decoration: none;
-        font-weight: bold;
+        font-weight: var(--fw-700);
     }
 
     a:hover {

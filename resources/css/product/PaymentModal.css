@@ -27,14 +27,14 @@
     right: 16px;
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: var(--size-xl);
     cursor: pointer;
     color: #999;
 }
 
 .payment-title {
-    font-size: 24px;
-    font-weight: 600;
+    font-size: var(--size-xl);
+    font-weight: var(--fw-600);
     margin-bottom: 8px;
 }
 
@@ -45,13 +45,13 @@
 }
 
 .payment-amount span {
-    font-size: 28px;
-    font-weight: 700;
+    font-size: var(--size-28);
+    font-weight: var(--fw-700);
     color: #cb11ab;
 }
 
 .payment-order-number {
-    font-size: 14px;
+    font-size: var(--size-m);
     color: #666;
     margin-bottom: 16px;
 }
@@ -74,7 +74,7 @@
 }
 
 .payment-option-icon {
-    font-size: 28px;
+    font-size: var(--size-28);
 }
 
 .payment-option-content {
@@ -82,18 +82,18 @@
 }
 
 .payment-option-title {
-    font-weight: 500;
+    font-weight: var(--fw-500);
     margin-bottom: 4px;
 }
 
 .payment-option-desc {
-    font-size: 12px;
+    font-size: var(--size-md);
     color: #666;
 }
 
 .payment-option-arrow {
     color: #999;
-    font-size: 18px;
+    font-size: var(--size-18);
 }
 
 .payment-error {
@@ -102,7 +102,7 @@
     padding: 12px;
     border-radius: 8px;
     margin-bottom: 16px;
-    font-size: 14px;
+    font-size: var(--size-m);
 }
 
 .payment-loading {
@@ -131,7 +131,7 @@
     background: none;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    font-size: 16px;
+    font-size: var(--size-base);
     cursor: pointer;
     color: #666;
     margin-top: 12px;

@@ -1,66 +1,70 @@
-import React, { useState, useEffect } from 'react';
-import { Head, router, Link, usePage } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Slider from '@/Components/Slider/Slider';
 import ProductPage from '@/Components/Product/ProductPage';
+
 import ProductsCatalog from '@/Components/Product/FilterProducts';
 import '../../css/Home.css';
-import LikeProductsCom from '@/Components/Product/ProductPage';
+import ProductRecommendationsSection from '@/Components/Product/ProductRecommendationsSection';
 
-export default function Home({ auth, categoryData, showModal }) {
-  const { mysqlNftsData, search = '', sort = 'price_desc', filters = {}, LikeProducts } = usePage().props;
-  const [sortBy, setSortBy] = useState(sort);
+export default function Home({ auth, categoryData, showModal, homeSlides = [] }) {
+    const {
+        mysqlProductsData,
+        search = '',
+        filters = {},
+        initialCount = 50,
+        step = 30,
+        maxCount,
+        facets = {},
+        total = 0,
+        pagination = null,
+        LikeProducts,
+    } = usePage().props;
 
-  const { category } = usePage().props;
+    const [displayCount, setDisplayCount] = useState(initialCount);
+    
+    const cap = maxCount != null ? Math.min(maxCount, mysqlProductsData.length) : mysqlProductsData.length;
+    const visible = mysqlProductsData.slice(0, Math.min(displayCount, cap));
+    const canShowMore = visible.length < cap;
 
-  useEffect(() => {
-    setSortBy(sort);
-  }, [sort]);
+    const showMore = () => {
+        setDisplayCount((prev) => Math.min(prev + step, cap));
+    };
+    return (
+        <MainLayout auth={auth} categories={categoryData} showModal={showModal}>
+            <Head title="Home" />
 
-  const handleSortChange = (e) => {
-    const newSort = e.target.value;
-    setSortBy(newSort);
-
-    router.get('/',
-      {
-        search: search || undefined,
-        sort: newSort
-      },
-      {
-        preserveState: true,
-        preserveScroll: true,
-        only: ['mysqlNftsData', 'search', 'sort', 'filters']
-      }
-    );
-  };
-
-  return (
-    <MainLayout auth={auth} categories={categoryData} showModal={showModal}>
-      <Head title="Home" />
-
-      {search ? (
-        <div className="nfts_block">
-
-          <ProductsCatalog
-            dataProduct={mysqlNftsData}
-            category={{ name: 'Результаты поиска', id: null }}
-            filters={{ ...filters, search: search, sort: sortBy }}
-            isHomePage={true}
-          />
-            {LikeProducts && LikeProducts.length > 0 && LikeProductsCom && (
+            {search ? (
                 <>
-                    <h2 className='info_dop'>Возможно, вам понравится</h2>
-                    <LikeProductsCom products={LikeProducts} />
+                    <ProductsCatalog
+                        dataProduct={mysqlProductsData}
+                        category={{ name: 'Результаты поиска', id: null }}
+                        filters={{ ...filters, search }}
+                        facets={facets}
+                        total={total}
+                        pagination={pagination}
+                        isHomePage={true}
+                    />
+                    <ProductRecommendationsSection
+                        products={LikeProducts}
+                        titleClassName="info_dop"
+                    />
+                </>
+            ) : (
+                <>
+                    {homeSlides.length > 0 && (
+                                          <Slider slides={homeSlides} />
+
+                    )}
+                    <ProductPage products={visible} />
+                    {canShowMore && (
+                <button type="button" className="showMore__btn" onClick={showMore}>
+                    Показать еще
+                </button>
+            )}
                 </>
             )}
-
-        </div>
-      ) : (
-        <>
-          <Slider />
-          <ProductPage key={mysqlNftsData.id} products={mysqlNftsData} />
-        </>
-      )}
-    </MainLayout>
-  );
+        </MainLayout>
+    );
 }

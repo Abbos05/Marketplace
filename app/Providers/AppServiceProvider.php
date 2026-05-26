@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\ProductVariant;
+use App\Observers\ProductVariantObserver;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
@@ -23,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        ProductVariant::observe(ProductVariantObserver::class);
+
         Event::listen(SocialiteWasCalled::class, function (SocialiteWasCalled $event) {
             $event->extendSocialite('yandex', \SocialiteProviders\Yandex\Provider::class);
         });

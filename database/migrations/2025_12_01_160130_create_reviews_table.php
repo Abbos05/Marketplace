@@ -20,11 +20,23 @@ return new class extends Migration
             $table->unsignedTinyInteger('rating')->check('rating BETWEEN 1 AND 5');
             $table->text('comment')->nullable();
             $table->boolean('is_moderated')->default(false);
+            $table->unsignedInteger('likes_count')->default(0);
+            $table->unsignedInteger('dislikes_count')->default(0);
             $table->softDeletes();
             $table->timestamps();
-    
+
             $table->foreign('variant_id')->references('id')->on('product_variants')->onDelete('set null');
             $table->foreign('order_id')->references('id')->on('orders')->onDelete('set null');
+        });
+
+        Schema::create('review_votes', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('review_id')->constrained('reviews')->cascadeOnDelete();
+            $table->enum('vote', ['helpful', 'unhelpful']);
+            $table->timestamps();
+
+            $table->unique(['user_id', 'review_id']);
         });
     }
 
@@ -33,6 +45,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('review_votes');
         Schema::dropIfExists('reviews');
     }
 };

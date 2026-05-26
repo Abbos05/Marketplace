@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\HomeController;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
+use App\Notifications\MarketplaceAlert;
+use App\Support\NotificationCategory;
+use App\Services\LoginHistoryRecorder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,23 +19,20 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-
-
-    // Для маршрута /login
     public function showLogin(Request $request)
     {
-        $homeController = new HomeController();
-        $data = $homeController->index(true); 
-        $data['showModal'] = 'login';
+        $homeController = app(HomeController::class);
+        $data = $homeController->index($request, true);
+        $data['showModal'] = 'phone_auth';
 
         return Inertia::render('Home', $data);
     }
 
     public function showRegister(Request $request)
     {
-        $homeController = new HomeController();
-        $data = $homeController->index(true);
-        $data['showModal'] = 'register';
+        $homeController = app(HomeController::class);
+        $data = $homeController->index($request, true);
+        $data['showModal'] = 'phone_auth';
 
         return Inertia::render('Home', $data);
     }
@@ -45,6 +46,17 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
         $request->session()->save(); // ← добавь эту строку
+        $user = $request->user();
+        if ($user instanceof User) {
+            app(LoginHistoryRecorder::class)->record($request, $user, 'password');
+            $user->notify(new MarketplaceAlert(
+                'Вход в аккаунт',
+                'Вход выполнен '.now()->timezone('Europe/Moscow')->format('d.m.Y H:i').' (MSK). Если это были не вы, смените пароль.',
+                null,
+                NotificationCategory::Security,
+            ));
+        }
+
         return redirect(route('profile', absolute: false));
     }
 

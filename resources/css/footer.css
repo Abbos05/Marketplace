@@ -1,0 +1,229 @@
+/* Подвал маркетплейса ALVORA */
+.site-footer {
+  margin-top: 48px;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  color: var(--text-gray);
+  font-size: var(--size-15);
+}
+
+.site-footer__inner {
+  max-width: 1460px;
+  margin: 0 auto;
+  padding: 40px 16px 24px;
+}
+
+.site-footer__top {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) repeat(3, 1fr) minmax(160px, 1fr);
+  gap: 32px 40px;
+  padding-bottom: 32px;
+}
+
+.site-footer__brand .header-logo-name {
+  display: inline-flex;
+  max-width: 140px;
+  margin-bottom: 16px;
+}
+
+.site-footer__brand .header-logo-name .logo {
+  font-size: 70px;
+}
+
+.site-footer__tagline {
+  font-size: var(--size-base);
+  line-height: 1.5;
+  color: var(--text-gray);
+  margin-bottom: 16px;
+  max-width: 220px;
+}
+
+.site-footer__social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.site-footer__social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: var(--size-l);
+  font-weight: var(--fw-600);
+  color: #333;
+  text-decoration: none;
+  transition: color var(--trans-2), border-color var(--trans-2), background var(--trans-2);
+}
+
+.site-footer__social-link:hover {
+  color: var(--background);
+  border-color: var(--background);
+  background: rgba(255, 46, 99, 0.06);
+}
+
+.site-footer__col-title {
+  font-size: var(--size-m);
+  font-weight: var(--fw-700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1a1a1a;
+  margin-bottom: 14px;
+}
+
+.site-footer__links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.site-footer__link {
+  font-size: var(--size-base);
+  font-weight: var(--fw-500);
+  color: var(--text-gray);
+  text-decoration: none;
+  transition: color var(--trans-2);
+  line-height: 1.35;
+}
+
+.site-footer__link:hover {
+  color: var(--background);
+}
+
+.site-footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: var(--size-m);
+}
+
+.site-footer__copy {
+  color: var(--text-gray);
+  font-weight: var(--fw-500);
+}
+
+.site-footer__legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: center;
+}
+
+.site-footer__legal-link {
+  color: var(--text-gray);
+  text-decoration: none;
+  font-weight: var(--fw-500);
+  transition: color var(--trans-2);
+}
+
+.site-footer__legal-link:hover {
+  color: var(--background);
+  text-decoration: underline;
+}
+
+/* Мобильные аккордеоны */
+.site-footer__accordion {
+  border-bottom: 1px solid var(--border);
+}
+
+.site-footer__accordion summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 0;
+  font-size: var(--size-base);
+  font-weight: var(--fw-700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1a1a1a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.site-footer__accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.site-footer__accordion summary::after {
+  content: '+';
+  font-size: var(--size-18);
+  font-weight: var(--fw-400);
+  color: var(--text-gray);
+}
+
+.site-footer__accordion[open] summary::after {
+  content: '−';
+}
+
+.site-footer__accordion .site-footer__links {
+  padding-bottom: 14px;
+}
+
+.site-footer__desktop-only {
+  display: block;
+}
+
+.site-footer__mobile-only {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .site-footer__top {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .site-footer__brand {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 16px 32px;
+  }
+
+  .site-footer__tagline {
+    max-width: none;
+    flex: 1;
+    min-width: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .site-footer__link{
+    font-size: var(--size-15);
+  }
+  .site-footer__desktop-only {
+    display: none;
+  }
+
+  .site-footer__mobile-only {
+    display: block;
+  }
+
+  .site-footer__top {
+    display: block;
+    padding-bottom: 8px;
+  }
+
+  .site-footer__brand {
+    flex-direction: column;
+    margin-bottom: 8px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .site-footer__bottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

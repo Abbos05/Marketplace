@@ -1,11 +1,21 @@
-import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import ProductRecommendationsSection from '@/Components/Product/ProductRecommendationsSection';
 import '../../../css/cart/cart.css';
 
-export default function Cart({ cartItems = [] }) {
-    const [cart, setCart] = useState(cartItems);
-    const [selected, setSelected] = useState([]);
+export default function Cart({ cartItems = [], pickupPoints = [], LikeProducts = [] }) {
+    const { auth } = usePage().props;
+    const [cart, setCart]             = useState(cartItems);
+    const [selected, setSelected]     = useState([]);
+    const [promoCode, setPromoCode]   = useState('');
+    const [promoResult, setPromoResult] = useState(null); // { valid, message, discount_amount, code }
+    const [promoLoading, setPromoLoading] = useState(false);
+    const [pickupId, setPickupId] = useState(() => auth?.user?.default_pickup_point_id ?? '');
+
+    useEffect(() => {
+        setPickupId(auth?.user?.default_pickup_point_id ?? '');
+    }, [auth?.user?.default_pickup_point_id]);
 
     // Выбрать товар
     const toggleSelect = (id) => {
@@ -87,9 +97,36 @@ export default function Cart({ cartItems = [] }) {
     };
 
     // Подсчет итогов
-    const selectedItems = cart.filter(i => selected.includes(i.id));
-    const total = selectedItems.reduce((sum, i) => sum + (i.variant?.price || 0) * i.quantity, 0);
-    const totalItems = selectedItems.reduce((sum, i) => sum + i.quantity, 0);
+    const selectedItems  = cart.filter(i => selected.includes(i.id));
+    const subtotal       = selectedItems.reduce((sum, i) => sum + (i.variant?.price || 0) * i.quantity, 0);
+    const totalItems     = selectedItems.reduce((sum, i) => sum + i.quantity, 0);
+    const discountAmount = (promoResult?.valid && promoResult?.discount_amount) ? promoResult.discount_amount : 0;
+    const total          = Math.max(0, subtotal - discountAmount);
+
+    // Apply promo code
+    const applyPromo = () => {
+        if (!promoCode.trim() || selected.length === 0) return;
+        setPromoLoading(true);
+
+        fetch('/promo/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ code: promoCode.trim(), cart_ids: selected }),
+        })
+            .then(r => r.json())
+            .then(data => setPromoResult(data))
+            .catch(() => setPromoResult({ valid: false, message: 'Ошибка при проверке промокода.' }))
+            .finally(() => setPromoLoading(false));
+    };
+
+    const clearPromo = () => {
+        setPromoCode('');
+        setPromoResult(null);
+    };
 
     // Оформление заказа
     const checkout = () => {
@@ -97,20 +134,35 @@ export default function Cart({ cartItems = [] }) {
             alert('Выберите товары для оформления');
             return;
         }
-        
-        router.post('/order/create', { 
+
+        if (!auth?.user?.phone) {
+            alert('Подтвердите номер телефона в профиле, чтобы оформить заказ.');
+            router.visit(route('profile'));
+            return;
+        }
+
+        const resolvedPickup = pickupId || auth?.user?.default_pickup_point_id;
+        if (!resolvedPickup) {
+            alert('Выберите пункт выдачи в профиле или в списке ниже.');
+            return;
+        }
+
+        router.post('/order/create', {
             items: selected.map(id => ({
                 cart_id: id,
-                quantity: cart.find(i => i.id === id)?.quantity
-            }))
+                quantity: cart.find(i => i.id === id)?.quantity,
+            })),
+            promo_code: promoResult?.valid ? promoResult.code : null,
+            pickup_point_id: resolvedPickup,
         }, {
             preserveState: true,
             onSuccess: () => {
-                // Удаляем выбранные товары из корзины
                 const remainingItems = cart.filter(i => !selected.includes(i.id));
                 setCart(remainingItems);
                 setSelected([]);
-            }
+                setPromoCode('');
+                setPromoResult(null);
+            },
         });
     };
 
@@ -221,15 +273,74 @@ export default function Cart({ cartItems = [] }) {
                                     {total.toLocaleString()} ₽
                                 </div>
                             </div>
-                            
+
+                            {/* Promo code input */}
+                            <div className="cart-promo">
+                                {promoResult?.valid ? (
+                                    <div className="cart-promo-applied">
+                                        <span>🏷️ {promoResult.code} применён</span>
+                                        <button onClick={clearPromo}>✕</button>
+                                    </div>
+                                ) : (
+                                    <div className="cart-promo-form">
+                                        <input
+                                            type="text"
+                                            value={promoCode}
+                                            onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoResult(null); }}
+                                            placeholder="Промокод"
+                                            onKeyDown={e => e.key === 'Enter' && applyPromo()}
+                                        />
+                                        <button
+                                            onClick={applyPromo}
+                                            disabled={promoLoading || !promoCode.trim() || selected.length === 0}
+                                        >
+                                            {promoLoading ? '...' : 'Применить'}
+                                        </button>
+                                    </div>
+                                )}
+                                {promoResult && !promoResult.valid && (
+                                    <div style={{ marginTop: '6px', fontSize: '12px', color: '#dc2626', fontWeight: 500 }}>
+                                        {promoResult.message}
+                                    </div>
+                                )}
+                            </div>
+
+                            {pickupPoints.length > 0 && (
+                                <div className="cart-pickup">
+                                    <label
+                                        htmlFor="cart-pickup-select"
+                                    >
+                                        Пункт выдачи
+                                    </label>
+                                    <select
+                                        id="cart-pickup-select"
+                                        value={pickupId === '' || pickupId == null ? '' : String(pickupId)}
+                                        onChange={(e) =>
+                                            setPickupId(e.target.value === '' ? '' : Number(e.target.value))
+                                        }
+                                    >
+                                        {!auth?.user?.default_pickup_point_id ? (
+                                            <option value="">Выберите ПВЗ</option>
+                                        ) : null}
+                                        {pickupPoints.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
                             <div className="summary-details">
                                 <div className="summary-row">
                                     <span>Товары ({totalItems} шт.)</span>
-                                    <span>{total.toLocaleString()} ₽</span>
+                                    <span>{subtotal.toLocaleString()} ₽</span>
                                 </div>
                                 <div className="summary-row">
                                     <span>Скидка</span>
-                                    <span className="discount">0 ₽</span>
+                                    <span className="discount" style={discountAmount > 0 ? { color: '#10b981', fontWeight: 700 } : {}}>
+                                        {discountAmount > 0 ? `−${discountAmount.toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽` : '0 ₽'}
+                                    </span>
                                 </div>
                                 <div className="summary-row total">
                                     <span>Итого к оплате</span>
@@ -237,14 +348,14 @@ export default function Cart({ cartItems = [] }) {
                                 </div>
                             </div>
 
-                            <button 
-                                className="checkout-btn" 
+                            <button
+                                className="checkout-btn"
                                 onClick={checkout}
                                 disabled={selected.length === 0}
                             >
                                 Оформить заказ
                             </button>
-                            
+
                             {selected.length === 0 && (
                                 <div className="checkout-hint">
                                     Выберите хотя бы один товар
@@ -255,12 +366,14 @@ export default function Cart({ cartItems = [] }) {
                     </div>
                 ) : (
                     <div className="NoCart">
-                        <img className='NoCart__image' src="/img/cart/NoCart.png" alt="NoCart" />
+                        <img className='NoCart__image' src="https://ir-3.ozone.ru/s3/cms/82/t5b/wc1200/box-open-empty_yellow.png" alt="NoCart" />
                         <p className='NoCart__title'>В Корзине пока пусто</p>
                         <p className="NoCart__text">Добавляйте товары в корзину, чтобы не потерять их и купить позже</p>
                     </div>
                 )}
             </div>
+
+            <ProductRecommendationsSection products={LikeProducts} />
         </MainLayout>
     );
 }

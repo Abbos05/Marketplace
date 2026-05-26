@@ -23,4 +23,9 @@ class Region extends Model
     {
         return $this->hasMany(Order::class, 'region_id');
     }
+
+    public function pickupPoints()
+    {
+        return $this->hasMany(PickupPoint::class, 'region_id');
+    }
 }

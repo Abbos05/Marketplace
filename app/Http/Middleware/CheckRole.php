@@ -9,17 +9,22 @@ use Illuminate\Http\Request;
 
 class CheckRole
 {
-    public function handle(Request $request, Closure $next, $role = null)
+    public function handle(Request $request, Closure $next, ...$roles)
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             abort(403, 'Вы должны быть авторизованы для доступа к этой странице.');
         }
 
-        if ($role && !(auth()->user()->role === $role || auth()->user()->role === 'admin')) {
-            return Inertia::render('errors.403');
+        if ($roles !== []) {
+            $userRole = auth()->user()->role;
 
+            if ($userRole === 'admin' || in_array($userRole, $roles, true)) {
+                return $next($request);
+            }
+
+            return Inertia::render('errors.403');
         }
-        
+
         return $next($request);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -10,65 +11,52 @@ class ProductDataSeeder extends Seeder
 {
     public function run()
     {
-        // 1. Категории (оставляем 10 штук)
-        $categoryData = [
-            ['id' => 1, 'name' => 'Электроника', 'slug' => 'electronics', 'icon' => '/img/categories/electronics.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 2, 'name' => 'Одежда и обувь', 'slug' => 'clothing', 'icon' => '/img/categories/clothing.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 3, 'name' => 'Дом и интерьер', 'slug' => 'home', 'icon' => '/img/categories/home.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 4, 'name' => 'Спорт и отдых', 'slug' => 'sports', 'icon' => '/img/categories/sports.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 5, 'name' => 'Книги и медиа', 'slug' => 'books', 'icon' => '/img/categories/books.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 6, 'name' => 'Красота и здоровье', 'slug' => 'beauty', 'icon' => '/img/categories/beauty.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 7, 'name' => 'Детские товары', 'slug' => 'kids', 'icon' => '/img/categories/kids.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 8, 'name' => 'Автотовары', 'slug' => 'auto', 'icon' => '/img/categories/auto.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 9, 'name' => 'Зоотовары', 'slug' => 'pets', 'icon' => '/img/categories/pets.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['id' => 10, 'name' => 'Мебель', 'slug' => 'furniture', 'icon' => '/img/categories/furniture.png', 'parent_id' => null, 'is_active' => true, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-        ];
+     
 
         // 2. Товары (20 штук, по 2 на категорию)
         $products = [
             // Категория 1: Электроника
-            ['seller_id' => 2, 'category_id' => 1, 'title' => 'Смартфон iPhone 15 Pro', 'description' => 'Флагманский смартфон с процессором A17 Pro, титановым корпусом.', 'short_description' => 'Мощный iPhone', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
-            ['seller_id' => 3, 'category_id' => 1, 'title' => 'Ноутбук Xiaomi Book Pro', 'description' => '15.6" OLED, Intel Core i7, 16GB RAM, 512GB SSD.', 'short_description' => 'Ультрабук', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 2, 'category_id' => 1, 'title' => 'Смартфон iPhone 15 Pro', 'description' => 'Флагманский смартфон с процессором A17 Pro, титановым корпусом.', 'short_description' => 'Мощный iPhone', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 3, 'category_id' => 1, 'title' => 'Ноутбук Xiaomi Book Pro', 'description' => '15.6" OLED, Intel Core i7, 16GB RAM, 512GB SSD.', 'short_description' => 'Ультрабук', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
 
             // Категория 2: Одежда и обувь
-            ['seller_id' => 3, 'category_id' => 2, 'title' => 'Кроссовки Nike Air Max', 'description' => 'Удобные кроссовки с амортизацией Air Max.', 'short_description' => 'Стильные кроссовки', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
-            ['seller_id' => 2, 'category_id' => 2, 'title' => 'Пуховик зимний Columbia', 'description' => 'Тёплый пуховик с технологией Omni-Heat.', 'short_description' => 'Защита от холода', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 3, 'category_id' => 2, 'title' => 'Кроссовки Nike Air Max', 'description' => 'Удобные кроссовки с амортизацией Air Max.', 'short_description' => 'Стильные кроссовки', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 2, 'category_id' => 2, 'title' => 'Пуховик зимний Columbia', 'description' => 'Тёплый пуховик с технологией Omni-Heat.', 'short_description' => 'Защита от холода', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
 
             // Категория 3: Дом и интерьер
-            ['seller_id' => 2, 'category_id' => 3, 'title' => 'Умная колонка Яндекс Станция 2', 'description' => 'Голосовой помощник Алиса, качественный звук.', 'short_description' => 'Колонка с Алисой', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
-            ['seller_id' => 3, 'category_id' => 3, 'title' => 'Набор посуды Tefal', 'description' => 'Антипригарное покрытие, 5 кастрюль + 3 сковороды.', 'short_description' => 'Качественная посуда', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 2, 'category_id' => 3, 'title' => 'Умная колонка Яндекс Станция 2', 'description' => 'Голосовой помощник Алиса, качественный звук.', 'short_description' => 'Колонка с Алисой', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 3, 'category_id' => 3, 'title' => 'Набор посуды Tefal', 'description' => 'Антипригарное покрытие, 5 кастрюль + 3 сковороды.', 'short_description' => 'Качественная посуда', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
 
             // Категория 4: Спорт и отдых
-            ['seller_id' => 3, 'category_id' => 4, 'title' => 'Беговая дорожка', 'description' => 'Электрическая, 12 программ, нагрузка до 120 кг.', 'short_description' => 'Домашний тренажёр', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
-            ['seller_id' => 2, 'category_id' => 4, 'title' => 'Велосипед горный Stels', 'description' => '24 скорости, амортизационная вилка, дисковые тормоза.', 'short_description' => 'Для активного отдыха', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 3, 'category_id' => 4, 'title' => 'Беговая дорожка', 'description' => 'Электрическая, 12 программ, нагрузка до 120 кг.', 'short_description' => 'Домашний тренажёр', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 2, 'category_id' => 4, 'title' => 'Велосипед горный Stels', 'description' => '24 скорости, амортизационная вилка, дисковые тормоза.', 'short_description' => 'Для активного отдыха', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
 
             // Категория 5: Книги и медиа
-            ['seller_id' => 2, 'category_id' => 5, 'title' => 'Электронная книга PocketBook', 'description' => 'Экран E Ink, подсветка, поддержка всех форматов.', 'short_description' => 'Удобное чтение', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
-            ['seller_id' => 3, 'category_id' => 5, 'title' => 'Bluetooth колонка JBL', 'description' => 'Защита от воды, 10 часов работы, мощный звук.', 'short_description' => 'Портативная колонка', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 2, 'category_id' => 5, 'title' => 'Электронная книга PocketBook', 'description' => 'Экран E Ink, подсветка, поддержка всех форматов.', 'short_description' => 'Удобное чтение', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 3, 'category_id' => 5, 'title' => 'Bluetooth колонка JBL', 'description' => 'Защита от воды, 10 часов работы, мощный звук.', 'short_description' => 'Портативная колонка', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
 
             // Категория 6: Красота и здоровье
-            ['seller_id' => 3, 'category_id' => 6, 'title' => 'Массажёр для спины', 'description' => 'Электрический с подогревом, 4 ролика.', 'short_description' => 'Домашний массаж', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
-            ['seller_id' => 2, 'category_id' => 6, 'title' => 'Ирригатор для зубов', 'description' => 'Съёмный бак, 4 насадки, импульсная технология.', 'short_description' => 'Уход за полостью рта', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 3, 'category_id' => 6, 'title' => 'Массажёр для спины', 'description' => 'Электрический с подогревом, 4 ролика.', 'short_description' => 'Домашний массаж', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 2, 'category_id' => 6, 'title' => 'Ирригатор для зубов', 'description' => 'Съёмный бак, 4 насадки, импульсная технология.', 'short_description' => 'Уход за полостью рта', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
 
             // Категория 7: Детские товары
-            ['seller_id' => 2, 'category_id' => 7, 'title' => 'Детская коляска 3 в 1', 'description' => 'Трансформируемая, лёгкая, большие колёса.', 'short_description' => 'Надёжная коляска', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
-            ['seller_id' => 3, 'category_id' => 7, 'title' => 'Конструктор LEGO City', 'description' => '300 деталей, фигурки полицейских и преступников.', 'short_description' => 'Любимая игра', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 2, 'category_id' => 7, 'title' => 'Детская коляска 3 в 1', 'description' => 'Трансформируемая, лёгкая, большие колёса.', 'short_description' => 'Надёжная коляска', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 3, 'category_id' => 7, 'title' => 'Конструктор LEGO City', 'description' => '300 деталей, фигурки полицейских и преступников.', 'short_description' => 'Любимая игра', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
 
             // Категория 8: Автотовары
-            ['seller_id' => 3, 'category_id' => 8, 'title' => 'Видеорегистратор 4K', 'description' => 'Ночная съёмка, GPS модуль, 170° обзор.', 'short_description' => 'Надёжная защита', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
-            ['seller_id' => 2, 'category_id' => 8, 'title' => 'Автомобильный пылесос', 'description' => 'Беспроводной, 12000 Pa, набор насадок.', 'short_description' => 'Чистота в авто', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 3, 'category_id' => 8, 'title' => 'Видеорегистратор 4K', 'description' => 'Ночная съёмка, GPS модуль, 170° обзор.', 'short_description' => 'Надёжная защита', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 2, 'category_id' => 8, 'title' => 'Автомобильный пылесос', 'description' => 'Беспроводной, 12000 Pa, набор насадок.', 'short_description' => 'Чистота в авто', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
 
             // Категория 9: Зоотовары
-            ['seller_id' => 2, 'category_id' => 9, 'title' => 'Сухой корм для собак', 'description' => 'Премиум класс, натуральные ингредиенты.', 'short_description' => 'Правильное питание', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
-            ['seller_id' => 3, 'category_id' => 9, 'title' => 'Когтеточка', 'description' => 'Столбик с полками, верёвка сизаль 50 см.', 'short_description' => 'Для кошек', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 2, 'category_id' => 9, 'title' => 'Сухой корм для собак', 'description' => 'Премиум класс, натуральные ингредиенты.', 'short_description' => 'Правильное питание', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 3, 'category_id' => 9, 'title' => 'Когтеточка', 'description' => 'Столбик с полками, верёвка сизаль 50 см.', 'short_description' => 'Для кошек', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
 
             // Категория 10: Мебель
-            ['seller_id' => 3, 'category_id' => 10, 'title' => 'Компьютерное кресло', 'description' => 'Эргономичное, регулировка высоты и подлокотников.', 'short_description' => 'Комфортное кресло', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
-            ['seller_id' => 2, 'category_id' => 10, 'title' => 'Письменный стол', 'description' => 'ЛДСП 120x60 см, белый, ящик.', 'short_description' => 'Стол для работы', 'min_price' => 0, 'views_count' => rand(100, 5000), 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 3, 'category_id' => 10, 'title' => 'Компьютерное кресло', 'description' => 'Эргономичное, регулировка высоты и подлокотников.', 'short_description' => 'Комфортное кресло', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
+            ['seller_id' => 2, 'category_id' => 10, 'title' => 'Письменный стол', 'description' => 'ЛДСП 120x60 см, белый, ящик.', 'short_description' => 'Стол для работы', 'min_price' => 0 'sales_count' => rand(10, 200), 'status' => 'approved', 'is_on_action' => true, 'created_at' => Carbon::now()->subDays(rand(1, 30)), 'updated_at' => Carbon::now()],
         ];
 
-        // 3. Вставляем категории
-        DB::table('categories')->insert($categoryData);
+     
 
         // 4. Вставляем товары (получаем их ID)
         DB::table('products')->insert($products);
@@ -82,6 +70,7 @@ class ProductDataSeeder extends Seeder
         foreach ($productIds as $index => $productId) {
             // Определяем количество вариантов: 2 или 3, чтобы в сумме было около 50 (20 товаров -> 50 вариантов)
             $variantsCount = ($index < 10) ? 3 : 2; // первым 10 товарам – по 3 варианта, остальным – по 2 = 10*3 + 10*2 = 50
+            $viewsLeft = rand(100, 5000);
             for ($i = 1; $i <= $variantsCount; $i++) {
                 // Генерация опций (цвет, размер, память и т.д.)
                 $options = $this->generateOptions($index, $i);
@@ -92,11 +81,15 @@ class ProductDataSeeder extends Seeder
                 $discountPercent = $oldPrice ? round((1 - $price / $oldPrice) * 100, 2) : 0;
                 $stock = rand(0, 500);
                 $weight = rand(100, 5000);
+                $variantViews = $i === $variantsCount
+                    ? $viewsLeft
+                    : rand(1, max(1, (int) ($viewsLeft / ($variantsCount - $i + 1))));
+                $viewsLeft -= $variantViews;
 
                 $variants[] = [
                     'id' => $variantId,
                     'product_id' => $productId,
-                    'sku' => "SKU-{$productId}-{$i}-" . uniqid(),
+                    'sku' => app(\App\Services\ArticleNumberService::class)->format($variantId),
                     'options' => json_encode($options, JSON_UNESCAPED_UNICODE),
                     'price' => $price,
                     'old_price' => $oldPrice,
@@ -104,6 +97,7 @@ class ProductDataSeeder extends Seeder
                     'action_start' => rand(0, 1) ? Carbon::now()->addDays(rand(1, 10)) : null,
                     'action_end' => rand(0, 1) ? Carbon::now()->addDays(rand(20, 60)) : null,
                     'stock' => $stock,
+                    'views_count' => $variantViews,
                     'weight_grams' => $weight,
                     'region_id' => null,
                     'is_active' => true,
@@ -209,7 +203,6 @@ class ProductDataSeeder extends Seeder
                 return ['size' => $sizes[array_rand($sizes)]];
             default: // универсальные опции
                 return [
-                    'option' => "Вариант {$variantNum}",
                     'color' => $colors[array_rand($colors)]
                 ];
         }

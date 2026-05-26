@@ -5,7 +5,7 @@
 
 :root {
   font-family: "Montserrat", sans-serif;
-  font-weight: 600;
+  font-weight: var(--fw-600);
   font-style: normal;
   --border2: #808d9a;
   --border: #808d9a7b;
@@ -16,25 +16,44 @@
   --font4: "Roboto", sans-serif;
   --font5: "Font Awesome 5 Free", sans-serif;
   --font6: "Inter", sans-serif;
-  --background: #FF6500;
-  --background:  #FF2E63;
+  /* --background: #FF6500; */
+  --background: #FF2E63;
   --backgroundBlack: #d30035;
   --text-gray: #667685;
 
-    --fw-100: 100;
-    --fw-200: 200;
-    --fw-300: 300;
-    --fw-400: 400;
-    --fw-500: 500;
-    --fw-600: 600;
-    --fw-700: 700;
-    --fw-800: 800;
-    --fw-900: 900;
-  
-    --trans-1: 0.1s;
-    --trans-2: 0.2s;
-    --trans-3: 0.3s;
-    --trans-4: 0.4s;
+  /* Размеры от маленького к большому */
+  --size-0: 0;
+  --size-2xs: 2px;
+  --size-xs: 4px;
+  --size-sm: 8px;
+  --size-s: 11px;
+  --size-md: 12px;
+  --size-l: 13px;
+  --size-m: 14px;
+  --size-15: 15px;
+  --size-base: 16px;
+  --size-17: 17px;
+  --size-18: 18px;
+  --size-19: 19px;
+  --size-lg: 20px;
+  --size-22: 22px;
+  --size-xl: 24px;
+  --size-26: 26px;
+  --size-28: 28px;
+  --size-2xl: 32px;
+  --size-3xl: 40px;
+
+  --fw-100: 100;
+  --fw-200: 200;
+  --fw-300: 300;
+  --fw-400: 400;
+  --fw-500: 500;
+  --fw-600: 600;
+  --fw-700: 700;
+  --fw-800: 800;
+
+  --trans-2: 0.2s;
+  --trans-3: 0.3s;
 }
 
 html {
@@ -56,8 +75,8 @@ html {
 
 body {
   background-color: #F5F7FA;
-  font-size: 18px;
-  font-weight: 500;
+  font-size: var(--size-18);
+  font-weight: var(--fw-500);
   color: black;
 }
 
@@ -101,7 +120,7 @@ object {
 }
 
 .section-info-title {
-  font-weight: 600;
+  font-weight: var(--fw-600);
   font-size: 54px;
   line-height: 119%;
   text-align: center;
@@ -113,7 +132,7 @@ object {
 }
 
 .section-info-description {
-  font-size: 18px;
+  font-size: var(--size-18);
   color: #848a9c;
   text-align: center;
   margin-bottom: 30px;
@@ -135,7 +154,7 @@ object {
   border-radius: 5px;
   background: #ffd438;
   color: #111826;
-  font-size: 18px;
+  font-size: var(--size-18);
   cursor: pointer;
   transition: background 0.3s;
 }
@@ -163,7 +182,8 @@ object {
   width: 250px;
   height: 250px;
   pointer-events: none;
-  transition: transform 0.1s linear; /* Плавность движения */
+  transition: transform 0.1s linear;
+  /* Плавность движения */
   top: 125px;
   left: 125px;
   display: flex;
@@ -176,12 +196,77 @@ object {
     background: #e85f5f;
     opacity: 0.55;
   }
+
   50% {
     background: #8a2a8a;
     opacity: 0.7;
   }
+
   100% {
-    background: #005BFF;
+    background: #0059fffe;
     opacity: 0.55;
   }
+}
+
+/* Артикул варианта */
+.article-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: var(--size-md);
+  letter-spacing: 0.02em;
+}
+
+.article-number--plain .article-number__value {
+  color: #1e293b;
+  font-weight: var(--fw-600);
+}
+
+.article-number--split .article-number__prefix {
+  color: #94a3b8;
+  font-weight: var(--fw-600);
+  margin-right: 1px;
+}
+
+.article-number--split .article-number__id {
+  color: #1e293b;
+  font-weight: var(--fw-600);
+}
+
+.article-number--copyable .article-number__copy-target {
+  display: inline-flex;
+  align-items: center;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.article-number__copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.article-number__copy-btn.is-copied {
+  color: #16a34a;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.article-number__copy-done {
+  font-size: 13px;
+  font-weight: var(--fw-700);
 }
