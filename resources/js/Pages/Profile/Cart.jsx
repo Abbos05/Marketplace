@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import ProductRecommendationsSection from '@/Components/Product/ProductRecommendationsSection';
 import '../../../css/cart/cart.css';
 
-export default function Cart({ cartItems = [], pickupPoints = [] }) {
+export default function Cart({ cartItems = [], pickupPoints = [], LikeProducts = [] }) {
     const { auth } = usePage().props;
     const [cart, setCart]             = useState(cartItems);
     const [selected, setSelected]     = useState([]);
@@ -365,12 +366,14 @@ export default function Cart({ cartItems = [], pickupPoints = [] }) {
                     </div>
                 ) : (
                     <div className="NoCart">
-                        <img className='NoCart__image' src="/img/cart/NoCart.png" alt="NoCart" />
+                        <img className='NoCart__image' src="https://ir-3.ozone.ru/s3/cms/82/t5b/wc1200/box-open-empty_yellow.png" alt="NoCart" />
                         <p className='NoCart__title'>В Корзине пока пусто</p>
                         <p className="NoCart__text">Добавляйте товары в корзину, чтобы не потерять их и купить позже</p>
                     </div>
                 )}
             </div>
+
+            <ProductRecommendationsSection products={LikeProducts} />
         </MainLayout>
     );
 }

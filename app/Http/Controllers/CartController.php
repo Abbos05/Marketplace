@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\PreparesCatalogRecommendations;
 use App\Models\Cart;
 use App\Models\ProductVariant;
 use App\Models\PickupPoint;
@@ -12,6 +13,8 @@ use Inertia\Inertia;
 
 class CartController extends Controller
 {
+    use PreparesCatalogRecommendations;
+
     /**
      * Display a listing of the resource.
      */
@@ -24,13 +27,23 @@ class CartController extends Controller
                 'cartItems' => [],
                 'total' => 0,
                 'pickupPoints' => [],
+                'LikeProducts' => [],
             ]);
         }
         
         // Получаем товары из корзины с правильными связями
-        $cartItems = Cart::with(['variant.product.images'])
+        $cartRows = Cart::with(['variant.product.images'])
             ->where('user_id', $user->id)
-            ->get()
+            ->get();
+
+        $excludeProductIds = $cartRows
+            ->pluck('variant.product_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $cartItems = $cartRows
             ->filter(fn (Cart $cartItem) => $cartItem->variant?->product?->isPubliclyVisible())
             ->values()
             ->map(function ($cartItem) {
@@ -65,9 +78,14 @@ class CartController extends Controller
                 'label' => $p->title.($p->region ? ' — '.$p->region->name : ''),
             ]);
 
+        $LikeProducts = $this->catalogRecommendations([
+            'exclude_product_ids' => $excludeProductIds,
+        ]);
+
         return Inertia::render('Profile/Cart', [
             'cartItems' => $cartItems,
             'pickupPoints' => $pickupPoints,
+            'LikeProducts' => $LikeProducts,
         ]);
     }
     

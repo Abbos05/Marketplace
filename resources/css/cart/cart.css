@@ -314,6 +314,7 @@
     border-radius: 20px;
     border: 1px solid var(--border);
     overflow: hidden;
+    margin-bottom: 10px;
 }
 
 .NoCart__image {

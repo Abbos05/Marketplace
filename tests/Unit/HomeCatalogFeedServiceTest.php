@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\SellerProfile;
 use App\Models\User;
 use App\Services\HomeCatalogFeedService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,17 +17,7 @@ class HomeCatalogFeedServiceTest extends TestCase
 
     public function test_feed_orders_new_then_popular_then_random_without_duplicates(): void
     {
-        $seller = User::query()->create([
-            'name' => 'Seller',
-            'email' => fake()->unique()->safeEmail(),
-            'password' => Hash::make('password'),
-            'role' => 'seller',
-        ]);
-
-        $category = Category::query()->create([
-            'name' => 'Cat',
-            'slug' => 'cat-'.fake()->unique()->bothify('####'),
-        ]);
+        [$seller, $category] = $this->createSellerAndCategory();
 
         $old = $this->makeProduct($seller->id, $category->id, [
             'title' => 'Old',
@@ -73,6 +64,68 @@ class HomeCatalogFeedServiceTest extends TestCase
         $this->assertContains($popular->id, $ids);
     }
 
+    public function test_recommendations_exclude_hidden_and_favor_popular_products(): void
+    {
+        [$seller, $category] = $this->createSellerAndCategory();
+
+        $hidden = $this->makeProduct($seller->id, $category->id, [
+            'title' => 'Hidden',
+            'sales_count' => 999,
+            'is_on_action' => false,
+        ]);
+
+        $visible = $this->makeProduct($seller->id, $category->id, [
+            'title' => 'Visible top',
+            'sales_count' => 10,
+        ]);
+
+        $other = $this->makeProduct($seller->id, $category->id, [
+            'title' => 'Visible other',
+            'sales_count' => 1,
+        ]);
+
+        config([
+            'marketplace.home_feed.recommendations_limit' => 2,
+            'marketplace.home_feed.recommendations_popular_count' => 2,
+        ]);
+
+        $feed = app(HomeCatalogFeedService::class)->buildRecommendations([
+            'exclude_product_ids' => [$other->id],
+        ]);
+
+        $ids = $feed->pluck('id')->all();
+
+        $this->assertNotContains($hidden->id, $ids);
+        $this->assertNotContains($other->id, $ids);
+        $this->assertSame([$visible->id], $ids);
+    }
+
+    /**
+     * @return array{0: User, 1: Category}
+     */
+    private function createSellerAndCategory(): array
+    {
+        $seller = User::query()->create([
+            'name' => 'Seller',
+            'email' => fake()->unique()->safeEmail(),
+            'password' => Hash::make('password'),
+            'role' => 'seller',
+        ]);
+
+        SellerProfile::query()->create([
+            'user_id' => $seller->id,
+            'shop_name' => 'Test Shop',
+            'pickup_address' => 'Test address',
+        ]);
+
+        $category = Category::query()->create([
+            'name' => 'Cat',
+            'slug' => 'cat-'.fake()->unique()->bothify('####'),
+        ]);
+
+        return [$seller, $category];
+    }
+
     private function makeProduct(int $sellerId, int $categoryId, array $overrides): Product
     {
         $timestamps = array_intersect_key($overrides, array_flip(['created_at', 'updated_at']));
@@ -85,7 +138,6 @@ class HomeCatalogFeedServiceTest extends TestCase
             'min_price' => 100,
             'status' => 'approved',
             'is_on_action' => true,
-            'views_count' => 0,
             'sales_count' => 0,
         ], $attributes));
 

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\TransactionalMailService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -27,6 +28,7 @@ class User extends Authenticatable
         'password',
         'name',
         'last_name',
+        'description',
         'role',
         'avatar',
         'is_active',
@@ -176,9 +178,72 @@ class User extends Authenticatable
         return $this->role === 'seller';
     }
 
+    /** Активная компания продавца (одобрена, не на модерации восстановления). */
+    public function hasActiveSellerCompany(): bool
+    {
+        if ($this->trashed() || $this->is_blocked) {
+            return false;
+        }
+
+        $profile = $this->sellerProfile;
+
+        return $profile && ! $profile->isRestorePending();
+    }
+
+    public function hasSellerRestorePending(): bool
+    {
+        $profile = $this->sellerProfile;
+
+        return $profile && $profile->isRestorePending();
+    }
+
     public function isUser()
     {
         return $this->role === 'user';
+    }
+
+    public function isPvz(): bool
+    {
+        return $this->role === 'pvz';
+    }
+
+    /** Имя, email и телефон заполнены (нужно для заявок и заказов). */
+    public function isProfileVerified(): bool
+    {
+        return filled($this->email) && filled($this->phone) && filled(trim($this->name ?? ''));
+    }
+
+    /**
+     * Адрес для канала mail уведомлений (учитывает NOTIFICATION_EMAIL_OVERRIDE).
+     */
+    public function routeNotificationForMail(): ?string
+    {
+        return app(TransactionalMailService::class)->recipientFor($this);
+    }
+
+    public function pickupPointStaff()
+    {
+        return $this->hasMany(PickupPointStaff::class, 'user_id');
+    }
+
+    public function approvedPickupPointStaff()
+    {
+        return $this->hasOne(PickupPointStaff::class, 'user_id')
+            ->where('status', PickupPointStaff::STATUS_APPROVED);
+    }
+
+    public function pvzAccruals()
+    {
+        return $this->hasMany(PvzAccrual::class, 'user_id');
+    }
+
+    public function activePickupPointId(): ?int
+    {
+        $staff = $this->relationLoaded('approvedPickupPointStaff')
+            ? $this->approvedPickupPointStaff
+            : $this->approvedPickupPointStaff()->first();
+
+        return $staff?->pickup_point_id;
     }
 
     public function defaultPickupPoint()

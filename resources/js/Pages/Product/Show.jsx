@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import ArticleNumber from '@/Components/Product/ArticleNumber';
+import AlertModal from '@/Components/AlertModal';
+import ProductReviewsSection from '@/Components/Product/ProductReviewsSection';
+import ProductRecommendationsSection from '@/Components/Product/ProductRecommendationsSection';
 import '../../../css/product/product_page.css';
 
 function IconStar({ className = '' }) {
@@ -96,6 +99,7 @@ function formatReviewsCountRu(n) {
 export default function ProductShow({
   auth,
   product,
+  similarProducts = [],
   seller,
   hasOrdered,
   existingOrderId,
@@ -122,6 +126,11 @@ export default function ProductShow({
   const [pickupModalIntent, setPickupModalIntent] = useState('edit');
   const [pickupNotice, setPickupNotice] = useState('');
   const [detailTab, setDetailTab] = useState('description');
+  const [alertModal, setAlertModal] = useState(null);
+
+  const showAlert = (title, message, options = {}) => {
+    setAlertModal({ title, message, ...options });
+  };
 
   useEffect(() => {
     setCheckoutPickupId(auth?.user?.default_pickup_point_id ?? '');
@@ -194,8 +203,16 @@ export default function ProductShow({
       router.visit(route('login'));
       return;
     }
+    if (auth.user.is_blocked) {
+      showAlert(
+        'Аккаунт заблокирован',
+        'Добавление в корзину недоступно. Напишите в поддержку — мы поможем разобраться.',
+        { showSupportLink: true },
+      );
+      return;
+    }
     if (!canPurchase) {
-      alert(purchaseBlockMessage);
+      showAlert('Нельзя добавить в корзину', purchaseBlockMessage);
       return;
     }
     if (!product.variant_id) return;
@@ -206,7 +223,7 @@ export default function ProductShow({
         preserveScroll: true,
         onSuccess: (page) => {
           if (page.props.flash?.error) {
-            alert(page.props.flash.error);
+            showAlert('Корзина', page.props.flash.error);
             if (page.props.flash?.in_cart !== undefined) {
               setInCart(!!page.props.flash.in_cart);
             }
@@ -247,7 +264,7 @@ export default function ProductShow({
         preserveScroll: true,
         onError: () => {
           setIsFavorite(previousValue);
-          alert('Ошибка, попробуйте позже');
+          showAlert('Избранное', 'Не удалось обновить избранное. Попробуйте позже.');
         },
         onFinish: () => setIsToggling(false),
       }
@@ -277,11 +294,15 @@ export default function ProductShow({
       return;
     }
     if (!canPurchase) {
-      alert(purchaseBlockMessage);
+      showAlert('Нельзя оформить заказ', purchaseBlockMessage);
       return;
     }
     if (auth.user.is_blocked) {
-      alert('Доступ ограничен. Обратитесь в поддержку.');
+      showAlert(
+        'Аккаунт заблокирован',
+        'Оформление заказов недоступно. Напишите в поддержку — мы поможем разобраться.',
+        { showSupportLink: true },
+      );
       return;
     }
     if (!auth.user.phone) {
@@ -289,7 +310,7 @@ export default function ProductShow({
       return;
     }
     if (!product.variant_id) {
-      alert('Нет доступного варианта для заказа');
+      showAlert('Заказ', 'Нет доступного варианта для заказа.');
       return;
     }
 
@@ -341,13 +362,11 @@ export default function ProductShow({
         preserveScroll: true,
         only: [
           'product',
+          'similarProducts',
           'seller',
           'auth',
           'hasOrdered',
           'existingOrderId',
-          'canPayWithWallet',
-          'walletBalance',
-          'nftUser',
           'flash',
           'pickupPoints',
         ],
@@ -393,7 +412,7 @@ export default function ProductShow({
               <div className="product-page__info">
                 <h1 className="product-page__title">{displayTitle}</h1>
                 {currentSku ? (
-                  <div className="product-page__article" aria-label="Артикул">
+                  <div className="product-page__article" aria-label="Артикул">Артикул:
                     <ArticleNumber sku={currentSku} display="plain" copyable />
                   </div>
                 ) : null}
@@ -533,74 +552,17 @@ export default function ProductShow({
                 )}
               </div>
 
-              <div className="product-page__reviews-ozon" id="product-reviews">
-                <div className="product-page__reviews-head">
-                  <h2 className="product-page__section-title">Отзывы</h2>
-                  <p className="product-page__reviews-sub">
-                    Показаны отзывы, прошедшие модерацию. Оставить отзыв здесь нельзя — только просмотр.
-                  </p>
-                </div>
+              <ProductReviewsSection
+                reviews={reviewsList}
+                avgRating={product.reviews_avg_rating}
+                total={reviewsTotal}
+                distribution={product.reviews_rating_distribution ?? {}}
+                withPhotosCount={Number(product.reviews_with_photos_count ?? 0)}
+                auth={auth}
+                onVote={voteReview}
+              />
 
-                {reviewsList.length === 0 ? (
-                  <div className="product-page__reviews-empty">
-                    <p>Пока нет отзывов на этот товар.</p>
-                    <span>Когда покупатели оставят оценки, они появятся в этом блоке.</span>
-                  </div>
-                ) : (
-                  <ul className="product-page__reviews-list">
-                    {reviewsList.map((r) => (
-                      <li key={r.id} className="product-page__review-card">
-                        <div className="product-page__review-top">
-                          <div className="product-page__review-user">
-                            <div className="product-page__review-avatar">
-                              {r.user_avatar ? (
-                                <img src={r.user_avatar} alt="" />
-                              ) : (
-                                <span>{(r.user_name || '?').charAt(0).toUpperCase()}</span>
-                              )}
-                            </div>
-                            <div>
-                              <div className="product-page__review-name">{r.user_name}</div>
-                              <div className="product-page__review-meta">{r.created_at}</div>
-                            </div>
-                          </div>
-                          <div className="product-page__review-score" aria-label={`Оценка ${r.rating}`}>
-                            {'★'.repeat(r.rating)}
-                            <span className="product-page__review-score-num">{r.rating}/5</span>
-                          </div>
-                        </div>
-                        {r.comment ? (
-                          <p className="product-page__review-text">{r.comment}</p>
-                        ) : (
-                          <p className="product-page__review-text product-page__review-text--muted">
-                            Без текста
-                          </p>
-                        )}
-                        <div className="product-page__review-likes">
-                          <button
-                            type="button"
-                            className={`product-page__vote-btn${r.user_vote === 'helpful' ? ' is-active' : ''}`}
-                            onClick={() => voteReview(r.id, 'helpful')}
-                            disabled={!auth?.user}
-                            title={auth?.user ? 'Отметить как полезный' : 'Войдите, чтобы оценить'}
-                          >
-                            👍 Полезно · {new Intl.NumberFormat('ru-RU').format(r.likes_count ?? 0)}
-                          </button>
-                          <button
-                            type="button"
-                            className={`product-page__vote-btn product-page__vote-btn--down${r.user_vote === 'unhelpful' ? ' is-active' : ''}`}
-                            onClick={() => voteReview(r.id, 'unhelpful')}
-                            disabled={!auth?.user}
-                            title={auth?.user ? 'Отметить как неполезный' : 'Войдите, чтобы оценить'}
-                          >
-                            👎 Нет · {new Intl.NumberFormat('ru-RU').format(r.dislikes_count ?? 0)}
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+           
             </div>
           </div>
           <div className="product-page__sidebar">
@@ -632,6 +594,19 @@ export default function ProductShow({
                       </span>
                     ) : null}
                   </div>
+
+                  {(product.promotion_badges?.length ?? 0) > 0 && (
+                    <div className="product-page__promotions">
+                      <span className="product-page__promotions-label">Участвует в акциях:</span>
+                      <div className="product-page__promotions-list">
+                        {product.promotion_badges.map((badge) => (
+                          <span key={badge.title} className="product-page__promo-badge" title={badge.title}>
+                            {badge.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className={`product-page__pickup${pickupNotice ? ' has-error' : ''}`}>
                     <div className="product-page__pickup-head">
@@ -767,7 +742,7 @@ export default function ProductShow({
                         return;
                       }
                       if (seller?.id && auth.user.id === seller.id) {
-                        alert('Это ваш товар');
+                        showAlert('Чат с продавцом', 'Нельзя написать самому себе по своему товару.');
                         return;
                       }
                       router.post(route('messages.open'), {
@@ -805,7 +780,19 @@ export default function ProductShow({
             </div>
           </div>
         </div>
-
+        {similarProducts?.length > 0 && (
+                <div className="product-page__similar">
+                  <ProductRecommendationsSection
+                    products={similarProducts}
+                    title="Похожие товары"
+                    initialCount={20}
+                    step={20}
+                    headingClassName="product-page__section-title"
+                    titleClassName="product-page__section-title"
+                    wrapperClassName="product-page__similar-inner"
+                  />
+                </div>
+              )}
 
       </section>
       {isPickupModalOpen ? (
@@ -889,6 +876,14 @@ export default function ProductShow({
           </div>
         </div>
       ) : null}
+
+      <AlertModal
+        isOpen={!!alertModal}
+        onClose={() => setAlertModal(null)}
+        title={alertModal?.title}
+        message={alertModal?.message}
+        showSupportLink={alertModal?.showSupportLink}
+      />
     </MainLayout>
   );
 }

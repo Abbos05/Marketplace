@@ -231,7 +231,7 @@ max-width: 150px;
 }
 
 .orders-switch .active {
-    background: black;
+    background: var(--background);
     color: white;
 }
 
@@ -255,13 +255,18 @@ max-width: 150px;
     display: flex;
     flex-direction: column;
     gap: 6px;
+    align-items: baseline;
 }
 
 /* заголовок */
 .order-title {
     font-size: var(--size-base);
-    font-weight: var(--fw-700);
-    color: #6a5cff; /* как у ozon */
+    font-weight: var(--fw-600);
+    color: var(--background); /* как у ozon */
+    padding: 5px 15px;
+    border: 1px solid #ff2e62;
+    border-radius: 10px;
+    text-align: center;
 }
 
 /* дата */
@@ -321,7 +326,7 @@ max-width: 150px;
     margin-top: 4px;
     border: none;
     border-radius: 12px;
-    background: #0f172a;
+    background: var(--background);
     color: #fff;
     font-size: var(--size-m);
     font-weight: var(--fw-600);

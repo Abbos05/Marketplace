@@ -28,6 +28,17 @@
     color: #fff;
 }
 
+.st-info-banner {
+    margin: 0 0 20px;
+    padding: 14px 18px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: var(--size-m);
+    line-height: 1.5;
+    color: #475569;
+}
+
 /* ---------- KPI grid ---------- */
 .st-kpi-grid {
     display: grid;
@@ -40,7 +51,7 @@
 @media (max-width: 500px)  { .st-kpi-grid { grid-template-columns: 1fr; } }
 
 .st-kpi-card {
-    background: #fff;
+    background: transparent;
     border-radius: 14px;
     padding: 22px 24px;
     box-shadow: 0 1px 4px rgba(0,0,0,.07);
@@ -48,7 +59,11 @@
     flex-direction: column;
     gap: 6px;
     position: relative;
-    overflow: hidden;
+    min-width: 0;
+    border: 1px solid var(--border);
+    transition: box-shadow .15s, transform .1s;
+
+
 }
 
 .st-kpi-card__icon {
@@ -66,18 +81,19 @@
 }
 
 .st-kpi-card__value {
-    font-size: var(--size-28);
+    font-size: clamp(1.1rem, 2.5vw, 1.75rem);
     font-weight: var(--fw-800);
     color: #1e293b;
-    line-height: 1;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-variant-numeric: tabular-nums;
+    
 }
 
-.st-kpi-card--pending {
-    background: linear-gradient(135deg, #fffbeb 0%, #fff 55%);
-    border: 1px solid #fde68a;
-}
+
 .st-kpi-card--pending .st-kpi-card__value {
-    color: #b45309;
+    color: #000000;
 }
 
 .st-kpi-card__delta {
@@ -108,6 +124,7 @@
     box-shadow: 0 1px 4px rgba(0,0,0,.07);
     padding: 24px;
     margin-bottom: 20px;
+    border: 1px solid var(--border);
 }
 
 .st-chart-card__title {
@@ -257,10 +274,22 @@
 }
 
 /* ---------- Top products table ---------- */
+.st-top-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .st-top-table {
     width: 100%;
+    min-width: 520px;
     border-collapse: collapse;
     font-size: var(--size-m);
+}
+
+.st-top-table .st-col-money {
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
 .st-top-table th {
@@ -316,6 +345,20 @@
     line-height: 1.3;
 }
 
+.st-top-product--link {
+    text-decoration: none;
+    color: inherit;
+    transition: opacity 0.15s ease;
+}
+
+.st-top-product--link:hover {
+    opacity: 0.85;
+}
+
+.st-top-product--link:hover .st-top-product__name {
+    text-decoration: underline;
+}
+
 .st-rank {
     display: inline-flex;
     align-items: center;
@@ -329,9 +372,9 @@
     color: #64748b;
     flex-shrink: 0;
 }
-.st-rank--1 { background: #fef9c3; color: #854d0e; }
-.st-rank--2 { background: #f1f5f9; color: #334155; }
-.st-rank--3 { background: #fff7ed; color: #9a3412; }
+.st-rank--1 { background: #d0fec3; color: #0a6503; }
+.st-rank--2 { background: #f3dee3; color: #760e0e; }
+.st-rank--3 { background: #f9f5c7; color: #9a3412; }
 
 /* ---------- Sparkline ---------- */
 .st-sparkline-wrap {
@@ -384,8 +427,11 @@
     width: 100%;
     font: inherit;
     transition: box-shadow .15s, transform .1s;
+    border: 1px solid var(--border);
+    background: transparent;
+
 }
-.st-kpi-card--clickable:hover {
+.st-kpi-card:hover, .st-kpi-card--clickable:hover {
     box-shadow: 0 4px 14px rgba(0, 0, 0, .12);
     transform: translateY(-1px);
 }

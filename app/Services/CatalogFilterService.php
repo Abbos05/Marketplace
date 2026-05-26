@@ -16,7 +16,12 @@ class CatalogFilterService
         private readonly ArticleNumberService $articles,
         private readonly CatalogTextSearchService $textSearch,
     ) {}
+
+    public const SORT_RELEVANCE = 'relevance';
+
     public const SORT_NEW = 'new';
+
+    public const SORT_OLD = 'old';
 
     public const SORT_CHEAP = 'cheap';
 
@@ -24,35 +29,48 @@ class CatalogFilterService
 
     public const SORT_POPULAR = 'popular';
 
-  private const LEGACY_SORT_MAP = [
+    public const SORT_RATING = 'rating';
+
+    private const LEGACY_SORT_MAP = [
         'price_desc' => self::SORT_EXPENSIVE,
         'price_asc' => self::SORT_CHEAP,
         'date_desc' => self::SORT_NEW,
-        'date_asc' => self::SORT_NEW,
+        'date_asc' => self::SORT_OLD,
+    ];
+
+  private const ALLOWED_SORTS = [
+        self::SORT_RELEVANCE,
+        self::SORT_NEW,
+        self::SORT_OLD,
+        self::SORT_CHEAP,
+        self::SORT_EXPENSIVE,
+        self::SORT_POPULAR,
+        self::SORT_RATING,
     ];
 
     /**
      * @param  callable(): Builder  $baseQueryFactory
      * @param  array{
      *   fixed_category_id?: int|null,
+     *   fixed_seller_id?: int|null,
      *   allow_category_facet?: bool,
      *   search_fields?: array<string>,
-     *   limit?: int|null,
      * }  $context
      * @return array{
      *   products: Collection,
      *   filters: array,
      *   facets: array,
-     *   total: int
+     *   total: int,
+     *   pagination: array{page: int, per_page: int, has_more: bool, product_total: int}
      * }
      */
     public function process(Request $request, callable $baseQueryFactory, array $context = []): array
     {
         $context = array_merge([
             'fixed_category_id' => null,
+            'fixed_seller_id' => null,
             'allow_category_facet' => false,
             'search_fields' => ['title'],
-            'limit' => null,
         ], $context);
 
         $parsed = $this->parseFilters($request, $context);
@@ -62,16 +80,22 @@ class CatalogFilterService
         $this->applyFilters($query, $parsed, $context, except: null);
 
         $total = $this->countListingPositions($query);
+        $productTotal = (clone $query)->count('products.id');
 
-        if ($context['limit']) {
-            $query->limit((int) $context['limit']);
-        }
+        $perPage = max(1, (int) config('marketplace.catalog_per_page', 24));
+        $page = max(1, (int) $request->query('page', 1));
+        $offset = ($page - 1) * $perPage;
 
-        $products = $query->get();
+        $products = (clone $query)
+            ->offset($offset)
+            ->limit($perPage)
+            ->get();
+
         Product::enrichForCatalog($products);
 
         $facets = [
             'price' => $this->buildPriceFacet($baseQueryFactory, $parsed, $context),
+            'rating' => $this->buildRatingFacets($baseQueryFactory, $parsed, $context),
             'categories' => $context['allow_category_facet']
                 ? $this->buildCategoryFacets($baseQueryFactory, $parsed, $context)
                 : [],
@@ -82,22 +106,37 @@ class CatalogFilterService
 
         return [
             'products' => $products,
-            'filters' => $this->filtersForFrontend($parsed),
+            'filters' => $this->filtersForFrontend($parsed, $page),
             'facets' => $facets,
             'total' => $total,
+            'pagination' => [
+                'page' => $page,
+                'per_page' => $perPage,
+                'has_more' => ($offset + $products->count()) < $productTotal,
+                'product_total' => $productTotal,
+            ],
         ];
     }
 
-    public function normalizeSort(?string $sort): string
+    public function normalizeSort(?string $sort, bool $hasSearch = false): string
     {
-        $sort = $sort ?? self::SORT_NEW;
+        if ($sort === null || $sort === '') {
+            return $hasSearch ? self::SORT_RELEVANCE : self::SORT_NEW;
+        }
+
         if (isset(self::LEGACY_SORT_MAP[$sort])) {
             return self::LEGACY_SORT_MAP[$sort];
         }
 
-        return in_array($sort, [self::SORT_NEW, self::SORT_CHEAP, self::SORT_EXPENSIVE, self::SORT_POPULAR], true)
-            ? $sort
-            : self::SORT_NEW;
+        if (in_array($sort, self::ALLOWED_SORTS, true)) {
+            if ($sort === self::SORT_RELEVANCE && ! $hasSearch) {
+                return self::SORT_NEW;
+            }
+
+            return $sort;
+        }
+
+        return $hasSearch ? self::SORT_RELEVANCE : self::SORT_NEW;
     }
 
     /**
@@ -107,6 +146,9 @@ class CatalogFilterService
      *   price_from: ?string,
      *   price_to: ?string,
      *   category_id: ?int,
+     *   on_promotion: bool,
+     *   rating_min: ?int,
+     *   page: int,
      *   attributes: array<int, array{values?: array<string>, min?: ?string, max?: ?string}>
      * }
      */
@@ -118,13 +160,20 @@ class CatalogFilterService
         }
 
         $search = trim((string) $request->query('search', ''));
+        $hasSearch = $search !== '';
+
+        $ratingMin = $request->query('rating_min');
+        $ratingMin = in_array((int) $ratingMin, [4, 5], true) ? (int) $ratingMin : null;
 
         return [
-            'search' => $search !== '' ? $search : null,
-            'sort' => $this->normalizeSort($request->query('sort')),
+            'search' => $hasSearch ? $search : null,
+            'sort' => $this->normalizeSort($request->query('sort'), $hasSearch),
             'price_from' => $request->query('price_from'),
             'price_to' => $request->query('price_to'),
             'category_id' => $categoryId ? (int) $categoryId : null,
+            'on_promotion' => $request->boolean('on_promotion'),
+            'rating_min' => $ratingMin,
+            'page' => max(1, (int) $request->query('page', 1)),
             'attributes' => $this->parseAttributeFilters($request),
         ];
     }
@@ -166,7 +215,7 @@ class CatalogFilterService
 
     /**
      * @param  array  $parsed
-     * @param  array|null  $except  keys: price, category_id, attribute_id (int)
+     * @param  array|null  $except  keys: price, category_id, rating, on_promotion, sort, attribute_id (int)
      */
     public function applyFilters(Builder $query, array $parsed, array $context, ?array $except = null): void
     {
@@ -174,6 +223,10 @@ class CatalogFilterService
 
         if ($parsed['search'] && ! in_array('search', $skip, true)) {
             $this->applySearch($query, $parsed['search'], $context['search_fields'] ?? ['title']);
+        }
+
+        if (! empty($context['fixed_seller_id'])) {
+            $query->where('products.seller_id', (int) $context['fixed_seller_id']);
         }
 
         if ($parsed['category_id'] && ! in_array('category_id', $skip, true)) {
@@ -188,6 +241,15 @@ class CatalogFilterService
                 $query->where('products.min_price', '<=', (float) $parsed['price_to']);
             }
         }
+
+        if (! empty($parsed['on_promotion']) && ! in_array('on_promotion', $skip, true)) {
+            $query->whereHas('promotions', fn ($q) => $q->active());
+        }
+
+        if (! empty($parsed['rating_min']) && ! in_array('rating', $skip, true)) {
+            $this->applyRatingFilter($query, (int) $parsed['rating_min']);
+        }
+
         foreach ($parsed['attributes'] as $attrId => $filter) {
             if ($exceptAttrId !== null && (int) $exceptAttrId === (int) $attrId) {
                 continue;
@@ -195,7 +257,9 @@ class CatalogFilterService
             $this->applyAttributeFilter($query, (int) $attrId, $filter);
         }
 
-        $this->applySort($query, $parsed['sort'], $parsed['search'] ?? null);
+        if (! in_array('sort', $skip, true)) {
+            $this->applySort($query, $parsed['sort'], $parsed['search'] ?? null);
+        }
     }
 
     /**
@@ -226,16 +290,47 @@ class CatalogFilterService
 
     public function applySort(Builder $query, string $sort, ?string $search = null): void
     {
-        if ($search && ! $this->articles->isStrictArticleQuery($search)) {
+        $canUseRelevance = $search
+            && ! $this->articles->isStrictArticleQuery($search)
+            && $sort === self::SORT_RELEVANCE;
+
+        if ($canUseRelevance) {
             $this->textSearch->applyRelevanceOrder($query, $search, ['title', 'short_description']);
+
+            return;
         }
 
         match ($sort) {
             self::SORT_CHEAP => $query->orderBy('products.min_price'),
             self::SORT_EXPENSIVE => $query->orderByDesc('products.min_price'),
-            self::SORT_POPULAR => $query->orderByDesc('products.sales_count')->orderByDesc('products.created_at'),
+            self::SORT_POPULAR => $query->orderByCatalogPopularity(),
+            self::SORT_OLD => $query->orderBy('products.created_at'),
+            self::SORT_RATING => $this->applyRatingSort($query),
             default => $query->orderByDesc('products.created_at'),
         };
+    }
+
+    protected function applyRatingSort(Builder $query): void
+    {
+        $query->orderByDesc(DB::raw($this->moderatedRatingAvgSql()))
+            ->orderByDesc('products.created_at');
+    }
+
+    protected function moderatedRatingAvgSql(): string
+    {
+        return '(SELECT COALESCE(AVG(rating), 0) FROM reviews WHERE reviews.product_id = products.id AND reviews.is_moderated = 1 AND reviews.deleted_at IS NULL)';
+    }
+
+    protected function applyRatingFilter(Builder $query, int $ratingMin): void
+    {
+        $query->whereHas('reviews', function (Builder $q) use ($ratingMin) {
+            $q->where('is_moderated', true);
+            if ($ratingMin >= 5) {
+                $q->where('rating', 5);
+            } else {
+                $q->where('rating', '>=', 4);
+            }
+        });
     }
 
     /**
@@ -299,7 +394,7 @@ class CatalogFilterService
     protected function buildPriceFacet(callable $baseQueryFactory, array $parsed, array $context): array
     {
         $q = $baseQueryFactory();
-        $this->applyFilters($q, $parsed, $context, except: ['price']);
+        $this->applyFilters($q, $parsed, $context, except: ['price', 'sort']);
 
         $row = $q->selectRaw('MIN(products.min_price) as min_price, MAX(products.min_price) as max_price')->first();
 
@@ -310,12 +405,39 @@ class CatalogFilterService
     }
 
     /**
+     * @return list<array{value: int, label: string, count: int}>
+     */
+    protected function buildRatingFacets(callable $baseQueryFactory, array $parsed, array $context): array
+    {
+        $facets = [];
+
+        foreach ([5 => '5 звёзд', 4 => '4 звезды и выше'] as $threshold => $label) {
+            $q = $baseQueryFactory();
+            $this->applyFilters($q, $parsed, $context, except: ['rating', 'sort']);
+            $this->applyRatingFilter($q, $threshold);
+
+            $count = (clone $q)->count('products.id');
+            if ($count === 0 && ($parsed['rating_min'] ?? null) !== $threshold) {
+                continue;
+            }
+
+            $facets[] = [
+                'value' => $threshold,
+                'label' => $label,
+                'count' => $count,
+            ];
+        }
+
+        return $facets;
+    }
+
+    /**
      * @return list<array{id: int, name: string, count: int, selected: bool}>
      */
     protected function buildCategoryFacets(callable $baseQueryFactory, array $parsed, array $context): array
     {
         $q = $baseQueryFactory();
-        $this->applyFilters($q, $parsed, $context, except: ['category_id']);
+        $this->applyFilters($q, $parsed, $context, except: ['category_id', 'sort']);
 
         $listingCount = $this->listingCountSql('products.id');
         $rows = $q->select('products.category_id', DB::raw("SUM({$listingCount}) as cnt"))
@@ -367,7 +489,7 @@ class CatalogFilterService
 
         foreach ($definitions as $def) {
             $q = $baseQueryFactory();
-            $this->applyFilters($q, $parsed, $context, except: ['attribute_id' => $def->id]);
+            $this->applyFilters($q, $parsed, $context, except: ['sort', 'attribute_id' => $def->id]);
 
             if (in_array($def->type, ['select', 'boolean'], true)) {
                 $counts = $this->attributeValueCounts($q, $def->id);
@@ -486,7 +608,7 @@ class CatalogFilterService
     /**
      * @param  array  $parsed
      */
-    protected function filtersForFrontend(array $parsed): array
+    protected function filtersForFrontend(array $parsed, int $page): array
     {
         $attr = [];
         foreach ($parsed['attributes'] as $id => $filter) {
@@ -506,6 +628,9 @@ class CatalogFilterService
             'price_from' => $parsed['price_from'],
             'price_to' => $parsed['price_to'],
             'category_id' => $parsed['category_id'],
+            'on_promotion' => (bool) ($parsed['on_promotion'] ?? false),
+            'rating_min' => $parsed['rating_min'] ?? null,
+            'page' => $page,
             'attributes' => $attr,
         ];
     }

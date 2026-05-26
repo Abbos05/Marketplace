@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ConfirmModal from '@/Components/ConfirmModal';
 import { useForm, router, Head } from '@inertiajs/react';
 import { useState } from 'react';
 import '../../../css/profile/editProfile.css';
@@ -7,6 +8,7 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
   const { user } = auth;
   const [activeTab, setActiveTab] = useState(0); // 0 - Общие, 1 - Профиль
   const [preview, setPreview] = useState(user.img || '/img/service/users/avatar.svg');
+  const [confirmModal, setConfirmModal] = useState(null);
 
   // Форма для общих настроек (email, пароль)
   const { data: generalData, setData: setGeneralData, patch, put, errors: generalErrors } = useForm({
@@ -110,18 +112,24 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
       console.log('Введите текущий пароль для удаления аккаунта');
       return;
     }
-    if (confirm('Вы уверены, что хотите удалить аккаунт?')) {
-      router.delete(route('profile.destroy'), {
-        data: { password: generalData.current_password },
-        onSuccess: () => {
-          console.log('Аккаунт удалён');
-        },
-        onError: (errors) => {
-          console.error('Ошибка удаления:', errors);
-          console.log('Ошибка удаления аккаунта: ' + JSON.stringify(errors));
-        },
-      });
-    }
+    setConfirmModal({
+      title: 'Удалить аккаунт?',
+      message: 'Это действие необратимо. Все данные профиля будут удалены.',
+      confirmText: 'Удалить аккаунт',
+      variant: 'danger',
+      onConfirm: () => {
+        router.delete(route('profile.destroy'), {
+          data: { password: generalData.current_password },
+          onSuccess: () => {
+            console.log('Аккаунт удалён');
+          },
+          onError: (errors) => {
+            console.error('Ошибка удаления:', errors);
+            console.log('Ошибка удаления аккаунта: ' + JSON.stringify(errors));
+          },
+        });
+      },
+    });
   };
 
   return (
@@ -359,6 +367,19 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmModal}
+        onClose={() => setConfirmModal(null)}
+        onConfirm={() => {
+          confirmModal?.onConfirm?.();
+          setConfirmModal(null);
+        }}
+        title={confirmModal?.title}
+        message={confirmModal?.message}
+        confirmText={confirmModal?.confirmText}
+        variant={confirmModal?.variant}
+      />
     </AuthenticatedLayout>
   );
 }

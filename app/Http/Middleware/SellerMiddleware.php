@@ -9,8 +9,15 @@ class SellerMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!$request->user() || $request->user()->role !== 'seller') {
+        $user = $request->user();
+
+        if (! $user || $user->role !== 'seller') {
             return redirect()->route('profile');
+        }
+
+        if ($user->is_blocked) {
+            return redirect()->route('profile')
+                ->with('error', 'Аккаунт заблокирован. Панель продавца недоступна.');
         }
         
         return $next($request);

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,7 @@ class ProductVariant extends Model
 
     protected $fillable = [
         'product_id', 'sku', 'options', 'price', 'old_price',
-        'discount_percent', 'action_start', 'action_end', 'stock',
+        'discount_percent', 'action_start', 'action_end', 'stock', 'views_count',
         'weight_grams', 'region_id', 'is_active',
     ];
 
@@ -26,6 +27,7 @@ class ProductVariant extends Model
         'action_start' => 'datetime',
         'action_end' => 'datetime',
         'stock' => 'integer',
+        'views_count' => 'integer',
         'is_active' => 'boolean',
     ];
 

@@ -48,7 +48,6 @@ class DemoCatalogSeeder extends Seeder
                     'description' => (string) $template['description'],
                     'short_description' => (string) $template['short_description'],
                     'min_price' => 0,
-                    'views_count' => rand(200, 9000),
                     'sales_count' => rand(0, 120),
                     'status' => 'approved',
                     'is_on_action' => true,
@@ -172,6 +171,7 @@ class DemoCatalogSeeder extends Seeder
                 'old_price' => $oldPrice,
                 'discount_percent' => $discount,
                 'stock' => (int) ($v['stock'] ?? 10),
+                'views_count' => rand(200, 9000),
                 'weight_grams' => rand(200, 12000),
                 'is_active' => true,
             ]);

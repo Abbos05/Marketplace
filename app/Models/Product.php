@@ -16,13 +16,12 @@ class Product extends Model
 
     protected $fillable = [
         'seller_id', 'category_id', 'title', 'description', 'short_description',
-        'min_price', 'views_count', 'sales_count', 'status',
+        'min_price', 'sales_count', 'status',
         'moderation_comment', 'is_on_action',
     ];
 
     protected $casts = [
         'min_price' => 'decimal:2',
-        'views_count' => 'integer',
         'sales_count' => 'integer',
         'is_on_action' => 'boolean',
     ];
@@ -54,17 +53,60 @@ class Product extends Model
         return $this->hasMany(ProductImage::class, 'product_id');
     }
 
+    public function promotions()
+    {
+        return $this->belongsToMany(Promotion::class, 'promotion_product')
+            ->withTimestamps();
+    }
+
     /** Товар виден в каталоге, поиске и на главной. */
     public function scopeVisibleInCatalog(Builder $query): Builder
     {
         return $query
             ->where('status', 'approved')
-            ->where('is_on_action', true);
+            ->where('is_on_action', true)
+            ->whereHas('seller', function (Builder $q) {
+                $q->whereNull('deleted_at')
+                    ->where(function (Builder $inner) {
+                        $inner->where('is_blocked', false)->orWhereNull('is_blocked');
+                    })
+                    ->whereHas('sellerProfile');
+            });
+    }
+
+    /** Подзапрос: сумма просмотров всех вариантов товара. */
+    public static function variantViewsSumSubquery(): Builder
+    {
+        return ProductVariant::query()
+            ->selectRaw('COALESCE(SUM(views_count), 0)')
+            ->whereColumn('product_variants.product_id', 'products.id')
+            ->whereNull('product_variants.deleted_at');
+    }
+
+    /** Сортировка для ленты и рекомендаций: просмотры → продажи → отзывы. */
+    public function scopeOrderByCatalogPopularity(Builder $query): Builder
+    {
+        return $query
+            ->orderByDesc(static::variantViewsSumSubquery())
+            ->orderByDesc('products.sales_count')
+            ->orderByDesc('reviews_count')
+            ->orderByDesc('products.created_at');
+    }
+
+    public function sellerCanPublish(): bool
+    {
+        $seller = $this->relationLoaded('seller')
+            ? $this->seller
+            : $this->seller()->with('sellerProfile')->first();
+
+        return $seller && $seller->hasActiveSellerCompany();
     }
 
     public function isPubliclyVisible(): bool
     {
-        return $this->status === 'approved' && (bool) $this->is_on_action;
+        return $this->status === 'approved'
+            && (bool) $this->is_on_action
+            && $this->sellerCanPublish();
     }
 
     public function canBeViewedBy(?User $user): bool
@@ -91,6 +133,10 @@ class Product extends Model
             return null;
         }
 
+        if (! $this->sellerCanPublish()) {
+            return 'seller_inactive';
+        }
+
         if ($this->status === 'approved' && ! $this->is_on_action) {
             return 'hidden';
         }
@@ -103,6 +149,7 @@ class Product extends Model
         return match ($this->storefrontBlockReason()) {
             'moderation' => 'Товар на модерации и пока недоступен для покупки.',
             'hidden' => 'Товар скрыт с витрины и недоступен для покупки.',
+            'seller_inactive' => 'Компания продавца закрыта — товар нельзя вернуть на витрину, пока продавец не восстановит компанию.',
             'rejected' => 'Товар отклонён модерацией и недоступен для покупки.',
             'archived' => 'Товар снят с продажи.',
             'draft' => 'Товар ещё не опубликован.',
@@ -293,6 +340,11 @@ class Product extends Model
                 ];
             }
             $product->setAttribute('variants_catalog', $catalog);
+        }
+
+        $badges = app(\App\Services\PromotionCatalogService::class)->badgesForProducts($products);
+        foreach ($products as $product) {
+            $product->setAttribute('promotion_badges', $badges[$product->id] ?? []);
         }
     }
 

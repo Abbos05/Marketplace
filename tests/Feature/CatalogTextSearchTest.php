@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\SellerProfile;
 use App\Models\User;
 use App\Services\CatalogFilterService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,8 +33,8 @@ class CatalogTextSearchTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('Home')
-            ->has('mysqlNftsData', 1)
-            ->where('mysqlNftsData.0.id', $product->id)
+            ->has('mysqlProductsData', 1)
+            ->where('mysqlProductsData.0.id', $product->id)
         );
     }
 
@@ -47,7 +48,7 @@ class CatalogTextSearchTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('Home')
-            ->where('mysqlNftsData', [])
+            ->where('mysqlProductsData', [])
             ->where('total', 0)
         );
     }
@@ -76,8 +77,8 @@ class CatalogTextSearchTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('Home')
-            ->has('mysqlNftsData', 1)
-            ->where('mysqlNftsData.0.id', $product->id)
+            ->has('mysqlProductsData', 1)
+            ->where('mysqlProductsData.0.id', $product->id)
         );
     }
 
@@ -102,8 +103,8 @@ class CatalogTextSearchTest extends TestCase
             $response->assertOk();
             $response->assertInertia(fn ($page) => $page
                 ->component('Home')
-                ->has('mysqlNftsData', 1)
-                ->where('mysqlNftsData.0.id', $product->id)
+                ->has('mysqlProductsData', 1)
+                ->where('mysqlProductsData.0.id', $product->id)
             );
         }
     }
@@ -159,8 +160,8 @@ class CatalogTextSearchTest extends TestCase
             $response->assertOk();
             $response->assertInertia(fn ($page) => $page
                 ->component('Home')
-                ->has('mysqlNftsData', 1)
-                ->where('mysqlNftsData.0.id', $product->id)
+                ->has('mysqlProductsData', 1)
+                ->where('mysqlProductsData.0.id', $product->id)
             );
         }
     }
@@ -181,8 +182,8 @@ class CatalogTextSearchTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('Home')
-            ->has('mysqlNftsData', 1)
-            ->where('mysqlNftsData.0.id', $product->id)
+            ->has('mysqlProductsData', 1)
+            ->where('mysqlProductsData.0.id', $product->id)
         );
     }
 
@@ -193,6 +194,12 @@ class CatalogTextSearchTest extends TestCase
             'email' => fake()->unique()->safeEmail(),
             'password' => Hash::make('password'),
             'role' => 'seller',
+        ]);
+
+        SellerProfile::query()->create([
+            'user_id' => $seller->id,
+            'shop_name' => 'Test Shop',
+            'pickup_address' => 'Test address',
         ]);
 
         $category = Category::query()->create([

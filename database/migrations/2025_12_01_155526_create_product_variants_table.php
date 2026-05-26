@@ -22,6 +22,7 @@ return new class extends Migration
             $table->dateTime('action_start')->nullable();
             $table->dateTime('action_end')->nullable();
             $table->unsignedInteger('stock')->default(0);
+            $table->unsignedBigInteger('views_count')->default(0);
             $table->unsignedInteger('weight_grams')->nullable();
             $table->unsignedBigInteger('region_id')->nullable();
             $table->boolean('is_active')->default(true);

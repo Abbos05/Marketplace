@@ -7,12 +7,14 @@ use App\Models\OrderItem;
 use App\Models\PickupPoint;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\PvzAccrual;
 use App\Models\Review;
 use App\Models\ReviewVote;
 use App\Models\SellerProfile;
 use App\Models\User;
 use App\Services\CommissionService;
 use App\Services\OrderLedgerService;
+use App\Services\PvzFeeCalculator;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +29,7 @@ class DemoCommerceSeeder extends Seeder
         $regionId = $pickup?->region_id;
 
         $buyers = [8, 9];
+        $pvzOperator = User::query()->where('email', 'pvz1@gmail.com')->first();
         $products = Product::query()->with('variants')->where('status', 'approved')->get();
 
         if ($products->isEmpty()) {
@@ -38,6 +41,7 @@ class DemoCommerceSeeder extends Seeder
             ['buyer_id' => 8, 'status' => Order::STATUS_INTRANSIT, 'payment_status' => 'paid', 'days_ago' => 5],
             ['buyer_id' => 8, 'status' => Order::STATUS_NEW, 'payment_status' => 'paid', 'days_ago' => 2],
             ['buyer_id' => 8, 'status' => Order::STATUS_NEW, 'payment_status' => 'paid', 'days_ago' => 1],
+            ['buyer_id' => 9, 'status' => Order::STATUS_ISSUED, 'payment_status' => 'paid', 'days_ago' => 45],
             ['buyer_id' => 9, 'status' => Order::STATUS_ISSUED, 'payment_status' => 'paid', 'days_ago' => 20],
             ['buyer_id' => 8, 'status' => Order::STATUS_ISSUED, 'payment_status' => 'paid', 'days_ago' => 12],
             ['buyer_id' => 9, 'status' => Order::STATUS_INTRANSIT, 'payment_status' => 'paid', 'days_ago' => 4],
@@ -60,7 +64,7 @@ class DemoCommerceSeeder extends Seeder
             $created = Carbon::now()->subDays($cfg['days_ago']);
 
             $order = Order::query()->create([
-                'number' => 'ORD-DEMO-'.Str::upper(Str::random(8)),
+                'number' => Str::upper(Str::random(8)),
                 'order_code' => Str::upper(Str::random(10)),
                 'buyer_id' => $cfg['buyer_id'],
                 'pickup_point_id' => $pickupId,
@@ -100,6 +104,30 @@ class DemoCommerceSeeder extends Seeder
                 } else {
                     $ledger->recordPayment($order);
                 }
+            }
+
+            if ($cfg['status'] === Order::STATUS_ISSUED && $pvzOperator && $pickupId) {
+                $issuedAt = $created->copy()->addHours(3);
+                $order->update([
+                    'issued_by_user_id' => $pvzOperator->id,
+                    'issued_at' => $issuedAt,
+                    'updated_at' => $issuedAt,
+                ]);
+
+                $orderTotal = (float) $order->total;
+                PvzAccrual::query()->firstOrCreate(
+                    ['order_id' => $order->id],
+                    [
+                        'pickup_point_id' => $pickupId,
+                        'user_id' => $pvzOperator->id,
+                        'amount' => PvzFeeCalculator::forOrderTotal($orderTotal),
+                        'order_total' => $orderTotal,
+                        'type' => PvzAccrual::TYPE_ISSUED,
+                        'period' => $issuedAt->format('Y-m'),
+                        'created_at' => $issuedAt,
+                        'updated_at' => $issuedAt,
+                    ],
+                );
             }
         }
 

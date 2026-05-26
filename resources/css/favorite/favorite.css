@@ -104,7 +104,7 @@
     }
 
 .category-header h2{
-    font-size: var(--size-lg);
+    font-size: var(--size-xl);
     line-height: 1.2;
     margin-bottom: 5px;
     font-weight: var(--fw-600);    

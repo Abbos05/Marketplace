@@ -3,10 +3,263 @@ import { Head, router, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import '../../../css/admin/dashboard.css';
 
+const MAX_SLIDE_IMAGE_BYTES = 5 * 1024 * 1024;
+
+const DEFAULT_SLIDE_LIMITS = {
+    title: 80,
+    description: 400,
+    button_text: 32,
+    link_target: 500,
+};
+
+const POSITION_OPTIONS = [
+    { value: 'first', label: 'Показать первым (в начале)' },
+    { value: 'last', label: 'Показать последним (в конце)' },
+    { value: 'after', label: 'Показать после слайда…' },
+    { value: 'before', label: 'Показать перед слайдом…' },
+];
+
+function truncateField(value, max) {
+    const s = String(value ?? '');
+    return s.length > max ? s.slice(0, max) : s;
+}
+
+function sortSlidesList(slides) {
+    return [...slides].sort(
+        (a, b) => (Number(a.sort_order) - Number(b.sort_order)) || (a.id - b.id)
+    );
+}
+
+function slideLabel(s) {
+    const title = (s.title || '').trim();
+    return title ? `${title} (#${s.id})` : `Слайд #${s.id}`;
+}
+
+function derivePositionFromSlide(slide, allSlides) {
+    const ordered = sortSlidesList(allSlides);
+    const idx = ordered.findIndex((s) => s.id === slide.id);
+    if (idx <= 0) {
+        return { display_position: 'first', relative_slide_id: '' };
+    }
+    if (idx >= ordered.length - 1) {
+        return { display_position: 'last', relative_slide_id: '' };
+    }
+    return {
+        display_position: 'after',
+        relative_slide_id: String(ordered[idx - 1].id),
+    };
+}
+
+function validateSlideFields(data, slides, limits, excludeId = null) {
+    const errors = {};
+    const title = String(data.title ?? '');
+    const description = String(data.description ?? '');
+    const buttonText = String(data.button_text ?? '');
+    const linkType = data.link_type ?? 'none';
+    const linkTarget = String(data.link_target ?? '').trim();
+    const position = data.display_position ?? 'last';
+    const relativeId = String(data.relative_slide_id ?? '').trim();
+    const others = slides.filter((s) => s.id !== excludeId);
+
+    if (title.length > limits.title) {
+        errors.title = `Заголовок — не длиннее ${limits.title} символов.`;
+    }
+    if (description.length > limits.description) {
+        errors.description = `Описание — не длиннее ${limits.description} символов.`;
+    }
+    if (buttonText.length > limits.button_text) {
+        errors.button_text = `Текст кнопки — не длиннее ${limits.button_text} символов.`;
+    }
+
+    if ((position === 'after' || position === 'before') && others.length === 0) {
+        errors.display_position = 'Нет других слайдов — выберите «первым» или «последним».';
+    } else if ((position === 'after' || position === 'before') && !relativeId) {
+        errors.display_position = 'Выберите слайд, относительно которого поставить этот.';
+    } else if (
+        (position === 'after' || position === 'before')
+        && !others.some((s) => String(s.id) === relativeId)
+    ) {
+        errors.display_position = 'Выбранный слайд не найден.';
+    }
+
+    if (linkType !== 'none' && !linkTarget) {
+        errors.link_target = 'Укажите цель ссылки для выбранного типа.';
+    }
+    if (linkTarget.length > limits.link_target) {
+        errors.link_target = `Ссылка — не длиннее ${limits.link_target} символов.`;
+    }
+
+    return { ok: Object.keys(errors).length === 0, errors };
+}
+
+function CharCounter({ value, max }) {
+    const len = String(value ?? '').length;
+    const over = len > max;
+    const near = !over && len > max * 0.85;
+    return (
+        <span style={{ fontSize: 12, color: over ? '#b91c1c' : near ? '#b45309' : '#6b7280' }}>
+            {len} / {max}
+        </span>
+    );
+}
+
+function FieldError({ message }) {
+    if (!message) return null;
+    return <span style={{ color: '#b91c1c', fontSize: 13 }}>{message}</span>;
+}
+
+function SlidePositionPicker({
+    data,
+    setData,
+    slides,
+    excludeId = null,
+    errors = {},
+    serverErrors = {},
+}) {
+    const others = sortSlidesList(slides.filter((s) => s.id !== excludeId));
+    const position = data.display_position ?? 'last';
+    const needsReference = position === 'after' || position === 'before';
+    const positionError = errors.display_position || serverErrors.display_position
+        || errors.relative_slide_id || serverErrors.relative_slide_id;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontWeight: 600 }}>Положение в карусели</span>
+                <select
+                    className="admin-search-input"
+                    value={position}
+                    onChange={(e) => {
+                        const next = e.target.value;
+                        if (next === 'after' || next === 'before') {
+                            setData({
+                                display_position: next,
+                                relative_slide_id: data.relative_slide_id
+                                    || (others[0] ? String(others[0].id) : ''),
+                            });
+                        } else {
+                            setData({
+                                display_position: next,
+                                relative_slide_id: '',
+                            });
+                        }
+                    }}
+                >
+                    {POSITION_OPTIONS.map((opt) => {
+                        if ((opt.value === 'after' || opt.value === 'before') && others.length === 0) {
+                            return null;
+                        }
+                        return (
+                            <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                            </option>
+                        );
+                    })}
+                </select>
+            </label>
+            {needsReference && others.length > 0 && (
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span>{position === 'after' ? 'После какого слайда' : 'Перед каким слайдом'}</span>
+                    <select
+                        className="admin-search-input"
+                        value={data.relative_slide_id ?? ''}
+                        onChange={(e) => setData('relative_slide_id', e.target.value)}
+                    >
+                        <option value="">— выберите слайд —</option>
+                        {others.map((s) => (
+                            <option key={s.id} value={String(s.id)}>
+                                {slideLabel(s)}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+            )}
+            {others.length > 0 && (
+                <span className="adm-stat-label" style={{ fontSize: 12, lineHeight: 1.45 }}>
+                    Сейчас в карусели: {others.map((s, i) => `${i + 1}. ${slideLabel(s)}`).join(' → ')}
+                    {excludeId ? ` → … (редактируемый)` : ''}
+                </span>
+            )}
+            <FieldError message={positionError} />
+        </div>
+    );
+}
+
+function SlideTextFields({
+    data,
+    setData,
+    limits,
+    errors = {},
+    serverErrors = {},
+}) {
+    return (
+        <>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                    <span>Заголовок</span>
+                    <CharCounter value={data.title} max={limits.title} />
+                </span>
+                <input
+                    type="text"
+                    value={data.title}
+                    maxLength={limits.title}
+                    onChange={(e) => setData('title', truncateField(e.target.value, limits.title))}
+                    className="admin-search-input"
+                    placeholder="Короткий заголовок баннера"
+                />
+                <FieldError message={errors.title || serverErrors.title} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                    <span>Описание</span>
+                    <CharCounter value={data.description} max={limits.description} />
+                </span>
+                <textarea
+                    value={data.description}
+                    maxLength={limits.description}
+                    onChange={(e) => setData('description', truncateField(e.target.value, limits.description))}
+                    className="admin-search-input"
+                    rows={3}
+                    placeholder="Краткий текст под заголовком"
+                />
+                <FieldError message={errors.description || serverErrors.description} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                    <span>Текст кнопки</span>
+                    <CharCounter value={data.button_text} max={limits.button_text} />
+                </span>
+                <input
+                    type="text"
+                    value={data.button_text}
+                    maxLength={limits.button_text}
+                    onChange={(e) => setData('button_text', truncateField(e.target.value, limits.button_text))}
+                    className="admin-search-input"
+                    placeholder="Например: Смотреть каталог"
+                />
+                <FieldError message={errors.button_text || serverErrors.button_text} />
+            </label>
+        </>
+    );
+}
+
+function validateSlideBannerFileSync(file) {
+    if (!file) return null;
+    if (!file.type?.startsWith('image/')) {
+        return 'Выберите файл изображения (JPEG, PNG, WebP и т.д.).';
+    }
+    if (file.size > MAX_SLIDE_IMAGE_BYTES) {
+        const mb = (file.size / (1024 * 1024)).toFixed(1);
+        return `Файл слишком большой (${mb} МБ). Максимум — 5 МБ.`;
+    }
+    return null;
+}
+
 /** Баннер: только «альбом»; те же правила проверяются на сервере. */
 function validateSlideBannerFile(file) {
-    if (!file?.type?.startsWith('image/')) {
-        return Promise.resolve(null);
+    const syncErr = validateSlideBannerFileSync(file);
+    if (syncErr) {
+        return Promise.resolve(syncErr);
     }
     return new Promise((resolve) => {
         const url = URL.createObjectURL(file);
@@ -45,7 +298,8 @@ const defaultCreate = {
     title: '',
     description: '',
     button_text: '',
-    sort_order: 0,
+    display_position: 'last',
+    relative_slide_id: '',
     is_active: 1,
     link_type: 'none',
     link_target: '',
@@ -58,14 +312,55 @@ export default function AdminHomeSlides({
     categories = [],
     routeOptions = [],
     linkTypes = [],
+    slideFieldLimits: slideFieldLimitsProp = null,
 }) {
+    const limits = slideFieldLimitsProp ?? DEFAULT_SLIDE_LIMITS;
     const createForm = useForm({ ...defaultCreate });
     const [createImageClientError, setCreateImageClientError] = useState(null);
     const [editImageClientError, setEditImageClientError] = useState(null);
+    const [createImageValidating, setCreateImageValidating] = useState(false);
+    const [editImageValidating, setEditImageValidating] = useState(false);
+    const [createFieldErrors, setCreateFieldErrors] = useState({});
+    const [editFieldErrors, setEditFieldErrors] = useState({});
+
+    const handleSlideImageChange = (file, input, { setError, setValidating, setFile }) => {
+        setError(null);
+        setValidating(false);
+        setFile(null);
+        if (!file) return;
+
+        const syncErr = validateSlideBannerFileSync(file);
+        if (syncErr) {
+            setError(syncErr);
+            if (input) input.value = '';
+            return;
+        }
+
+        setValidating(true);
+        setFile(file);
+        void validateSlideBannerFile(file).then((err) => {
+            setValidating(false);
+            if (err) {
+                setError(err);
+                setFile(null);
+                if (input) input.value = '';
+            }
+        });
+    };
 
     const submitCreate = (e) => {
         e.preventDefault();
-        if (createImageClientError) return;
+        if (createImageClientError || createImageValidating) return;
+        if (!createForm.data.image || !(createForm.data.image instanceof File)) {
+            setCreateImageClientError('Выберите изображение баннера.');
+            return;
+        }
+        const validation = validateSlideFields(createForm.data, slides, limits);
+        if (!validation.ok) {
+            setCreateFieldErrors(validation.errors);
+            return;
+        }
+        setCreateFieldErrors({});
         createForm.post(route('admin.home-slides.store'), {
             forceFormData: true,
             preserveScroll: true,
@@ -73,6 +368,7 @@ export default function AdminHomeSlides({
                 createForm.reset();
                 createForm.setData({ ...defaultCreate });
                 setCreateImageClientError(null);
+                setCreateFieldErrors({});
             },
         });
     };
@@ -82,7 +378,8 @@ export default function AdminHomeSlides({
         title: '',
         description: '',
         button_text: '',
-        sort_order: 0,
+        display_position: 'last',
+        relative_slide_id: '',
         is_active: 1,
         link_type: 'none',
         link_target: '',
@@ -92,26 +389,38 @@ export default function AdminHomeSlides({
     const startEdit = (s) => {
         setEditingId(s.id);
         setEditImageClientError(null);
+        const position = derivePositionFromSlide(s, slides);
         editForm.setData({
             title: s.title ?? '',
             description: s.description ?? '',
             button_text: s.button_text ?? '',
-            sort_order: s.sort_order ?? 0,
+            display_position: position.display_position,
+            relative_slide_id: position.relative_slide_id,
             is_active: s.is_active ? 1 : 0,
             link_type: s.link_type ?? 'none',
             link_target: s.link_target != null ? String(s.link_target) : '',
             image: null,
         });
         editForm.clearErrors();
+        setEditFieldErrors({});
     };
 
     const saveEdit = (id) => {
-        if (editImageClientError) return;
+        if (editImageClientError || editImageValidating) return;
+        const validation = validateSlideFields(editForm.data, slides, limits, id);
+        if (!validation.ok) {
+            setEditFieldErrors(validation.errors);
+            return;
+        }
+        setEditFieldErrors({});
         const fd = new FormData();
         fd.append('title', editForm.data.title ?? '');
         fd.append('description', editForm.data.description ?? '');
         fd.append('button_text', editForm.data.button_text ?? '');
-        fd.append('sort_order', String(editForm.data.sort_order ?? 0));
+        fd.append('display_position', editForm.data.display_position ?? 'last');
+        if (editForm.data.relative_slide_id) {
+            fd.append('relative_slide_id', editForm.data.relative_slide_id);
+        }
         fd.append('is_active', String(editForm.data.is_active ?? 1));
         fd.append('link_type', editForm.data.link_type ?? 'none');
         if (editForm.data.link_target) {
@@ -127,7 +436,9 @@ export default function AdminHomeSlides({
             onSuccess: () => {
                 setEditingId(null);
                 setEditImageClientError(null);
+                setEditFieldErrors({});
             },
+            onError: () => setEditFieldErrors({}),
         });
     };
 
@@ -143,6 +454,11 @@ export default function AdminHomeSlides({
         if (type === 'url') return 'Например /about или https://…';
         return '—';
     };
+
+    const orderedSlides = sortSlidesList(slides);
+    const carouselIndexById = Object.fromEntries(
+        orderedSlides.map((s, i) => [s.id, i + 1])
+    );
 
     return (
         <MainLayout auth={auth}>
@@ -161,7 +477,10 @@ export default function AdminHomeSlides({
                 <p className="adm-stat-label" style={{ marginTop: -8, marginBottom: 20, maxWidth: 720 }}>
                     Рекомендуется 3 и более активных слайда. Картинка — обложка; текст и кнопка настраиваются отдельно.
                     <br />
-                    <strong>Фото баннера:</strong> только горизонтальное (ширина больше высоты), соотношение сторон не уже чем примерно 5:4 (1,25:1), минимум 640×200 px. Вертикальные и квадратные обложки не принимаются.
+                    <strong>Фото баннера:</strong> до 5 МБ; горизонтальное (ширина больше высоты), соотношение не уже 5:4 (1,25:1), минимум 640×200 px.
+                    <br />
+                    <strong>Тексты:</strong> заголовок до {limits.title} симв., описание до {limits.description}, кнопка до {limits.button_text}.
+                    Положение в карусели задаётся выбором: первым, последним, после или перед другим слайдом.
                 </p>
 
                 <div className="adm-detail-card" style={{ marginBottom: 24, padding: 20 }}>
@@ -177,15 +496,10 @@ export default function AdminHomeSlides({
                                 onChange={(e) => {
                                     const input = e.target;
                                     const f = input.files?.[0] ?? null;
-                                    setCreateImageClientError(null);
-                                    createForm.setData('image', f);
-                                    if (!f) return;
-                                    void validateSlideBannerFile(f).then((err) => {
-                                        if (err) {
-                                            setCreateImageClientError(err);
-                                            createForm.setData('image', null);
-                                            input.value = '';
-                                        }
+                                    handleSlideImageChange(f, input, {
+                                        setError: setCreateImageClientError,
+                                        setValidating: setCreateImageValidating,
+                                        setFile: (file) => createForm.setData('image', file),
                                     });
                                 }}
                                 className="admin-search-input"
@@ -197,43 +511,20 @@ export default function AdminHomeSlides({
                                 </span>
                             )}
                         </label>
-                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            Заголовок
-                            <input
-                                type="text"
-                                value={createForm.data.title}
-                                onChange={(e) => createForm.setData('title', e.target.value)}
-                                className="admin-search-input"
-                            />
-                        </label>
-                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            Описание
-                            <textarea
-                                value={createForm.data.description}
-                                onChange={(e) => createForm.setData('description', e.target.value)}
-                                className="admin-search-input"
-                                rows={3}
-                            />
-                        </label>
-                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            Текст кнопки
-                            <input
-                                type="text"
-                                value={createForm.data.button_text}
-                                onChange={(e) => createForm.setData('button_text', e.target.value)}
-                                className="admin-search-input"
-                            />
-                        </label>
-                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            Порядок
-                            <input
-                                type="number"
-                                min={0}
-                                value={createForm.data.sort_order}
-                                onChange={(e) => createForm.setData('sort_order', Number(e.target.value))}
-                                className="admin-search-input"
-                            />
-                        </label>
+                        <SlideTextFields
+                            data={createForm.data}
+                            setData={createForm.setData}
+                            limits={limits}
+                            errors={createFieldErrors}
+                            serverErrors={createForm.errors}
+                        />
+                        <SlidePositionPicker
+                            data={createForm.data}
+                            setData={createForm.setData}
+                            slides={slides}
+                            errors={createFieldErrors}
+                            serverErrors={createForm.errors}
+                        />
                         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             Активен
                             <select
@@ -300,14 +591,25 @@ export default function AdminHomeSlides({
                                 <input
                                     type="text"
                                     value={createForm.data.link_target}
-                                    onChange={(e) => createForm.setData('link_target', e.target.value)}
+                                    maxLength={limits.link_target}
+                                    onChange={(e) => createForm.setData('link_target', truncateField(e.target.value, limits.link_target))}
                                     className="admin-search-input"
                                 />
                             </label>
                         )}
+                        <FieldError message={createFieldErrors.link_target || createForm.errors.link_target} />
                         <div style={{ alignSelf: 'end' }}>
-                            <button type="submit" className="adm-action-btn adm-btn-view" disabled={createForm.processing}>
-                                Добавить
+                            <button
+                                type="submit"
+                                className="adm-action-btn adm-btn-view"
+                                disabled={
+                                    createForm.processing
+                                    || createImageValidating
+                                    || !!createImageClientError
+                                    || !createForm.data.image
+                                }
+                            >
+                                {createImageValidating ? 'Проверяем фото…' : 'Добавить'}
                             </button>
                         </div>
                     </form>
@@ -320,7 +622,7 @@ export default function AdminHomeSlides({
                                 <th>Превью</th>
                                 <th>Заголовок</th>
                                 <th>Ссылка</th>
-                                <th>Порядок</th>
+                                <th>№ в карусели</th>
                                 <th>Активен</th>
                                 <th />
                             </tr>
@@ -331,11 +633,11 @@ export default function AdminHomeSlides({
                                     <tr key={s.id}>
                                         <td colSpan={6}>
                                             <div style={{ display: 'grid', gap: 12, padding: 12, maxWidth: 900 }}>
-                                                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                                                <div style={{width: '100%', height: 'max-content'}}>
                                                     <img
                                                         src={s.image_path}
                                                         alt=""
-                                                        style={{ width: 120, height: 68, objectFit: 'cover', borderRadius: 8 }}
+                                                        style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: 8 }}
                                                     />
                                                     <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                                                         Новое изображение (необязательно)
@@ -345,54 +647,38 @@ export default function AdminHomeSlides({
                                                             onChange={(e) => {
                                                                 const input = e.target;
                                                                 const f = input.files?.[0] ?? null;
-                                                                setEditImageClientError(null);
-                                                                editForm.setData('image', f);
-                                                                if (!f) return;
-                                                                void validateSlideBannerFile(f).then((err) => {
-                                                                    if (err) {
-                                                                        setEditImageClientError(err);
-                                                                        editForm.setData('image', null);
-                                                                        input.value = '';
-                                                                    }
+                                                                handleSlideImageChange(f, input, {
+                                                                    setError: setEditImageClientError,
+                                                                    setValidating: setEditImageValidating,
+                                                                    setFile: (file) => editForm.setData('image', file),
                                                                 });
                                                             }}
                                                             className="admin-search-input"
                                                         />
-                                                        {editImageClientError && (
+                                                        {(editImageClientError || editForm.errors.image) && (
                                                             <span style={{ color: '#b91c1c', fontSize: 12, display: 'block', marginTop: 6 }}>
-                                                                {editImageClientError}
+                                                                {editImageClientError || editForm.errors.image}
                                                             </span>
                                                         )}
                                                     </label>
                                                 </div>
-                                                <input
-                                                    className="admin-search-input"
-                                                    placeholder="Заголовок"
-                                                    value={editForm.data.title}
-                                                    onChange={(e) => editForm.setData('title', e.target.value)}
+                                                
+                                                <SlideTextFields
+                                                    data={editForm.data}
+                                                    setData={editForm.setData}
+                                                    limits={limits}
+                                                    errors={editFieldErrors}
+                                                    serverErrors={editForm.errors}
                                                 />
-                                                <textarea
-                                                    className="admin-search-input"
-                                                    placeholder="Описание"
-                                                    rows={2}
-                                                    value={editForm.data.description}
-                                                    onChange={(e) => editForm.setData('description', e.target.value)}
-                                                />
-                                                <input
-                                                    className="admin-search-input"
-                                                    placeholder="Текст кнопки"
-                                                    value={editForm.data.button_text}
-                                                    onChange={(e) => editForm.setData('button_text', e.target.value)}
+                                                <SlidePositionPicker
+                                                    data={editForm.data}
+                                                    setData={editForm.setData}
+                                                    slides={slides}
+                                                    excludeId={s.id}
+                                                    errors={editFieldErrors}
+                                                    serverErrors={editForm.errors}
                                                 />
                                                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                                                    <input
-                                                        type="number"
-                                                        className="admin-search-input"
-                                                        style={{ width: 120 }}
-                                                        placeholder="Порядок"
-                                                        value={editForm.data.sort_order}
-                                                        onChange={(e) => editForm.setData('sort_order', Number(e.target.value))}
-                                                    />
                                                     <select
                                                         className="admin-search-input"
                                                         style={{ width: 140 }}
@@ -447,13 +733,20 @@ export default function AdminHomeSlides({
                                                     <input
                                                         className="admin-search-input"
                                                         value={editForm.data.link_target}
-                                                        onChange={(e) => editForm.setData('link_target', e.target.value)}
+                                                        maxLength={limits.link_target}
+                                                        onChange={(e) => editForm.setData('link_target', truncateField(e.target.value, limits.link_target))}
                                                         placeholder={editForm.data.link_type === 'product' ? 'ID товара' : 'URL'}
                                                     />
                                                 )}
+                                                <FieldError message={editFieldErrors.link_target || editForm.errors.link_target} />
                                                 <div style={{ display: 'flex', gap: 8 }}>
-                                                    <button type="button" className="adm-action-btn adm-btn-view" onClick={() => saveEdit(s.id)}>
-                                                        Сохранить
+                                                    <button
+                                                        type="button"
+                                                        className="adm-action-btn adm-btn-view"
+                                                        disabled={editImageValidating || !!editImageClientError}
+                                                        onClick={() => saveEdit(s.id)}
+                                                    >
+                                                        {editImageValidating ? 'Проверяем фото…' : 'Сохранить'}
                                                     </button>
                                                     <button type="button" className="adm-action-btn" onClick={() => setEditingId(null)}>
                                                         Отмена
@@ -475,7 +768,7 @@ export default function AdminHomeSlides({
                                         <td style={{ fontSize: 13, maxWidth: 220, wordBreak: 'break-all' }}>
                                             {s.resolved_href || '—'}
                                         </td>
-                                        <td>{s.sort_order}</td>
+                                        <td>{carouselIndexById[s.id] ?? '—'}</td>
                                         <td>{s.is_active ? 'да' : 'нет'}</td>
                                         <td>
                                             <button type="button" className="adm-action-btn adm-btn-view" onClick={() => startEdit(s)}>

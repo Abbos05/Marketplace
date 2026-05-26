@@ -4,48 +4,39 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Payment;
-use App\Services\OrderLedgerService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Stripe\Checkout\Session as StripeCheckoutSession;
 use Stripe\Refund;
 use Stripe\Stripe;
 
 class StripeRefundService
 {
-    public function isDemoMode(): bool
+    /**
+     * Можно ли оформить возврат через Stripe Refund API (включая тестовые ключи sk_test_).
+     */
+    public function usesStripeRefundApi(Order $order): bool
     {
-        return (bool) config('marketplace.demo_payments', false);
+        return $this->resolveStripePaymentIntentId($order) !== null;
     }
 
     /**
-     * Возврат без вызова Stripe API (сид, локальное демо, нет записи платежа).
+     * Только когда нет Stripe payment_intent (сид, ручная демо-оплата).
      */
     public function shouldUseDemoRefund(Order $order): bool
     {
-        if ($this->isDemoMode()) {
-            return true;
-        }
+        return ! $this->usesStripeRefundApi($order);
+    }
 
-        $payment = $this->findRefundablePayment($order);
+    public function isStripeTestMode(): bool
+    {
+        $secret = $this->stripeSecret();
 
-        if (! $payment) {
-            return true;
-        }
-
-        if ($payment->provider === 'demo') {
-            return true;
-        }
-
-        if (str_starts_with((string) $payment->payment_id, 'demo_')) {
-            return true;
-        }
-
-        return false;
+        return $secret !== null && str_starts_with($secret, 'sk_test_');
     }
 
     /**
-     * Демо-возврат: помечаем заказ и платёж как refunded (без Stripe).
-     *
      * @return array{ok: bool, message: string}
      */
     public function applyDemoRefund(Order $order, ?string $reason = null): array
@@ -55,7 +46,7 @@ class StripeRefundService
         if ($order->payment_status === 'refunded') {
             return [
                 'ok' => true,
-                'message' => 'Возврат уже оформлен (демо).',
+                'message' => 'Возврат уже оформлен.',
             ];
         }
 
@@ -109,20 +100,31 @@ class StripeRefundService
 
         return [
             'ok' => true,
-            'message' => 'Возврат выполнен (демо). Сумма '.number_format((float) $order->total, 0, ',', ' ').' ₽ зачислена обратно на карту в учебном режиме.',
+            'message' => 'Возврат оформлен. Средства вернутся на карту (обычно 3–10 рабочих дней).',
         ];
     }
 
-    /**
-     * Сохраняет успешную оплату заказа через Stripe Checkout (для последующего возврата).
-     */
     public function recordSuccessfulCheckout(Order $order, object $session): void
     {
-        $paymentIntentId = $session->payment_intent ?? null;
-        if (! $paymentIntentId) {
-            Log::warning('Stripe checkout without payment_intent', ['order_id' => $order->id, 'session' => $session->id ?? null]);
+        $paymentIntentId = $this->extractPaymentIntentId($session->payment_intent ?? null);
 
-            return;
+        $payload = [
+            'amount' => $order->total,
+            'status' => 'succeeded',
+            'provider_response' => [
+                'checkout_session_id' => $session->id ?? null,
+                'payment_status' => $session->payment_status ?? null,
+            ],
+        ];
+
+        if ($paymentIntentId) {
+            $payload['payment_id'] = $paymentIntentId;
+        } else {
+            Log::warning('Stripe checkout without payment_intent', [
+                'order_id' => $order->id,
+                'session' => $session->id ?? null,
+            ]);
+            $payload['payment_id'] = 'pending_'.$session->id;
         }
 
         Payment::query()->updateOrCreate(
@@ -130,21 +132,10 @@ class StripeRefundService
                 'order_id' => $order->id,
                 'provider' => 'stripe',
             ],
-            [
-                'payment_id' => $paymentIntentId,
-                'amount' => $order->total,
-                'status' => 'succeeded',
-                'provider_response' => [
-                    'checkout_session_id' => $session->id,
-                    'payment_status' => $session->payment_status ?? null,
-                ],
-            ]
+            $payload
         );
     }
 
-    /**
-     * Помечает оплату как демо (если оплату имитировали без Stripe).
-     */
     public function recordDemoPayment(Order $order): void
     {
         Payment::query()->updateOrCreate(
@@ -165,16 +156,10 @@ class StripeRefundService
     }
 
     /**
-     * Возврат оплаты на карту через Stripe (полная сумма заказа).
-     *
      * @return array{ok: bool, message: string}
      */
     public function refundOrder(Order $order, ?string $reason = null): array
     {
-        if ($this->shouldUseDemoRefund($order)) {
-            return $this->applyDemoRefund($order, $reason);
-        }
-
         $order->refresh();
 
         if ($order->payment_status === 'refunded') {
@@ -191,68 +176,79 @@ class StripeRefundService
             ];
         }
 
-        $payment = $this->findRefundablePayment($order);
-
-        if (! $payment) {
+        if ($this->shouldUseDemoRefund($order)) {
             return $this->applyDemoRefund($order, $reason);
         }
 
-        $secret = config('services.stripe.secret');
-        if (! $secret) {
-            return $this->applyDemoRefund($order, $reason);
+        $paymentIntentId = $this->resolveStripePaymentIntentId($order);
+
+        if (! $paymentIntentId) {
+            return [
+                'ok' => false,
+                'message' => 'Не найден идентификатор оплаты Stripe для возврата. Оплатите заказ через Stripe Checkout или обратитесь в поддержку.',
+            ];
         }
 
         try {
-            Stripe::setApiKey($secret);
+            Stripe::setApiKey($this->stripeSecret());
 
-            $amountCents = (int) round((float) $payment->amount * 100);
+            $payment = $this->findRefundablePayment($order);
+            $amountCents = (int) round((float) ($payment?->amount ?? $order->total) * 100);
+
             $params = [
-                'payment_intent' => $payment->payment_id,
+                'payment_intent' => $paymentIntentId,
                 'metadata' => [
                     'order_id' => (string) $order->id,
                     'order_number' => (string) ($order->number ?? ''),
                     'reason' => $reason ?? 'order_refund',
                 ],
             ];
+
             if ($amountCents > 0) {
                 $params['amount'] = $amountCents;
             }
 
             $refund = Refund::create($params);
 
-            $payment->update([
-                'status' => 'refunded',
-                'provider_response' => array_merge(
-                    is_array($payment->provider_response) ? $payment->provider_response : [],
-                    [
-                        'refund_id' => $refund->id,
-                        'refund_status' => $refund->status ?? null,
-                        'refunded_at' => now()->toIso8601String(),
-                    ]
-                ),
-            ]);
+            if ($payment) {
+                $payment->update([
+                    'payment_id' => $paymentIntentId,
+                    'provider' => 'stripe',
+                    'status' => 'refunded',
+                    'provider_response' => array_merge(
+                        is_array($payment->provider_response) ? $payment->provider_response : [],
+                        [
+                            'refund_id' => $refund->id,
+                            'refund_status' => $refund->status ?? null,
+                            'refunded_at' => now()->toIso8601String(),
+                            'stripe_test_mode' => $this->isStripeTestMode(),
+                        ]
+                    ),
+                ]);
+            }
 
             $order->update(['payment_status' => 'refunded']);
             app(OrderLedgerService::class)->recordRefund($order);
 
             return [
                 'ok' => true,
-                'message' => 'Средства отправлены на возврат. Обычно деньги приходят на карту в течение 3–10 рабочих дней (зависит от банка).',
+                'message' => 'Возврат оформлен. Средства вернутся на карту (обычно 3–10 рабочих дней).',
             ];
         } catch (\Throwable $e) {
             Log::error('Stripe refund failed', [
                 'order_id' => $order->id,
-                'payment_intent' => $payment->payment_id,
+                'payment_intent' => $paymentIntentId,
                 'error' => $e->getMessage(),
             ]);
 
-            return $this->applyDemoRefund($order, $reason.'_stripe_fallback');
+            return [
+                'ok' => false,
+                'message' => 'Не удалось выполнить возврат. Попробуйте позже или обратитесь в поддержку.',
+            ];
         }
     }
 
     /**
-     * Отмена/отказ: при оплате — возврат (в демо — сразу, без отдельной страницы).
-     *
      * @return array{ok: bool, message: string, refunded: bool}
      */
     public function handleOrderCanceledOrRefused(Order $order, string $context = 'cancel'): array
@@ -274,13 +270,98 @@ class StripeRefundService
         ];
     }
 
+    /**
+     * Восстанавливает payment_intent из БД или из сохранённой Checkout Session.
+     */
+    public function resolveStripePaymentIntentId(Order $order): ?string
+    {
+        if (! Schema::hasTable('payments')) {
+            return null;
+        }
+
+        $payment = Payment::query()
+            ->where('order_id', $order->id)
+            ->where('provider', 'stripe')
+            ->latest('id')
+            ->first();
+
+        if ($payment && $this->isPaymentIntentId((string) $payment->payment_id)) {
+            return $payment->payment_id;
+        }
+
+        $sessionId = is_array($payment?->provider_response)
+            ? ($payment->provider_response['checkout_session_id'] ?? null)
+            : null;
+
+        if (! $sessionId || ! $this->stripeConfigured()) {
+            return null;
+        }
+
+        try {
+            Stripe::setApiKey($this->stripeSecret());
+            $session = StripeCheckoutSession::retrieve($sessionId, ['expand' => ['payment_intent']]);
+            $paymentIntentId = $this->extractPaymentIntentId($session->payment_intent ?? null);
+
+            if ($paymentIntentId && $payment) {
+                $payment->update([
+                    'payment_id' => $paymentIntentId,
+                    'provider_response' => array_merge(
+                        $payment->provider_response ?? [],
+                        ['payment_intent_recovered_at' => now()->toIso8601String()]
+                    ),
+                ]);
+            }
+
+            return $paymentIntentId;
+        } catch (\Throwable $e) {
+            Log::warning('Could not recover payment_intent from checkout session', [
+                'order_id' => $order->id,
+                'session_id' => $sessionId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
     private function findRefundablePayment(Order $order): ?Payment
     {
+        if (! Schema::hasTable('payments')) {
+            return null;
+        }
+
         return Payment::query()
             ->where('order_id', $order->id)
             ->where('status', 'succeeded')
-            ->whereIn('provider', ['stripe', 'demo'])
             ->latest('id')
             ->first();
+    }
+
+    private function isPaymentIntentId(string $id): bool
+    {
+        return str_starts_with($id, 'pi_');
+    }
+
+    private function extractPaymentIntentId(mixed $paymentIntent): ?string
+    {
+        if (is_object($paymentIntent)) {
+            return $paymentIntent->id ?? null;
+        }
+
+        return is_string($paymentIntent) && $this->isPaymentIntentId($paymentIntent)
+            ? $paymentIntent
+            : null;
+    }
+
+    private function stripeConfigured(): bool
+    {
+        return $this->stripeSecret() !== null;
+    }
+
+    private function stripeSecret(): ?string
+    {
+        $secret = config('services.stripe.secret') ?? config('stripe.secret');
+
+        return is_string($secret) && $secret !== '' ? $secret : null;
     }
 }

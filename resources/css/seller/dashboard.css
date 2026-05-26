@@ -96,9 +96,28 @@
 }
 
 .nav-icon {
-    font-size: var(--size-22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
     margin-right: 12px;
-    min-width: 24px;
+    color: inherit;
+}
+
+.seller-nav-icon-svg {
+    width: 22px;
+    height: 22px;
+}
+
+.seller-sidebar.closed .nav-item {
+    justify-content: center;
+    padding: 12px;
+}
+
+.seller-sidebar.closed .nav-icon {
+    margin-right: 0;
 }
 
 .nav-label {
@@ -198,10 +217,14 @@
 }
 
 .stat-info h3 {
-    font-size: var(--size-lg);
+    font-size: clamp(1.1rem, 2.5vw, 1.75rem);
     margin: 0;
     color: var(--background);
     font-weight: var(--fw-800);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-variant-numeric: tabular-nums;
 }
 
 .stat-info p {
@@ -326,6 +349,21 @@
     border-bottom: 1px solid var(--border);
 }
 
+.popular-item--link {
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s ease;
+    border-radius: 8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.popular-item--link:hover {
+    background: #f8fafc;
+}
+
 .popular-item:last-child {
     border-bottom: none;
 }
@@ -340,6 +378,7 @@
 .popular-item p {
     margin: 0;
     font-weight: var(--fw-600);
+    font-size: var(--size-m);
     color: #333;
 }
 
@@ -479,6 +518,10 @@
 }
 
 .chart-stat .stat-value {
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.2;
     font-size: var(--size-base);
     font-weight: var(--fw-700);
     color: var(--background);

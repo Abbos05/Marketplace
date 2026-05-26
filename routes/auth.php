@@ -27,11 +27,16 @@ Route::middleware('guest')->group(function () {
     Route::get('register', [AuthenticatedSessionController::class, 'showRegister'])->name('register');
 
     // Телефонная авторизация
-    Route::post('/auth/phone/send-code',        [PhoneAuthController::class, 'sendCode'])->name('phone.send-code');
-    Route::post('/auth/phone/verify-code',       [PhoneAuthController::class, 'verifyCode'])->name('phone.verify-code');
-    Route::post('/auth/phone/send-email-code',   [PhoneAuthController::class, 'sendEmailCode'])->name('phone.send-email-code');
-    Route::post('/auth/phone/verify-email-code', [PhoneAuthController::class, 'verifyEmailCode'])->name('phone.verify-email-code');
-    Route::post('/auth/phone/login-password',    [PhoneAuthController::class, 'loginWithPassword'])->name('phone.login-password');
+    Route::middleware('throttle:12,1')->group(function () {
+        Route::post('/auth/phone/send-code',              [PhoneAuthController::class, 'sendCode'])->name('phone.send-code');
+        Route::post('/auth/phone/verify-code',           [PhoneAuthController::class, 'verifyCode'])->name('phone.verify-code');
+        Route::post('/auth/phone/complete-login',        [PhoneAuthController::class, 'completeLogin'])->name('phone.complete-login');
+        Route::post('/auth/phone/resend-sms',            [PhoneAuthController::class, 'resendSms'])->name('phone.resend-sms');
+        Route::post('/auth/phone/forgot-password/send',   [PhoneAuthController::class, 'forgotPasswordSend'])->name('phone.forgot-password.send');
+        Route::post('/auth/phone/forgot-password/cancel', [PhoneAuthController::class, 'forgotPasswordCancel'])->name('phone.forgot-password.cancel');
+        Route::post('/auth/phone/forgot-password/verify', [PhoneAuthController::class, 'forgotPasswordVerify'])->name('phone.forgot-password.verify');
+        Route::post('/auth/phone/forgot-password/reset',  [PhoneAuthController::class, 'forgotPasswordReset'])->name('phone.forgot-password.reset');
+    });
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
@@ -84,6 +89,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile', [ProfileController::class, 'index'])->name('profile.update');
     Route::post('/profile/update', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/default-pickup', [ProfileController::class, 'updateDefaultPickup'])->name('profile.default-pickup');
+    Route::delete('/profile/sessions/others', [ProfileController::class, 'destroyOtherSessions'])->name('profile.sessions.destroy-others');
     Route::delete('/profile/sessions/{session}', [ProfileController::class, 'destroySession'])->name('profile.sessions.destroy');
     Route::post('/profile/phone/send-code', [ProfileController::class, 'sendPhoneCode'])->name('profile.phone.send-code');
     Route::post('/profile/phone/verify-code', [ProfileController::class, 'verifyPhoneCode'])->name('profile.phone.verify-code');

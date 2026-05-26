@@ -1,28 +1,32 @@
 import React from 'react';
 import FilterSection from './FilterSection';
 import FilterCheckboxList from './FilterCheckboxList';
-import { SORT_OPTIONS } from '@/lib/catalogFilters';
-
-function formatPrice(n) {
-    if (n == null) return null;
-    return new Intl.NumberFormat('ru-RU').format(Math.round(n));
-}
+import PriceRangeFilter from './PriceRangeFilter';
+import { getSortOptions } from '@/lib/catalogFilters';
 
 export default function CatalogFilterSidebar({
     facets = {},
     filterState,
     onSortChange,
-    onPriceChange,
+    onPriceApply,
+    onRatingChange,
     onCategoryToggle,
     onAttributeValuesChange,
     onAttributeRangeChange,
     onReset,
     showCategoryFacet = false,
+    onPromotionChange,
+    showSortInSidebar = false,
 }) {
-    const priceHint =
-        facets.price?.min != null && facets.price?.max != null
-            ? `${formatPrice(facets.price.min)} – ${formatPrice(facets.price.max)} ₽`
-            : null;
+    const sortOptions = getSortOptions(filterState);
+
+    const ratingOptions = [
+        { value: '', label: 'Любой рейтинг' },
+        ...(facets.rating || []).map((item) => ({
+            value: String(item.value),
+            label: `${item.label} (${item.count})`,
+        })),
+    ];
 
     return (
         <aside className="shop-sidebar">
@@ -34,41 +38,63 @@ export default function CatalogFilterSidebar({
                     </button>
                 </div>
 
-                <FilterSection title="Сортировка" defaultOpen>
-                    <select
-                        value={filterState.sort}
-                        onChange={(e) => onSortChange(e.target.value)}
-                        className="shop-sidebar__select"
-                    >
-                        {SORT_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                                {o.label}
-                            </option>
-                        ))}
-                    </select>
+                {showSortInSidebar && (
+                    <FilterSection title="Сортировка" defaultOpen>
+                        <select
+                            value={filterState.sort}
+                            onChange={(e) => onSortChange(e.target.value)}
+                            className="shop-sidebar__select"
+                        >
+                            {sortOptions.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </select>
+                    </FilterSection>
+                )}
+
+                <FilterSection title="Акции" defaultOpen>
+                    <label className="shop-sidebar__toggle">
+                        <input
+                            type="checkbox"
+                            className="shop-sidebar__toggle-input"
+                            checked={!!filterState.onPromotion}
+                            onChange={(e) => onPromotionChange?.(e.target.checked)}
+                        />
+                        <span className="shop-sidebar__toggle-box" aria-hidden />
+                        <span className="shop-sidebar__toggle-text">Только по акции</span>
+                    </label>
                 </FilterSection>
 
                 <FilterSection title="Цена" defaultOpen>
-                    {priceHint && <p className="shop-sidebar__hint">{priceHint}</p>}
-                    <div className="shop-sidebar__price-range">
-                        <input
-                            type="number"
-                            placeholder="От"
-                            value={filterState.priceFrom}
-                            onChange={(e) => onPriceChange('priceFrom', e.target.value)}
-                            min="0"
-                            className="shop-sidebar__price-input"
-                        />
-                        <input
-                            type="number"
-                            placeholder="До"
-                            value={filterState.priceTo}
-                            onChange={(e) => onPriceChange('priceTo', e.target.value)}
-                            min="0"
-                            className="shop-sidebar__price-input"
-                        />
-                    </div>
+                    <PriceRangeFilter
+                        facetMin={facets.price?.min}
+                        facetMax={facets.price?.max}
+                        priceFrom={filterState.priceFrom}
+                        priceTo={filterState.priceTo}
+                        onApply={onPriceApply}
+                    />
                 </FilterSection>
+
+                {facets.rating?.length > 0 && (
+                    <FilterSection title="Рейтинг" defaultOpen>
+                        <select
+                            className="shop-sidebar__select"
+                            value={filterState.ratingMin ? String(filterState.ratingMin) : ''}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                onRatingChange?.(val === '' ? null : parseInt(val, 10));
+                            }}
+                        >
+                            {ratingOptions.map((o) => (
+                                <option key={o.value || 'any'} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </select>
+                    </FilterSection>
+                )}
 
                 {showCategoryFacet && facets.categories?.length > 0 && (
                     <FilterSection title="Категория" defaultOpen>
@@ -93,6 +119,8 @@ export default function CatalogFilterSidebar({
                 {facets.attributes?.map((attr) => {
                     if (attr.type === 'number') {
                         const val = filterState.attributes[attr.id] || { min: '', max: '' };
+                        const formatPrice = (n) =>
+                            n != null ? new Intl.NumberFormat('ru-RU').format(Math.round(n)) : null;
                         return (
                             <FilterSection key={attr.id} title={attr.name} defaultOpen>
                                 {attr.min != null && attr.max != null && (

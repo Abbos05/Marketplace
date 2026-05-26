@@ -22,7 +22,6 @@ const SORT_OPTIONS = [
 
 export default function Index({ orders, stats, statusCounts, statusLabels, filters = {} }) {
     const { props } = usePage();
-    const flash = props.flash ?? {};
 
     const currentStatus = filters.status ?? 'all';
     const currentSort   = filters.sort   ?? 'newest';
@@ -32,6 +31,7 @@ export default function Index({ orders, stats, statusCounts, statusLabels, filte
     const dateToRef   = useRef(null);
 
     const applyFilters = useCallback((overrides = {}) => {
+        const resetPage = !Object.prototype.hasOwnProperty.call(overrides, 'page');
         router.get(
             route('seller.orders'),
             {
@@ -40,6 +40,7 @@ export default function Index({ orders, stats, statusCounts, statusLabels, filte
                 search:    searchRef.current?.value ?? filters.search ?? '',
                 date_from: dateFromRef.current?.value ?? filters.date_from ?? '',
                 date_to:   dateToRef.current?.value   ?? filters.date_to   ?? '',
+                ...(resetPage ? { page: 1 } : {}),
                 ...overrides,
             },
             { preserveState: true, replace: true },
@@ -70,8 +71,6 @@ export default function Index({ orders, stats, statusCounts, statusLabels, filte
         <SellerLayout title="Заказы">
             <Head title="Заказы" />
 
-            {flash.success && <div className="ord-flash ord-flash--success">{flash.success}</div>}
-            {flash.error   && <div className="ord-flash ord-flash--error">{flash.error}</div>}
 
             {/* Stat cards */}
             <div className="ord-stats">
@@ -230,7 +229,7 @@ export default function Index({ orders, stats, statusCounts, statusLabels, filte
                     </table>
 
                     {/* Pagination */}
-                    {(orders.prev_page_url || orders.next_page_url) && (
+                    {orders.last_page > 1 && (
                         <div className="ord-pagination">
                             <span className="ord-pagination__info">
                                 Показано {orders.from}–{orders.to} из {orders.total}

@@ -1,31 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import ConfirmModal from '@/Components/ConfirmModal';
 import '../../../css/admin/dashboard.css';
 
 const STATUS_TABS = [
+    { value: 'all', label: 'Все' },
     { value: 'pending', label: 'На модерации' },
     { value: 'published', label: 'Опубликованные' },
-    { value: 'all', label: 'Все' },
+    { value: 'hidden', label: 'Скрытые' },
 ];
 
 export default function AdminReviews({ auth, reviews, status: initialStatus = 'pending', search: searchFromServer = '' }) {
-    const { flash } = usePage().props;
-    const [flashMsg, setFlashMsg] = useState(null);
     const [searchInput, setSearchInput] = useState(searchFromServer);
+    const [confirmModal, setConfirmModal] = useState(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [previewImage, setPreviewImage] = useState(null);
 
     useEffect(() => {
         setSearchInput(searchFromServer);
     }, [searchFromServer]);
-
-    useEffect(() => {
-        if (flash?.success) {
-            setFlashMsg(flash.success);
-            const t = setTimeout(() => setFlashMsg(null), 4000);
-            return () => clearTimeout(t);
-        }
-        return undefined;
-    }, [flash?.success]);
 
     const rows = reviews?.data ?? [];
     const links = reviews?.links ?? [];
@@ -55,29 +49,77 @@ export default function AdminReviews({ auth, reviews, status: initialStatus = 'p
         );
     };
 
-    const redirectBody = () => ({
+    const redirectBody = (extra = {}) => ({
         redirect_status: initialStatus,
         redirect_search: searchInput.trim(),
+        ...extra,
     });
 
-    const approve = (id) => {
-        router.post(route('admin.reviews.approve', id), redirectBody(), { preserveScroll: true });
+    const approve = (row) => {
+        setConfirmModal({
+            title: 'Опубликовать отзыв?',
+            message: 'Отзыв станет виден на странице товара.',
+            confirmText: 'Опубликовать',
+            variant: 'default',
+            review: row,
+            onConfirm: () => {
+                router.post(route('admin.reviews.approve', row.id), redirectBody(), { preserveScroll: true });
+                setConfirmModal(null);
+            },
+        });
     };
 
-    const reject = (id) => {
-        if (!confirm('Отклонить отзыв? Он будет скрыт, покупатель сможет написать новый.')) return;
-        router.post(route('admin.reviews.reject', id), redirectBody(), { preserveScroll: true });
+    const openRejectModal = (row, isHide = false) => {
+        setRejectReason('');
+        setConfirmModal({
+            title: isHide ? 'Скрыть отзыв?' : 'Отклонить отзыв?',
+            message: isHide
+                ? 'Отзыв будет скрыт. Укажите причину — её увидит только администрация.'
+                : 'Отзыв будет отклонён. Покупатель сможет оставить новый. Укажите причину.',
+            confirmText: isHide ? 'Скрыть' : 'Отклонить',
+            variant: 'danger',
+            showReason: true,
+            review: row,
+            onConfirm: (reason) => {
+                const comment = (reason || '').trim();
+                if (comment.length < 3) {
+                    return;
+                }
+                router.post(route('admin.reviews.reject', row.id), redirectBody({ moderation_comment: comment }), {
+                    preserveScroll: true,
+                });
+                setConfirmModal(null);
+                setRejectReason('');
+            },
+        });
+    };
+
+    const restoreReview = (id) => {
+        setConfirmModal({
+            title: 'Восстановить отзыв?',
+            message: 'Отзыв вернётся в очередь модерации.',
+            confirmText: 'Восстановить',
+            variant: 'default',
+            onConfirm: () => {
+                router.post(route('admin.reviews.restore', id), {}, { preserveScroll: true });
+                setConfirmModal(null);
+            },
+        });
+    };
+
+    const statusLabel = (r) => {
+        if (r.is_hidden || initialStatus === 'hidden') {
+            return <span style={{ color: '#6b7280' }}>Скрыт</span>;
+        }
+        if (r.is_moderated) {
+            return <span style={{ color: '#059669' }}>Опубликован</span>;
+        }
+        return <span style={{ color: '#b45309' }}>На модерации</span>;
     };
 
     return (
         <MainLayout auth={auth}>
             <Head title="Отзывы · Админ" />
-
-            {flashMsg && (
-                <div className="adm-flash" onClick={() => setFlashMsg(null)} style={{ margin: '16px auto', maxWidth: 1100 }}>
-                    {flashMsg}
-                </div>
-            )}
 
             <div className="adm-detail-page">
                 <div className="adm-detail-nav">
@@ -101,6 +143,7 @@ export default function AdminReviews({ auth, reviews, status: initialStatus = 'p
                             type="search"
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
+                            
                             className="admin-search-input"
                             placeholder="Например: наушники, Иван или 42"
                             autoComplete="off"
@@ -109,6 +152,7 @@ export default function AdminReviews({ auth, reviews, status: initialStatus = 'p
                     <button type="submit" className="adm-action-btn adm-btn-view">
                         Найти
                     </button>
+                    
                     {appliedSearch ? (
                         <button type="button" className="adm-action-btn" onClick={clearSearch}>
                             Сбросить
@@ -170,21 +214,48 @@ export default function AdminReviews({ auth, reviews, status: initialStatus = 'p
                                         <td>
                                             <span style={{ color: '#f59e0b', letterSpacing: 1 }}>{'★'.repeat(r.rating)}</span>
                                         </td>
-                                        <td style={{ maxWidth: 280, fontSize: 13, whiteSpace: 'pre-wrap' }}>{r.comment_snippet || '—'}</td>
-                                        <td>{r.is_moderated ? <span style={{ color: '#059669' }}>Опубликован</span> : <span style={{ color: '#b45309' }}>На модерации</span>}</td>
-                                        <td style={{ whiteSpace: 'nowrap', fontSize: 13 }}>{r.created_at}</td>
+                                        <td style={{ maxWidth: 320, fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                                            {r.comment_snippet || '—'}
+                                            {r.images?.length > 0 && (
+                                                <div className="adm-review-images">
+                                                    {r.images.map((img) => (
+                                                        <button
+                                                            key={img.id}
+                                                            type="button"
+                                                            className="adm-review-images__thumb"
+                                                            onClick={() => setPreviewImage(img.url)}
+                                                        >
+                                                            <img src={img.url} alt="" />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {r.moderation_comment && (
+                                                <div style={{ marginTop: 6, color: '#b91c1c', fontSize: 12 }}>
+                                                    Причина: {r.moderation_comment}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td>{statusLabel(r)}</td>
+                                        <td style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
+                                            {r.deleted_at || r.created_at}
+                                        </td>
                                         <td style={{ whiteSpace: 'nowrap' }}>
-                                            {!r.is_moderated ? (
+                                            {initialStatus === 'hidden' || r.is_hidden ? (
+                                                <button type="button" className="adm-action-btn adm-btn-view" onClick={() => restoreReview(r.id)}>
+                                                    Восстановить
+                                                </button>
+                                            ) : !r.is_moderated ? (
                                                 <>
-                                                    <button type="button" className="adm-action-btn adm-btn-view" onClick={() => approve(r.id)}>
+                                                    <button type="button" className="adm-action-btn adm-btn-view" onClick={() => approve(r)}>
                                                         Опубликовать
                                                     </button>{' '}
-                                                    <button type="button" className="adm-action-btn" onClick={() => reject(r.id)}>
+                                                    <button type="button" className="adm-action-btn" onClick={() => openRejectModal(r, false)}>
                                                         Отклонить
                                                     </button>
                                                 </>
                                             ) : (
-                                                <button type="button" className="adm-action-btn" onClick={() => reject(r.id)}>
+                                                <button type="button" className="adm-action-btn" onClick={() => openRejectModal(r, true)}>
                                                     Скрыть
                                                 </button>
                                             )}
@@ -210,6 +281,118 @@ export default function AdminReviews({ auth, reviews, status: initialStatus = 'p
                     </nav>
                 )}
             </div>
+
+            {confirmModal && (
+                <ReviewConfirmModal
+                    {...confirmModal}
+                    rejectReason={rejectReason}
+                    onRejectReasonChange={setRejectReason}
+                    onClose={() => {
+                        setConfirmModal(null);
+                        setRejectReason('');
+                    }}
+                />
+            )}
+
+            {previewImage && (
+                <div className="adm-review-lightbox" onClick={() => setPreviewImage(null)} role="presentation">
+                    <div className="adm-review-lightbox__inner" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" className="adm-review-lightbox__close" onClick={() => setPreviewImage(null)} aria-label="Закрыть">
+                            ×
+                        </button>
+                        <img src={previewImage} alt="" />
+                    </div>
+                </div>
+            )}
         </MainLayout>
+    );
+}
+
+function ReviewConfirmModal({
+    title,
+    message,
+    confirmText,
+    variant,
+    showReason,
+    review,
+    rejectReason,
+    onRejectReasonChange,
+    onConfirm,
+    onClose,
+}) {
+    const [processing, setProcessing] = useState(false);
+    const [reasonError, setReasonError] = useState('');
+
+    const handleConfirm = () => {
+        if (showReason) {
+            const reason = (rejectReason || '').trim();
+            if (reason.length < 3) {
+                setReasonError('Укажите причину (минимум 3 символа).');
+                return;
+            }
+            setReasonError('');
+            onConfirm(reason);
+            return;
+        }
+        onConfirm();
+    };
+
+    return (
+        <div className="phone-modal-overlay" onClick={onClose} role="presentation">
+            <div className="phone-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+                <button type="button" onClick={onClose} className="modal-close-btn" aria-label="Закрыть">
+                    ×
+                </button>
+                <h3 className="phone-modal-title">{title}</h3>
+                <p className="phone-modal-text">{message}</p>
+                {review?.comment && (
+                    <div className="adm-review-modal-preview">
+                        <p className="adm-review-modal-preview__text">{review.comment}</p>
+                        {review.images?.length > 0 && (
+                            <div className="adm-review-images">
+                                {review.images.map((img) => (
+                                    <a key={img.id} href={img.url} target="_blank" rel="noreferrer" className="adm-review-images__thumb">
+                                        <img src={img.url} alt="" />
+                                    </a>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+                {showReason && (
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+                        <span className="adm-stat-label">Причина</span>
+                        <textarea
+                            className="admin-search-input"
+                            rows={3}
+                            value={rejectReason}
+                            onChange={(e) => {
+                                onRejectReasonChange(e.target.value);
+                                setReasonError('');
+                            }}
+                            placeholder="Например: оскорбления, спам, не по товару…"
+                        />
+                        {reasonError && <span style={{ color: '#b91c1c', fontSize: 13 }}>{reasonError}</span>}
+                    </label>
+                )}
+                <div className="phone-modal-actions" style={{ marginTop: 16 }}>
+                    <button type="button" className="phone-modal-btn phone-modal-btn--cancel" onClick={onClose} disabled={processing}>
+                        Отмена
+                    </button>
+                    <button
+                        type="button"
+                        className={`phone-modal-btn phone-modal-btn--submit${variant === 'danger' ? ' phone-modal-btn--danger' : ''}`}
+                        onClick={() => {
+                            setProcessing(true);
+                            handleConfirm();
+                            setProcessing(false);
+                        }}
+                        disabled={processing}
+                    >
+                        {confirmText}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }

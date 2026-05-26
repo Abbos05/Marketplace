@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             DemoUsersSeeder::class,
             DemoSellerProfilesSeeder::class,
             DemoCatalogSeeder::class,
+            DemoPromotionSeeder::class,
             HomeSlidesSeeder::class,
             DemoCommerceSeeder::class,
         ]);

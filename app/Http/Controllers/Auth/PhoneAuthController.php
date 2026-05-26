@@ -3,18 +3,21 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\LoginChallenge;
 use App\Models\User;
-use App\Services\LoginHistoryRecorder;
+use App\Services\AuthChallengeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class PhoneAuthController extends Controller
 {
+    public function __construct(
+        private readonly AuthChallengeService $challenges,
+    ) {}
+
     /**
-     * Шаг 1: принять номер телефона, найти или создать пользователя,
-     * сохранить OTP в сессии и вернуть информацию о пользователе.
+     * Шаг 1: телефон → создание challenge и отправка кода.
      */
     public function sendCode(Request $request): JsonResponse
     {
@@ -22,12 +25,7 @@ class PhoneAuthController extends Controller
             'phone' => 'required|string|min:11|max:15',
         ]);
 
-        $phone = preg_replace('/\D/', '', $request->phone);
-
-        // Нормализуем: если начинается на 8 — заменяем на 7
-        if (str_starts_with($phone, '8')) {
-            $phone = '7' . substr($phone, 1);
-        }
+        $phone = $this->challenges->normalizePhone($request->phone);
 
         $users = $this->usersByPhone($phone);
         if ($users->count() > 1) {
@@ -42,7 +40,6 @@ class PhoneAuthController extends Controller
         $isNew = $user === null;
 
         if ($isNew) {
-            // Создаём нового пользователя — email/name заполнятся при верификации
             $user = User::create([
                 'phone'    => $phone,
                 'password' => Hash::make(uniqid('phone_', true)),
@@ -50,251 +47,257 @@ class PhoneAuthController extends Controller
             ]);
         }
 
-        // Сохраняем OTP в сессии (всегда 000000 до подключения SMS-сервиса)
-        $otp = '000000';
-        $request->session()->put("phone_otp_{$phone}", $otp);
-        $request->session()->put("phone_otp_{$phone}_expires", now()->addMinutes(10)->timestamp);
+        $forceResend = $request->boolean('force_resend');
+        $result = $this->challenges->sendLoginCode($request, $user, $phone, $forceResend);
+
+        if (! empty($result['error'])) {
+            return response()->json([
+                'success'          => false,
+                'message'          => $result['message'],
+                'cooldown_seconds' => $result['cooldown_seconds'],
+            ], 429);
+        }
+
+        $challenge = $result['challenge'];
 
         return response()->json([
-            'success'     => true,
-            'is_new'      => $isNew,
-            'has_password' => !$user->newPassw,
-            'has_email'   => (bool) $user->email,
+            'success'            => true,
+            'is_new'             => $isNew,
+            'challenge_id'       => $challenge->id,
+            'delivery_channel'   => $challenge->channel,
+            'masked_phone'       => $this->challenges->maskPhone($phone),
+            'requires_password'  => ! $user->newPassw,
+            'has_email'          => (bool) $user->email,
+            'support_email'      => $this->challenges->supportEmail(),
+            'reused'             => $result['reused'],
+            'code_sent'          => $result['code_sent'],
+            'cooldown_seconds'   => $result['cooldown_seconds'],
         ]);
     }
 
     /**
-     * Шаг 2а: подтвердить SMS-код и залогинить.
+     * Шаг 2: подтверждение OTP (без входа, если включена 2FA).
      */
     public function verifyCode(Request $request): JsonResponse
     {
         $request->validate([
-            'phone' => 'required|string',
-            'code'  => 'required|string|size:6',
+            'challenge_id' => 'required|uuid',
+            'code'         => 'required|string|size:6',
         ]);
 
-        $phone = preg_replace('/\D/', '', $request->phone);
-        if (str_starts_with($phone, '8')) {
-            $phone = '7' . substr($phone, 1);
+        $result = $this->challenges->verifyCode($request->challenge_id, $request->code);
+
+        if (! $result['success']) {
+            return response()->json($result, 422);
         }
 
-        if (!$this->checkOtp($request, $phone, $request->code)) {
-            return response()->json(['success' => false, 'message' => 'Неверный или истёкший код'], 422);
+        /** @var LoginChallenge $challenge */
+        $challenge = $result['challenge'];
+        $user = $challenge->user;
+
+        if (! $user->newPassw) {
+            return response()->json([
+                'success'           => true,
+                'requires_password' => true,
+                'challenge_id'      => $challenge->id,
+                'has_email'         => (bool) $user->email,
+            ]);
         }
 
-        $users = $this->usersByPhone($phone);
-        if ($users->count() > 1) {
-            return $this->duplicatePhoneResponse();
+        $loginResult = $this->challenges->completeLogin($request, $challenge);
+
+        if (! $loginResult['success']) {
+            return response()->json($loginResult, 422);
         }
 
-        $user = $users->first();
-        if ($user?->trashed()) {
-            return $this->deletedAccountResponse();
-        }
-
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Пользователь не найден'], 422);
-        }
-
-        $this->clearOtp($request, $phone);
-        Auth::login($user);
-        $request->session()->regenerate();
-        app(LoginHistoryRecorder::class)->record($request, $user, 'phone_otp');
-
-        return response()->json(['success' => true, 'redirect' => route('profile')]);
+        return response()->json($loginResult);
     }
 
     /**
-     * Шаг 2б: запросить OTP на email (для альтернативного входа).
+     * Шаг 3: пароль после подтверждённого телефона (2FA).
      */
-    public function sendEmailCode(Request $request): JsonResponse
+    public function completeLogin(Request $request): JsonResponse
     {
         $request->validate([
-            'phone' => 'required|string',
-            'email' => 'required|email',
+            'challenge_id' => 'required|uuid',
+            'password'     => 'required|string',
         ]);
 
-        $phone = preg_replace('/\D/', '', $request->phone);
-        if (str_starts_with($phone, '8')) {
-            $phone = '7' . substr($phone, 1);
+        $challenge = $this->challenges->findChallenge($request->challenge_id);
+
+        if (! $challenge || $challenge->purpose !== LoginChallenge::PURPOSE_LOGIN) {
+            return response()->json(['success' => false, 'message' => 'Сессия входа не найдена'], 422);
         }
 
-        $users = $this->usersByPhone($phone);
-        if ($users->count() > 1) {
-            return $this->duplicatePhoneResponse();
+        $result = $this->challenges->completeLogin($request, $challenge, $request->password);
+
+        if (! $result['success']) {
+            return response()->json($result, 422);
         }
 
-        $user = $users->first();
-        if ($user?->trashed()) {
-            return $this->deletedAccountResponse();
+        return response()->json($result);
+    }
+
+    /**
+     * Принудительная отправка кода по SMS (нет доступа к другому устройству).
+     */
+    public function resendSms(Request $request): JsonResponse
+    {
+        $request->validate([
+            'challenge_id' => 'required|uuid',
+        ]);
+
+        $challenge = $this->challenges->findChallenge($request->challenge_id);
+
+        if (! $challenge || $challenge->purpose !== LoginChallenge::PURPOSE_LOGIN) {
+            return response()->json(['success' => false, 'message' => 'Сессия не найдена'], 422);
         }
 
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Пользователь не найден'], 422);
+        if ($challenge->isExpired()) {
+            return response()->json(['success' => false, 'message' => 'Сессия истекла. Введите телефон снова.'], 422);
         }
 
-        $email = strtolower($request->email);
+        $result = $this->challenges->resendSmsWithCooldown($request, $challenge);
 
-        // Для существующих пользователей проверяем совпадение email
-        if ($user->email && strtolower($user->email) !== $email) {
-            return response()->json(['success' => false, 'message' => 'Email не совпадает с зарегистрированным'], 422);
+        if (! empty($result['error'])) {
+            return response()->json([
+                'success'          => false,
+                'message'          => $result['message'],
+                'cooldown_seconds' => $result['cooldown_seconds'],
+            ], 429);
         }
 
-        if (! $user->email) {
-            $emailOwner = User::withTrashed()
-                ->where('email', $email)
-                ->whereKeyNot($user->id)
-                ->first();
+        return response()->json([
+            'success'          => true,
+            'delivery_channel' => LoginChallenge::CHANNEL_SMS,
+            'masked_phone'     => $this->challenges->maskPhone($challenge->phone),
+            'cooldown_seconds' => $result['cooldown_seconds'],
+        ]);
+    }
 
-            if ($emailOwner?->trashed()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Аккаунт с этой почтой был удалён. Обратитесь в поддержку для восстановления доступа.',
-                ], 403);
-            }
+    /**
+     * Забыли пароль: отправить OTP только на привязанный email.
+     */
+    public function forgotPasswordSend(Request $request): JsonResponse
+    {
+        $request->validate([
+            'challenge_id' => 'required|uuid',
+        ]);
 
-            if ($emailOwner) {
-                return response()->json(['success' => false, 'message' => 'Этот email уже привязан к другому аккаунту'], 422);
-            }
+        $challenge = $this->challenges->findChallenge($request->challenge_id);
+
+        if (! $challenge || ! $challenge->isPhoneVerified()) {
+            return response()->json(['success' => false, 'message' => 'Сначала подтвердите код входа'], 422);
         }
 
-        // Сохраняем email и OTP для этого шага
-        $otp = '000000';
-        $request->session()->put("email_otp_{$phone}", $otp);
-        $request->session()->put("email_otp_{$phone}_email", $email);
-        $request->session()->put("email_otp_{$phone}_expires", now()->addMinutes(10)->timestamp);
+        $user = $challenge->user;
+        $result = $this->challenges->createPasswordResetChallenge($challenge);
 
-        // TODO: отправить реальное письмо с кодом, когда подключат email-сервис
-        // Mail::to($request->email)->send(new OtpMail($otp));
+        $masked = $user->email
+            ? $this->maskEmail($user->email)
+            : null;
+
+        return response()->json([
+            'success'         => true,
+            'reset_channel'   => 'email',
+            'masked_target'   => $masked,
+            'delivery_method' => $result['delivery_method'],
+            'test_mode'       => $result['delivery_method'] === 'test',
+            'message'         => 'Код отправлен на почту. Тестовый код: 000000',
+        ]);
+    }
+
+    /**
+     * Отмена сброса пароля — вернуться к вводу пароля без потери сессии входа.
+     */
+    public function forgotPasswordCancel(Request $request): JsonResponse
+    {
+        $request->validate([
+            'challenge_id' => 'required|uuid',
+        ]);
+
+        $challenge = $this->challenges->findChallenge($request->challenge_id);
+
+        if (! $challenge || ! $challenge->isPhoneVerified()) {
+            return response()->json(['success' => false, 'message' => 'Сессия не найдена'], 422);
+        }
+
+        $this->challenges->cancelPasswordReset($challenge);
 
         return response()->json(['success' => true]);
     }
 
     /**
-     * Шаг 2б (финал): подтвердить email-код и залогинить.
+     * Подтвердить OTP для сброса пароля.
      */
-    public function verifyEmailCode(Request $request): JsonResponse
+    public function forgotPasswordVerify(Request $request): JsonResponse
     {
         $request->validate([
-            'phone' => 'required|string',
-            'email' => 'required|email',
-            'code'  => 'required|string|size:6',
+            'challenge_id' => 'required|uuid',
+            'code'         => 'required|string|size:6',
         ]);
 
-        $phone = preg_replace('/\D/', '', $request->phone);
-        if (str_starts_with($phone, '8')) {
-            $phone = '7' . substr($phone, 1);
+        $result = $this->challenges->verifyPasswordResetCode(
+            $request->challenge_id,
+            $request->code,
+        );
+
+        if (! $result['success']) {
+            return response()->json($result, 422);
         }
 
-        $sessionOtp     = $request->session()->get("email_otp_{$phone}");
-        $sessionEmail   = $request->session()->get("email_otp_{$phone}_email");
-        $sessionExpires = $request->session()->get("email_otp_{$phone}_expires");
-
-        if (
-            $sessionOtp !== $request->code ||
-            strtolower($sessionEmail) !== strtolower($request->email) ||
-            !$sessionExpires || now()->timestamp > $sessionExpires
-        ) {
-            return response()->json(['success' => false, 'message' => 'Неверный или истёкший код'], 422);
-        }
-
-        $users = $this->usersByPhone($phone);
-        if ($users->count() > 1) {
-            return $this->duplicatePhoneResponse();
-        }
-
-        $user = $users->first();
-        if ($user?->trashed()) {
-            return $this->deletedAccountResponse();
-        }
-
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Пользователь не найден'], 422);
-        }
-
-        // Если email ещё не сохранён — сохраняем
-        if (!$user->email) {
-            $emailOwner = User::withTrashed()
-                ->where('email', strtolower($request->email))
-                ->whereKeyNot($user->id)
-                ->first();
-
-            if ($emailOwner?->trashed()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Аккаунт с этой почтой был удалён. Обратитесь в поддержку для восстановления доступа.',
-                ], 403);
-            }
-
-            if ($emailOwner) {
-                return response()->json(['success' => false, 'message' => 'Этот email уже привязан к другому аккаунту'], 422);
-            }
-
-            $user->update(['email' => strtolower($request->email)]);
-        }
-
-        $request->session()->forget(["email_otp_{$phone}", "email_otp_{$phone}_email", "email_otp_{$phone}_expires"]);
-        Auth::login($user);
-        $request->session()->regenerate();
-        app(LoginHistoryRecorder::class)->record($request, $user, 'email_otp');
-
-        return response()->json(['success' => true, 'redirect' => route('profile')]);
+        return response()->json(['success' => true, 'challenge_id' => $request->challenge_id]);
     }
 
     /**
-     * Шаг 2в: войти с паролем (для пользователей, установивших пароль).
+     * Установить новый пароль и войти.
      */
-    public function loginWithPassword(Request $request): JsonResponse
+    public function forgotPasswordReset(Request $request): JsonResponse
     {
         $request->validate([
-            'phone'    => 'required|string',
-            'password' => 'required|string',
+            'challenge_id'          => 'required|uuid',
+            'password'              => 'required|string|min:4|confirmed',
         ]);
 
-        $phone = preg_replace('/\D/', '', $request->phone);
-        if (str_starts_with($phone, '8')) {
-            $phone = '7' . substr($phone, 1);
+        $challenge = $this->challenges->findChallenge($request->challenge_id);
+
+        if (! $challenge) {
+            return response()->json(['success' => false, 'message' => 'Сессия не найдена'], 422);
         }
 
-        $users = $this->usersByPhone($phone);
-        if ($users->count() > 1) {
-            return $this->duplicatePhoneResponse();
+        $result = $this->challenges->resetPasswordAndLogin(
+            $request,
+            $challenge,
+            $request->password,
+        );
+
+        if (! $result['success']) {
+            return response()->json($result, 422);
         }
 
-        $user = $users->first();
-        if ($user?->trashed()) {
-            return $this->deletedAccountResponse();
-        }
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['success' => false, 'message' => 'Неверный пароль'], 422);
-        }
-
-        Auth::login($user);
-        $request->session()->regenerate();
-        app(LoginHistoryRecorder::class)->record($request, $user, 'phone_password');
-
-        return response()->json(['success' => true, 'redirect' => route('profile')]);
+        return response()->json($result);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private function checkOtp(Request $request, string $phone, string $code): bool
-    {
-        $storedOtp = $request->session()->get("phone_otp_{$phone}");
-        $expires   = $request->session()->get("phone_otp_{$phone}_expires");
-
-        return $storedOtp === $code && $expires && now()->timestamp <= $expires;
-    }
-
-    private function clearOtp(Request $request, string $phone): void
-    {
-        $request->session()->forget(["phone_otp_{$phone}", "phone_otp_{$phone}_expires"]);
-    }
-
     private function usersByPhone(string $phone)
     {
         return User::withTrashed()->where('phone', $phone)->limit(2)->get();
+    }
+
+    private function maskEmail(string $email): string
+    {
+        $parts = explode('@', $email, 2);
+        if (count($parts) !== 2) {
+            return '***';
+        }
+
+        $local = $parts[0];
+        $masked = strlen($local) > 2
+            ? substr($local, 0, 2) . '***'
+            : '***';
+
+        return $masked . '@' . $parts[1];
     }
 
     private function duplicatePhoneResponse(): JsonResponse

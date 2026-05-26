@@ -107,7 +107,7 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
     try {
       await apiPost('/profile/phone/send-code', { phone: normalized });
       setPhoneStep('code');
-      setPhoneInfo('Код отправлен. Для теста используйте 000000.');
+      setPhoneInfo('Код отправлен в уведомления. Откройте «Сообщения» → «Уведомления».');
       return true;
     } catch (error) {
       setPhoneError(error?.errors?.phone?.[0] || error?.message || 'Не удалось отправить код.');

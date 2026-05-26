@@ -1,0 +1,218 @@
+/* Общие модальные окна (профиль, товар, подтверждения) */
+
+@keyframes marketplaceModalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes marketplaceModalSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.phone-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgb(15 23 42 / 48%);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    animation: marketplaceModalFadeIn 0.3s ease-out;
+}
+
+.phone-modal-content {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 24px;
+    padding: 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 24px 70px rgb(15 23 42 / 28%);
+    animation: marketplaceModalSlideUp 0.35s ease-out;
+    position: relative;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #64748b;
+}
+
+.modal-close-btn:hover {
+    background: #FF2E63;
+    border-color: #FF2E63;
+    color: #fff;
+    transform: rotate(90deg);
+}
+
+.modal-close-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+.phone-modal-content h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: center;
+    margin: 0 0 16px;
+    padding-top: 35px;
+}
+
+.phone-modal-content p {
+    color: #475569;
+    text-align: center;
+    margin-bottom: 24px;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+}
+
+.phone-modal-input {
+    width: 100%;
+    padding: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    color: #0f172a;
+    font-size: 1rem;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+}
+
+.phone-modal-input:focus {
+    outline: none;
+    border-color: #FF2E63;
+    box-shadow: 0 0 0 3px rgba(255, 46, 99, 0.12);
+    background: #fff;
+}
+
+.phone-modal-input::placeholder {
+    color: #94a3b8;
+}
+
+.phone-modal-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.phone-modal-btn {
+    flex: 1;
+    padding: 14px;
+    font-weight: 700;
+    font-size: 1rem;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.phone-modal-buttons--single {
+    flex-direction: column;
+}
+
+.phone-modal-buttons--single .phone-modal-btn {
+    width: 100%;
+    text-decoration: none;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.phone-modal-btn--cancel {
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.phone-modal-btn--cancel:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.phone-modal-btn--submit {
+    background: #FF2E63;
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(255, 46, 99, 0.25);
+}
+
+.phone-modal-btn--submit:hover {
+    background: #d30035;
+}
+
+.phone-modal-btn--submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.phone-modal-btn--danger {
+    background: #dc2626 !important;
+}
+
+.phone-modal-btn--danger:hover:not(:disabled) {
+    background: #b91c1c !important;
+}
+
+.modal-error {
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-top: 8px;
+    text-align: center;
+}
+
+.confirm-modal__message,
+.alert-modal__message {
+    line-height: 1.55;
+    color: #475569;
+    margin-bottom: 8px;
+}
+
+.blocked-modal__badge {
+    display: block;
+    text-align: center;
+    margin-bottom: 12px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.blocked-modal h3 {
+    color: #dc2626;
+}
+
+.blocked-modal .blocked-banner__btn--primary {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-top: 4px;
+    padding: 14px 20px;
+    border-radius: 12px;
+    background: #dc2626;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.blocked-modal .blocked-banner__btn--primary:hover {
+    background: #b91c1c;
+    color: #fff;
+}

@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import PaymentModal from '@/Components/PaymentModal';
+import ProductRecommendationsSection from '@/Components/Product/ProductRecommendationsSection';
 import Barcode from 'react-barcode';
 import '../../../css/profile/orders.css';
 
-export default function Orders({ auth, orders = [], dailyPickupCode = '' }) {
+export default function Orders({ auth, orders = [], dailyPickupCode = '', LikeProducts = [] }) {
     const [paymentModal, setPaymentModal] = useState({ isOpen: false, order: null });
     const [barcodeOpen, setBarcodeOpen] = useState(false);
 
@@ -119,8 +120,8 @@ export default function Orders({ auth, orders = [], dailyPickupCode = '' }) {
 
                                     <div className="order-date">
                                         {order.status === 'INTRANSIT'
-                                            ? `Обновлено ${new Date(order.updated_at).toLocaleDateString('ru-RU')}`
-                                            : `Оформлен ${new Date(order.created_at).toLocaleDateString('ru-RU')}`
+                                            ? `Обновлено ${order.updated_at}`
+                                            : `Оформлен ${(order.created_at || '').split(' ')[0]}`
                                         }
                                     </div>
 
@@ -180,6 +181,8 @@ export default function Orders({ auth, orders = [], dailyPickupCode = '' }) {
                 order={paymentModal.order}
                 type="order"
             />
+
+            <ProductRecommendationsSection products={LikeProducts} />
         </MainLayout>
     );
 }

@@ -13,17 +13,12 @@ return new class extends Migration
 
             $table->unsignedBigInteger('order_id')->nullable();
             $table->foreign('order_id')->references('id')->on('orders')->onDelete('set null');
-
             $table->unsignedBigInteger('variant_id')->nullable();
             $table->foreign('variant_id')->references('id')->on('product_variants')->onDelete('set null');
-
             $table->unsignedBigInteger('seller_id')->nullable();
             $table->foreign('seller_id')->references('id')->on('users')->onDelete('set null');
-
             $table->unsignedInteger('quantity');
             $table->decimal('price_at_purchase', 12, 2);
-
-            // Snapshot комиссии на момент покупки (ставка категории + расчёт)
             $table->decimal('commission_percent', 5, 2)->default(10.00);
             $table->decimal('commission_fixed_amount', 12, 2)->default(0);
             $table->decimal('commission_amount', 12, 2)->default(0);

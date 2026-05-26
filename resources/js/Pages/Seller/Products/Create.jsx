@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import SellerLayout from '@/Layouts/SellerLayout';
+import CategoryIcon from '@/Components/Category/CategoryIcon';
 import '../../../../css/seller/create-product.css';
 
 function getOptions(attr) {
@@ -360,7 +361,7 @@ export default function Create({ categories }) {
                                                 className="category-card"
                                                 onClick={() => chooseParent(category)}
                                             >
-                                                <div className="category-icon">📦</div>
+                                                <CategoryIcon slug={category.slug} />
                                                 <div>{category.name}</div>
                                             </div>
                                         ))}
@@ -395,7 +396,10 @@ export default function Create({ categories }) {
                                                 }
                                                 onClick={() => chooseCategory(category)}
                                             >
-                                                <div className="category-icon">🏷️</div>
+                                                <CategoryIcon
+                                                    slug={category.slug}
+                                                    parentSlug={selectedParent.slug}
+                                                />
                                                 <div>{category.name}</div>
                                             </div>
                                         ))}

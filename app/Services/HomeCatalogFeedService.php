@@ -9,7 +9,7 @@ use Illuminate\Support\Collection;
 class HomeCatalogFeedService
 {
     /**
-     * Лента главной: новинки → популярные → остальное в случайном порядке.
+     * Лента главной: новинки → популярные по просмотрам → остальное по статистике.
      *
      * @return Collection<int, Product>
      */
@@ -17,7 +17,7 @@ class HomeCatalogFeedService
     {
         $newCount = max(0, (int) config('marketplace.home_feed.new_count', 6));
         $popularCount = max(0, (int) config('marketplace.home_feed.popular_count', 8));
-        $limit = max(1, (int) config('marketplace.home_feed.limit', 50));
+        $limit = max(1, (int) config('marketplace.home_feed.limit', 0));
 
         $base = fn (): Builder => Product::forCatalogPresentation()->visibleInCatalog();
 
@@ -44,48 +44,69 @@ class HomeCatalogFeedService
 
         $remaining = max(0, $limit - $picked->count());
         if ($remaining > 0) {
-            $random = $base()
-                ->whereNotIn('products.id', $excludeIds ?: [0])
-                ->inRandomOrder()
+            $more = $this->applyPopularityOrder(
+                $base()->whereNotIn('products.id', $excludeIds ?: [0])
+            )
                 ->limit($remaining)
                 ->get();
-            $picked = $picked->concat($random);
+            $picked = $picked->concat($more);
         }
 
         return $picked->take($limit)->values();
     }
 
     /**
-     * Рекомендации: популярное + случайное (без дубля блока новинок).
+     * Рекомендации для блока «Возможно, вам понравится»: популярные по статистике + остальное.
      *
+     * @param  array{
+     *     limit?: int,
+     *     popular_count?: int,
+     *     exclude_product_ids?: array<int>,
+     *     exclude_category_ids?: array<int>,
+     * }  $options
      * @return Collection<int, Product>
      */
-    public function buildRecommendations(): Collection
+    public function buildRecommendations(array $options = []): Collection
     {
-        $popularCount = max(0, (int) config('marketplace.home_feed.recommendations_popular_count', 6));
-        $limit = max(1, (int) config('marketplace.home_feed.recommendations_limit', 12));
+        $popularCount = max(0, (int) ($options['popular_count'] ?? config('marketplace.home_feed.recommendations_popular_count', 6)));
+        $limit = max(1, (int) ($options['limit'] ?? config('marketplace.home_feed.recommendations_limit', 12)));
 
-        $base = fn (): Builder => Product::forCatalogPresentation()->visibleInCatalog();
+        $excludeProductIds = array_values(array_unique(array_map('intval', $options['exclude_product_ids'] ?? [])));
+        $excludeCategoryIds = array_values(array_unique(array_map('intval', $options['exclude_category_ids'] ?? [])));
+
+        $base = function () use ($excludeProductIds, $excludeCategoryIds): Builder {
+            $query = Product::forCatalogPresentation()->visibleInCatalog();
+
+            if ($excludeProductIds !== []) {
+                $query->whereNotIn('products.id', $excludeProductIds);
+            }
+
+            if ($excludeCategoryIds !== []) {
+                $query->whereNotIn('products.category_id', $excludeCategoryIds);
+            }
+
+            return $query;
+        };
 
         $picked = collect();
-        $excludeIds = [];
+        $pickedIds = $excludeProductIds;
 
         if ($popularCount > 0) {
             $popular = $this->applyPopularityOrder($base())
                 ->limit($popularCount)
                 ->get();
             $picked = $picked->concat($popular);
-            $excludeIds = $popular->pluck('id')->all();
+            $pickedIds = array_merge($pickedIds, $popular->pluck('id')->all());
         }
 
         $remaining = max(0, $limit - $picked->count());
         if ($remaining > 0) {
-            $random = $base()
-                ->whereNotIn('products.id', $excludeIds ?: [0])
-                ->inRandomOrder()
+            $more = $this->applyPopularityOrder(
+                $base()->whereNotIn('products.id', $pickedIds ?: [0])
+            )
                 ->limit($remaining)
                 ->get();
-            $picked = $picked->concat($random);
+            $picked = $picked->concat($more);
         }
 
         return $picked->take($limit)->values();
@@ -93,10 +114,6 @@ class HomeCatalogFeedService
 
     protected function applyPopularityOrder(Builder $query): Builder
     {
-        return $query
-            ->orderByDesc('products.sales_count')
-            ->orderByDesc('reviews_count')
-            ->orderByDesc('products.views_count')
-            ->orderByDesc('products.created_at');
+        return $query->orderByCatalogPopularity();
     }
 }

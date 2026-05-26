@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
+use App\Services\AccountDeletionService;
+use App\Services\SellerProfileModerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -35,13 +37,16 @@ class SellerSettingsController extends Controller
         }
         unset($hours);
 
+        $deletionService = app(AccountDeletionService::class);
+
         return Inertia::render('Seller/Settings/Index', [
             'user' => [
-                'id'     => $user->id,
-                'name'   => $user->name,
-                'email'  => $user->email,
-                'phone'  => $user->phone,
-                'avatar' => $user->avatar,
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'last_name' => $user->last_name,
+                'email'     => $user->email,
+                'phone'     => $user->phone,
+                'avatar'    => $user->avatar,
             ],
             'sellerProfile' => $profile ? [
                 'shop_name'      => $profile->shop_name,
@@ -50,9 +55,37 @@ class SellerSettingsController extends Controller
                 'legal_address'  => $profile->legal_address,
                 'pickup_address' => $profile->pickup_address,
                 'working_hours'  => $workingHours,
+                'pending_shop_changes' => app(SellerProfileModerationService::class)->pendingPayload($profile),
             ] : null,
             'flash' => session()->only(['success', 'error', 'tab']),
+            'accountDeletion' => $deletionService->accountDeletionInfo($user),
+            'canCloseSellerCompany' => (bool) $profile,
         ]);
+    }
+
+    public function destroyCompany(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $request->validate([
+            'confirmed' => 'required|accepted',
+        ], [
+            'confirmed.accepted' => 'Подтвердите удаление компании в диалоге.',
+        ]);
+
+        $user = $request->user();
+
+        if ($user->is_blocked) {
+            return back()->with('error', 'Аккаунт заблокирован.');
+        }
+
+        if (! $user->sellerProfile) {
+            return back()->with('error', 'Компания продавца не найдена.');
+        }
+
+        app(AccountDeletionService::class)->closeSellerCompany($user, $user);
+
+        return redirect()
+            ->route('seller.settings')
+            ->with('success', 'Компания продавца закрыта. Товары скрыты с витрины; заказы в пути будут доставлены.');
     }
 
     public function updateShop(Request $request)
@@ -75,20 +108,45 @@ class SellerSettingsController extends Controller
             'inn.regex' => 'ИНН должен содержать 10 или 12 цифр.',
         ]);
 
+        $moderation = app(SellerProfileModerationService::class);
+        $changeResult = ['submitted' => false];
+
+        try {
+            $changeResult = $moderation->requestShopChanges(
+                $profile,
+                $data['shop_name'],
+                $data['description'] ?? null,
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->errors())->with('tab', 'shop');
+        }
+
         $updateData = [
-            'shop_name'      => $data['shop_name'],
-            'description'    => $data['description'] ?? null,
             'legal_address'  => $data['legal_address'] ?? null,
             'pickup_address' => $data['pickup_address'],
             'working_hours'  => $data['working_hours'] ?? null,
         ];
 
-        // Allow setting INN only if not already set
-        if (empty($profile->inn) && !empty($data['inn'])) {
+        if (empty($profile->inn) && ! empty($data['inn'])) {
             $updateData['inn'] = $data['inn'];
         }
 
         $profile->update($updateData);
+
+        if ($changeResult['submitted']) {
+            $parts = [];
+            if ($changeResult['name'] ?? false) {
+                $parts[] = 'название';
+            }
+            if ($changeResult['description'] ?? false) {
+                $parts[] = 'описание';
+            }
+
+            return back()->with([
+                'success' => 'Изменения ('.implode(' и ', $parts).') отправлены на модерацию. До одобрения на сайте отображаются прежние данные.',
+                'tab' => 'shop',
+            ]);
+        }
 
         return back()->with(['success' => 'Данные магазина сохранены.', 'tab' => 'shop']);
     }
@@ -98,41 +156,60 @@ class SellerSettingsController extends Controller
         $user = Auth::user();
 
         $data = $request->validate([
-            'name'   => 'required|string|max:80',
-            'email'  => 'required|email|max:100|unique:users,email,' . $user->id,
-            'phone'  => 'nullable|string|max:20|unique:users,phone,' . $user->id,
-            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
+            'name'      => ['required', 'string', 'max:50', 'regex:/^[\p{L}\s\-\']+$/u'],
+            'last_name' => ['required', 'string', 'max:50', 'regex:/^[\p{L}\s\-\']+$/u'],
+            'email'     => 'required|email|max:100|unique:users,email,' . $user->id,
+            'avatar'    => 'nullable|image|mimes:jpeg,jpg,png,webp|max:10240',
         ], [
-            'email.unique' => 'Этот email уже занят другим пользователем.',
-            'phone.unique' => 'Этот телефон уже занят другим пользователем.',
-            'avatar.max'   => 'Размер аватара не должен превышать 2 МБ.',
+            'email.unique'      => 'Этот email уже занят другим пользователем.',
+            'avatar.max'        => 'Размер аватара не должен превышать 10 МБ.',
+            'name.regex'        => 'Имя может содержать только буквы, пробелы и дефис.',
+            'last_name.regex'   => 'Фамилия может содержать только буквы, пробелы и дефис.',
         ]);
 
         $updateData = [
-            'name'  => $data['name'],
-            'email' => $data['email'],
-            'phone' => $data['phone'] ?? null,
+            'name'      => $data['name'],
+            'last_name' => $data['last_name'],
+            'email'     => $data['email'],
         ];
 
         if ($request->hasFile('avatar')) {
-            $file     = $request->file('avatar');
-            $dir      = public_path('img/avatars');
-
-            if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
+            $request->validate([
+                'avatar' => 'image|mimes:jpg,jpeg,png,gif|max:2048' // 2MB max
+            ]);
+            
+            $file = $request->file('avatar');
+            
+            // Папка пользователя
+            $userDir = public_path("img/avatars/{$user->id}");
+            
+            if (!is_dir($userDir)) {
+                mkdir($userDir, 0755, true);
             }
-
-            // Remove old avatar if it was uploaded here
-            if ($user->avatar && str_starts_with($user->avatar, '/img/avatars/')) {
+            
+            // Удаляем старый аватар
+            if ($user->avatar) {
                 $oldPath = public_path(ltrim($user->avatar, '/'));
-                if (file_exists($oldPath)) {
+                if (file_exists($oldPath) && is_file($oldPath)) {
                     unlink($oldPath);
+                    
+                    // Удаляем папку если она пустая
+                    $oldDir = dirname($oldPath);
+                    if (is_dir($oldDir) && count(scandir($oldDir)) === 2) {
+                        rmdir($oldDir);
+                    }
                 }
             }
-
-            $filename           = time() . '_' . $user->id . '.' . $file->getClientOriginalExtension();
-            $file->move($dir, $filename);
-            $updateData['avatar'] = '/img/avatars/' . $filename;
+            
+            // Генерируем безопасное имя файла
+            $extension = $file->getClientOriginalExtension();
+            $filename = time() . '_' . $user->id . '.' . $extension;
+            
+            // Перемещаем файл
+            $file->move($userDir, $filename);
+            
+            // Сохраняем путь (рекомендую без начального слэша)
+            $updateData['avatar'] = "/img/avatars/{$user->id}/{$filename}";
         }
 
         $user->update($updateData);

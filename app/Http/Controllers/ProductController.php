@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\PreparesCatalogRecommendations;
 use App\Models\Cart;
 use App\Models\Category;
 use App\Models\OrderItem;
@@ -11,9 +12,14 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Promotion;
 use App\Models\ReviewVote;
 use App\Models\User;
+use App\Services\CatalogFilterService;
 use App\Services\CommissionService;
+use App\Services\ProductSimilarService;
+use App\Services\ProductViewService;
+use App\Services\ReviewImageService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +30,8 @@ use Stripe\Checkout\Session;
 
 class ProductController extends Controller
 {
+    use PreparesCatalogRecommendations;
+
     /**
      * Товары текущего продавца (кабинет).
      */
@@ -228,6 +236,10 @@ class ProductController extends Controller
         $selectedRow = collect($rows)->firstWhere('id', $requestedVariantId) ?? $rows[0];
         $selectedVariant = $variants->firstWhere('id', $selectedRow['id']);
 
+        if ($selectedVariant && $product->isPubliclyVisible()) {
+            app(ProductViewService::class)->record($selectedVariant, $user);
+        }
+
         $mainImage = $selectedRow['image'] ?? null;
 
         $baseSpecs = $product->attributeValues
@@ -262,9 +274,10 @@ class ProductController extends Controller
             $displayTitle = $product->title.' — '.$variantLabel;
         }
 
-        $reviews = $product->reviews()
-            ->where('is_moderated', true)
-            ->with('user:id,name,avatar')
+        $moderatedReviewsQuery = $product->reviews()->where('is_moderated', true);
+
+        $reviews = (clone $moderatedReviewsQuery)
+            ->with(['user:id,name,avatar', 'images'])
             ->orderByDesc('created_at')
             ->limit(50)
             ->get();
@@ -278,20 +291,42 @@ class ProductController extends Controller
                 ->all();
         }
 
-        $reviewsAvg = $product->reviews()->where('is_moderated', true)->avg('rating');
-        $reviewsCount = $product->reviews()->where('is_moderated', true)->count();
+        $reviewsAvg = (clone $moderatedReviewsQuery)->avg('rating');
+        $reviewsCount = (clone $moderatedReviewsQuery)->count();
 
-        $reviewsList = $reviews->map(fn ($r) => [
-            'id' => $r->id,
-            'rating' => (int) $r->rating,
-            'comment' => $r->comment,
-            'created_at' => $r->created_at?->format('d.m.Y'),
-            'likes_count' => (int) ($r->likes_count ?? 0),
-            'dislikes_count' => (int) ($r->dislikes_count ?? 0),
-            'user_vote' => $userVotes[$r->id] ?? null,
-            'user_name' => $r->user?->name ?? 'Покупатель',
-            'user_avatar' => $r->user?->avatar ? Product::normalizeListingUrl($r->user->avatar) : null,
-        ])->values()->all();
+        $distributionRows = (clone $moderatedReviewsQuery)
+            ->selectRaw('rating, COUNT(*) as cnt')
+            ->groupBy('rating')
+            ->pluck('cnt', 'rating');
+
+        $ratingDistribution = [];
+        for ($star = 5; $star >= 1; $star--) {
+            $ratingDistribution[(string) $star] = (int) ($distributionRows[$star] ?? 0);
+        }
+
+        $reviewsWithPhotosCount = (clone $moderatedReviewsQuery)
+            ->whereHas('images')
+            ->count();
+
+        $imageService = app(ReviewImageService::class);
+
+        $reviewsList = $reviews->map(function ($r) use ($userVotes, $imageService) {
+            $images = $imageService->mapImagesForFrontend($r->images);
+
+            return [
+                'id' => $r->id,
+                'rating' => (int) $r->rating,
+                'comment' => $r->comment,
+                'created_at' => $r->created_at?->format('d.m.Y'),
+                'likes_count' => (int) ($r->likes_count ?? 0),
+                'dislikes_count' => (int) ($r->dislikes_count ?? 0),
+                'user_vote' => $userVotes[$r->id] ?? null,
+                'user_name' => $r->user?->name ?? 'Покупатель',
+                'user_avatar' => $r->user?->avatar ? Product::normalizeListingUrl($r->user->avatar) : null,
+                'images' => $images,
+                'has_photos' => count($images) > 0,
+            ];
+        })->values()->all();
 
         $isFavorite = (bool) ($selectedRow['is_favorite'] ?? false);
         if (! $isFavorite && $variants->count() === 1) {
@@ -317,6 +352,12 @@ class ProductController extends Controller
         $product->reviews_list = $reviewsList;
         $product->reviews_avg_rating = $reviewsAvg !== null ? round((float) $reviewsAvg, 1) : null;
         $product->reviews_total = (int) $reviewsCount;
+        $product->reviews_rating_distribution = $ratingDistribution;
+        $product->reviews_with_photos_count = (int) $reviewsWithPhotosCount;
+
+        $similarProducts = app(ProductSimilarService::class)->forProduct($product);
+        Product::enrichForCatalog($similarProducts);
+        app(CatalogFilterService::class)->markFavorites($similarProducts);
         $product->discount_label_percent = $selectedRow['discount_label_percent'];
         $product->purchase_breakdown = $selectedRow['purchase_breakdown'];
         $product->variants_catalog = $rows;
@@ -328,6 +369,17 @@ class ProductController extends Controller
             $lead = $plain !== '' ? Str::limit($plain, 720, '…') : '';
         }
         $product->setAttribute('lead_text', $lead);
+
+        $product->setAttribute('promotion_badges', Promotion::query()
+            ->active()
+            ->whereHas('products', fn ($q) => $q->where('products.id', $product->id))
+            ->get(['title', 'badge_label'])
+            ->map(fn (Promotion $p) => [
+                'label' => $p->badge_label,
+                'title' => $p->title,
+            ])
+            ->values()
+            ->all());
 
         $sellerPayload = $seller ? [
             'id' => $seller->id,
@@ -360,11 +412,8 @@ class ProductController extends Controller
         $canPurchase = $purchasable && (int) $selectedRow['stock'] > 0;
 
         return Inertia::render('Product/Show', [
-            'nftUser' => [
-                'owner_name' => ($sellerPayload ?? [])['name'] ?? 'Продавец',
-                'owner_avatar' => ($sellerPayload ?? [])['avatar'] ?? null,
-            ],
             'product' => $product,
+            'similarProducts' => $similarProducts,
             'seller' => $sellerPayload,
             'can_purchase' => $canPurchase,
             'storefront_block' => $blockReason ? [
@@ -373,7 +422,6 @@ class ProductController extends Controller
                 'is_preview' => true,
             ] : null,
             'canPayWithWallet' => $canPurchase && $user !== null && (float) $user->balance >= (float) $selectedRow['price'],
-            'walletBalance' => $user ? (float) $user->balance : 0,
             'auth' => ['user' => $user],
             'hasOrdered' => $selectedRow['has_ordered'],
             'existingOrderId' => $selectedRow['existing_order_id'],
@@ -460,68 +508,8 @@ class ProductController extends Controller
                 'category_id' => $request->category_id,
             ]);
 
-            return redirect()->route('profile')->with('success', 'NFT успешно создан!');
+            return redirect()->route('profile')->with('success', 'Product успешно создан!');
         }
     }
 
-    // ProductController.php
-
-    public function edit(Product $product)
-    {
-        $user = Auth()->user();
-        if (auth()->id() !== $product->user_id || $user->is_blocked === 1) {
-            return redirect()->route('nft.show', $product)->with('error', 'Доступ запрещён');
-        }
-
-        return Inertia::render('Product/Edit', [
-            'nft' => $product,
-            'auth' => ['user' => auth()->user()],
-        ]);
-    }
-    public function stopSelling(Product $product)
-    {
-        if (auth()->id() !== $product->user_id) {
-            return back()->with('error', 'Вы не владелец');
-        }
-
-        $product->update(['status' => 'sold']);
-
-        return back()->with('success', 'NFT снят с продажи');
-    }
-    public function update(Request $request, Product $product)
-    {
-        if (auth()->id() !== $product->user_id) {
-            return back()->with('error', 'Вы не владелец');
-        }
-
-        $request->validate([
-            'price' => 'required|numeric|min:0',
-            'description' => 'nullable|string',
-        ]);
-
-        $product->update(
-            [
-                'price' => $request->price,
-                'description' => $request->description,
-                'previous_price' => $product->price,
-                'status' => 'moderation',
-            ],
-            [
-                'price.required' => 'Цена обязательна',
-                'price.min' => 'Цена не может быть отрицательной',
-                'category_id.exists' => 'Выбрана несуществующая категория',
-            ]
-        );
-
-        return redirect()->route('nft.show', $product)->with('success', 'NFT выставлен на продажу!');
-    }
-
-    public function destroy(Request $request, $id)
-    {
-        $userId = Product::where('id', $id)->value('user_id');
-        Product::where('id', $id)
-            ->delete();
-        return redirect('/users/' . $userId)
-            ->with('success', 'NFT удалён');
-    }
 }

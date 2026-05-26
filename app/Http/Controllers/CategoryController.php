@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Http\Controllers\Concerns\PreparesCatalogRecommendations;
 use App\Http\Controllers\Concerns\RedirectsArticleSearch;
 use App\Services\CatalogFilterService;
 use Illuminate\Http\Request;
@@ -11,6 +12,7 @@ use Inertia\Inertia;
 
 class CategoryController extends Controller
 {
+    use PreparesCatalogRecommendations;
     use RedirectsArticleSearch;
 
     public function __construct(
@@ -62,11 +64,8 @@ class CategoryController extends Controller
             $filters = $this->catalogFilters->parseFilters($request, ['fixed_category_id' => null]);
             $facets = ['price' => ['min' => null, 'max' => null], 'categories' => [], 'attributes' => []];
             $total = 0;
-            $LikeProducts = Product::forCatalogPresentation()
-                ->visibleInCatalog()
-                ->whereNotIn('category_id', $activeChildren->pluck('id')->merge([$category->id]))
-                ->limit(20)
-                ->get();
+            $pagination = null;
+            $excludeCategoryIds = $activeChildren->pluck('id')->push($category->id)->all();
         } else {
             $baseFactory = fn () => Product::forCatalogPresentation()
                 ->where('products.category_id', $category->id)
@@ -76,27 +75,22 @@ class CategoryController extends Controller
                 'fixed_category_id' => (int) $category->id,
                 'allow_category_facet' => false,
                 'search_fields' => ['title', 'short_description'],
-                'limit' => $request->filled('search')
-                    ? (int) config('marketplace.catalog_search_limit', 10)
-                    : null,
             ]);
 
             $products = $result['products'];
             $filters = $result['filters'];
             $facets = $result['facets'];
             $total = $result['total'];
+            $pagination = $result['pagination'];
 
-            $LikeProducts = Product::forCatalogPresentation()
-                ->visibleInCatalog()
-                ->where('category_id', '!=', $category->id)
-                ->limit(20)
-                ->get();
+            $excludeCategoryIds = [(int) $category->id];
         }
 
-        Product::enrichForCatalog($LikeProducts);
+        $LikeProducts = $this->catalogRecommendations([
+            'exclude_category_ids' => $excludeCategoryIds,
+        ]);
 
         $this->catalogFilters->markFavorites($products);
-        $this->catalogFilters->markFavorites($LikeProducts);
 
         return Inertia::render('CategoryPage', [
             'category' => $category->only(['id', 'name', 'slug', 'parent_id']),
@@ -108,6 +102,7 @@ class CategoryController extends Controller
             'filters' => $filters,
             'facets' => $facets,
             'total' => $total,
+            'pagination' => $pagination ?? null,
         ]);
     }
 }

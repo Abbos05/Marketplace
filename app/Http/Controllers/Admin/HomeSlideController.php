@@ -72,6 +72,12 @@ class HomeSlideController extends Controller
             'slides' => $slides,
             'categories' => $categories,
             'routeOptions' => $routeOptions,
+            'slideFieldLimits' => [
+                'title' => 80,
+                'description' => 400,
+                'button_text' => 32,
+                'link_target' => 500,
+            ],
             'linkTypes' => [
                 ['value' => HomeSlide::LINK_NONE, 'label' => 'Без ссылки'],
                 ['value' => HomeSlide::LINK_CATEGORY, 'label' => 'Категория'],
@@ -84,35 +90,38 @@ class HomeSlideController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $this->validatedSlide($request, true);
+        $data = $this->validatedSlide($request, true, null);
+        [$position, $relativeId] = $this->validatedDisplayPosition($request);
 
         /** @var \Illuminate\Http\UploadedFile $file */
         $file = $request->file('image');
         $imagePath = $this->storeImage($file);
 
-        HomeSlide::query()->create([
+        $slide = HomeSlide::query()->create([
             'title' => $data['title'] ?? null,
             'description' => $data['description'] ?? null,
             'button_text' => $data['button_text'] ?? null,
             'image_path' => $imagePath,
-            'sort_order' => $data['sort_order'] ?? 0,
+            'sort_order' => 0,
             'is_active' => (bool) ((int) ($data['is_active'] ?? 1)),
             'link_type' => $data['link_type'],
             'link_target' => $this->normalizedLinkTarget($data['link_type'], $data['link_target'] ?? null),
         ]);
+
+        $this->applyDisplayPosition($slide, $position, $relativeId);
 
         return redirect()->route('admin.home-slides.index')->with('success', 'Слайд добавлен.');
     }
 
     public function update(Request $request, HomeSlide $homeSlide): RedirectResponse
     {
-        $data = $this->validatedSlide($request, false);
+        $data = $this->validatedSlide($request, false, $homeSlide);
+        [$position, $relativeId] = $this->validatedDisplayPosition($request, $homeSlide);
 
         $payload = [
             'title' => $data['title'] ?? null,
             'description' => $data['description'] ?? null,
             'button_text' => $data['button_text'] ?? null,
-            'sort_order' => $data['sort_order'] ?? 0,
             'is_active' => array_key_exists('is_active', $data) ? (bool) (int) $data['is_active'] : $homeSlide->is_active,
             'link_type' => $data['link_type'],
             'link_target' => $this->normalizedLinkTarget($data['link_type'], $data['link_target'] ?? null),
@@ -126,6 +135,7 @@ class HomeSlideController extends Controller
         }
 
         $homeSlide->update($payload);
+        $this->applyDisplayPosition($homeSlide, $position, $relativeId);
 
         return redirect()->route('admin.home-slides.index')->with('success', 'Слайд обновлён.');
     }
@@ -141,7 +151,7 @@ class HomeSlideController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validatedSlide(Request $request, bool $imageRequired): array
+    private function validatedSlide(Request $request, bool $imageRequired, ?HomeSlide $existing = null): array
     {
         $linkTypes = [
             HomeSlide::LINK_NONE,
@@ -153,10 +163,9 @@ class HomeSlideController extends Controller
 
         /** @var array<string, mixed> $data */
         $data = $request->validate([
-            'title' => 'nullable|string|max:200',
-            'description' => 'nullable|string|max:5000',
-            'button_text' => 'nullable|string|max:80',
-            'sort_order' => 'nullable|integer|min:0|max:65535',
+            'title' => 'nullable|string|max:80',
+            'description' => 'nullable|string|max:400',
+            'button_text' => 'nullable|string|max:32',
             'is_active' => 'nullable|in:0,1',
             'link_type' => ['required', 'string', Rule::in($linkTypes)],
             'link_target' => 'nullable|string|max:500',
@@ -270,6 +279,79 @@ class HomeSlideController extends Controller
                 'image' => 'Слишком «высокий» кадр для баннера. Соотношение ширины к высоте не меньше 1,25:1 (например 5:4 или шире).',
             ]);
         }
+    }
+
+    /** @return array{0: string, 1: ?int} */
+    private function validatedDisplayPosition(Request $request, ?HomeSlide $exclude = null): array
+    {
+        $request->validate([
+            'display_position' => ['required', 'string', Rule::in(['first', 'last', 'after', 'before'])],
+            'relative_slide_id' => 'nullable|integer|exists:home_slides,id',
+        ]);
+
+        $position = (string) $request->input('display_position');
+        $relativeId = $request->filled('relative_slide_id') ? (int) $request->input('relative_slide_id') : null;
+
+        if (in_array($position, ['after', 'before'], true)) {
+            if ($relativeId === null) {
+                throw ValidationException::withMessages([
+                    'display_position' => 'Выберите слайд, относительно которого задать положение.',
+                ]);
+            }
+            if ($exclude !== null && $relativeId === $exclude->id) {
+                throw ValidationException::withMessages([
+                    'relative_slide_id' => 'Нельзя указать тот же слайд.',
+                ]);
+            }
+        }
+
+        return [$position, $relativeId];
+    }
+
+    private function applyDisplayPosition(HomeSlide $slide, string $position, ?int $relativeId): void
+    {
+        $others = HomeSlide::query()
+            ->where('id', '!=', $slide->id)
+            ->ordered()
+            ->get();
+
+        $insertAt = match ($position) {
+            'first' => 0,
+            'last' => $others->count(),
+            'after' => $this->indexOfSlide($others, $relativeId) + 1,
+            'before' => $this->indexOfSlide($others, $relativeId),
+            default => $others->count(),
+        };
+
+        if (in_array($position, ['after', 'before'], true) && $insertAt < 0) {
+            throw ValidationException::withMessages([
+                'relative_slide_id' => 'Слайд для позиционирования не найден.',
+            ]);
+        }
+
+        $ordered = $others->values();
+        $ordered->splice($insertAt, 0, [$slide]);
+
+        foreach ($ordered->values() as $index => $item) {
+            if ((int) $item->sort_order !== $index * 10) {
+                $item->update(['sort_order' => $index * 10]);
+            }
+        }
+    }
+
+    private function indexOfSlide(\Illuminate\Support\Collection $slides, ?int $id): int
+    {
+        if ($id === null) {
+            return -1;
+        }
+
+        foreach ($slides->values() as $index => $slide) {
+            if ($slide->id === $id) {
+                return $index;
+            }
+        }
+
+        return -1;
     }
 
     private function normalizedLinkTarget(string $type, ?string $target): ?string

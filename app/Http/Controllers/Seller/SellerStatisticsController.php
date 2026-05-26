@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\ProductImage;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -252,24 +252,18 @@ class SellerStatisticsController extends Controller
 
         $rows = $query->get();
 
-        $productIds = $rows->pluck('id');
-        $images = ProductImage::whereIn('product_id', $productIds)
-            ->where('is_main', true)
+        $products = Product::query()
+            ->whereIn('id', $rows->pluck('id'))
             ->get()
-            ->keyBy('product_id');
-        $fallbackImages = ProductImage::whereIn('product_id', $productIds)
-            ->whereNotIn('product_id', $images->keys())
-            ->orderBy('id')
-            ->get()
-            ->keyBy('product_id');
+            ->keyBy('id');
 
-        return $rows->map(function ($row) use ($images, $fallbackImages) {
-            $img = $images->get($row->id) ?? $fallbackImages->get($row->id);
+        return $rows->map(function ($row) use ($products) {
+            $product = $products->get($row->id);
 
             return [
                 'id'               => $row->id,
                 'title'            => $row->title,
-                'image'            => $img?->url ?? $img?->path ?? null,
+                'image'            => $product?->resolveListingImageUrl(),
                 'revenue'          => (float) $row->revenue,
                 'gross_revenue'    => (float) $row->gross_revenue,
                 'commission_total' => (float) $row->commission_total,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { SORT_OPTIONS } from '@/lib/catalogFilters';
+import { getSortOptions } from '@/lib/catalogFilters';
 
 export default function ActiveFilterChips({ chips = [], onRemove, onClearAll }) {
     if (chips.length === 0) return null;
@@ -28,6 +28,7 @@ export default function ActiveFilterChips({ chips = [], onRemove, onClearAll }) 
 
 export function buildFilterChips(state, facets = {}) {
     const chips = [];
+    const defaultSort = state.search ? 'relevance' : 'new';
 
     if (state.priceFrom) {
         chips.push({ key: 'price_from', type: 'price_from', label: `Цена от ${state.priceFrom} ₽` });
@@ -39,9 +40,20 @@ export function buildFilterChips(state, facets = {}) {
         const cat = facets.categories.find((c) => c.id === state.categoryId);
         if (cat) chips.push({ key: 'category', type: 'category_id', label: cat.name });
     }
-    if (state.sort && state.sort !== 'new') {
-        const sortLabel = SORT_OPTIONS.find((s) => s.value === state.sort)?.label;
+    if (state.sort && state.sort !== defaultSort) {
+        const sortLabel = getSortOptions(state).find((s) => s.value === state.sort)?.label;
         if (sortLabel) chips.push({ key: 'sort', type: 'sort', label: sortLabel });
+    }
+    if (state.ratingMin) {
+        const ratingLabel = facets.rating?.find((r) => r.value === state.ratingMin)?.label;
+        chips.push({
+            key: 'rating',
+            type: 'rating_min',
+            label: ratingLabel || `Рейтинг от ${state.ratingMin}`,
+        });
+    }
+    if (state.onPromotion) {
+        chips.push({ key: 'on_promotion', type: 'on_promotion', label: 'По акции' });
     }
 
     Object.entries(state.attributes || {}).forEach(([attrId, val]) => {

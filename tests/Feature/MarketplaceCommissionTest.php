@@ -186,7 +186,7 @@ class MarketplaceCommissionTest extends TestCase
         string $paymentStatus,
     ): Order {
         $order = Order::query()->create([
-            'number' => 'ORD-'.fake()->unique()->numberBetween(10000, 99999),
+            'number' => fake()->unique()->numberBetween(10000, 99999),
             'order_code' => strtoupper(fake()->unique()->bothify('????####')),
             'buyer_id' => $buyer->id,
             'status' => $status,

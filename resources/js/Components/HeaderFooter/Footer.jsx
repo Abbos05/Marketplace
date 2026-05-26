@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { FOOTER_COLUMNS, FOOTER_LEGAL } from '@/lib/footerLinks';
+import { isStaff } from '@/lib/staffAccess';
 import '../../../css/footer.css';
 
 function FooterLink({ href, label, auth }) {
@@ -43,7 +44,19 @@ function FooterAccordion({ title, links }) {
 }
 
 const Footer = () => {
-  const { categories = [], footerSocial = [] } = usePage().props;
+  const { categories = [], footerSocial = [], auth, staffAccess } = usePage().props;
+  const isStaffUser = staffAccess?.isStaff ?? isStaff(auth?.user);
+
+  const footerColumns = useMemo(() => {
+    if (!isStaffUser) return FOOTER_COLUMNS;
+    return {
+      ...FOOTER_COLUMNS,
+      sellers: {
+        ...FOOTER_COLUMNS.sellers,
+        links: FOOTER_COLUMNS.sellers.links.filter((l) => l.href !== '/profile?tab=company'),
+      },
+    };
+  }, [isStaffUser]);
   const catalogLinks = categories.slice(0, 8).map((c) => ({
     label: c.name,
     href: `/category/${c.id}`,
@@ -83,9 +96,9 @@ const Footer = () => {
             )}
           </div>
 
-          <FooterColumn {...FOOTER_COLUMNS.buyers} />
-          <FooterColumn {...FOOTER_COLUMNS.sellers} />
-          <FooterColumn {...FOOTER_COLUMNS.company} />
+          <FooterColumn {...footerColumns.buyers} />
+          <FooterColumn {...footerColumns.sellers} />
+          <FooterColumn {...footerColumns.company} />
 
           <div className="site-footer__col site-footer__desktop-only">
             <p className="site-footer__col-title">Каталог</p>
@@ -98,9 +111,9 @@ const Footer = () => {
           </div>
 
           <div className="site-footer__mobile-only">
-            <FooterAccordion {...FOOTER_COLUMNS.buyers} />
-            <FooterAccordion {...FOOTER_COLUMNS.sellers} />
-            <FooterAccordion {...FOOTER_COLUMNS.company} />
+            <FooterAccordion {...footerColumns.buyers} />
+            <FooterAccordion {...footerColumns.sellers} />
+            <FooterAccordion {...footerColumns.company} />
             <FooterAccordion
               title="Каталог"
               links={[{ label: 'Все категории', href: '/category' }, ...catalogLinks]}

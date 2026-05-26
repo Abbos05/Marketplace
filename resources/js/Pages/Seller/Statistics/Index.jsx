@@ -1,14 +1,15 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import SellerLayout from '@/Layouts/SellerLayout';
+import { formatInt, formatRub } from '@/lib/formatMoney';
 import '../../../../css/seller/statistics.css';
 
 const PERIODS = [
-    { value: '30d',  label: '30 дней' },
-    { value: '90d',  label: '3 мес' },
+    { value: '30d', label: '30 дней' },
+    { value: '90d', label: '3 мес' },
     { value: '180d', label: '6 мес' },
     { value: '365d', label: '12 мес' },
-    { value: 'all',  label: 'Всё время' },
+    { value: 'all', label: 'Всё время' },
 ];
 
 function Sparkline({ values, days }) {
@@ -62,10 +63,7 @@ function BarChart({ values, labels, colorClass = '', suffix = ' ₽' }) {
     const [hovered, setHovered] = useState(null);
     const max = Math.max(...values, 1);
 
-    const fmt = (v) =>
-        suffix === ' ₽'
-            ? Number(v).toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽'
-            : String(v);
+    const fmt = (v) => (suffix === ' ₽' ? formatRub(v) : String(v));
 
     const total = values.reduce((a, b) => a + b, 0);
     const avg = values.length ? total / values.length : 0;
@@ -210,9 +208,6 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
         router.get(route('seller.statistics'), { period: p }, { preserveState: false });
     };
 
-    const fmtRub = (v) =>
-        Number(v).toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽';
-
     const openCommissionModal = useCallback(async () => {
         setCommissionOpen(true);
         setCommissionLoading(true);
@@ -252,25 +247,31 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                 ))}
             </div>
 
+            <p className="st-info-banner">
+                Показатели «выдано» учитывают только оплаченные заказы со статусом «Выдан».
+                «Ожидает выдачи» — оплаченные заказы в пути или в пункте выдачи.
+                Публикация товара на эти суммы не влияет.
+            </p>
+
             <div className="st-kpi-grid">
                 <div className="st-kpi-card">
-                    <div className="st-kpi-card__icon">💰</div>
                     <div className="st-kpi-card__label">Чистый доход (выдано)</div>
-                    <div className="st-kpi-card__value">{fmtRub(kpi.revenue)}</div>
+                    <div className="st-kpi-card__value">{formatRub(kpi.revenue)}</div>
+                    <span className="st-kpi-card__hint">После выдачи заказа покупателю</span>
                     <Delta value={kpi.revenue_delta} />
                 </div>
                 <div className="st-kpi-card st-kpi-card--pending">
-                    <div className="st-kpi-card__icon">⏳</div>
                     <div className="st-kpi-card__label">Ожидает выдачи</div>
-                    <div className="st-kpi-card__value">{fmtRub(kpi.pending_revenue ?? 0)}</div>
+                    <div className="st-kpi-card__value">{formatRub(kpi.pending_revenue ?? 0)}</div>
                     <span className="st-kpi-card__hint">
-                        {kpi.pending_orders_count ?? 0} зак. · оборот {fmtRub(kpi.pending_gross_revenue ?? 0)}
+                        {kpi.pending_orders_count ?? 0} зак. · оборот {formatRub(kpi.pending_gross_revenue ?? 0)}
+                        · оплаченные, ещё не выданные
                     </span>
                 </div>
                 <div className="st-kpi-card">
-                    <div className="st-kpi-card__icon">₽</div>
                     <div className="st-kpi-card__label">Валовые продажи (выдано)</div>
-                    <div className="st-kpi-card__value">{fmtRub(kpi.gross_revenue)}</div>
+                    <div className="st-kpi-card__value">{formatRub(kpi.gross_revenue)}</div>
+                    <span className="st-kpi-card__hint">Сумма цен товаров до комиссии</span>
                 </div>
                 <button
                     type="button"
@@ -278,36 +279,33 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                     onClick={openCommissionModal}
                     title="Показать структуру комиссии"
                 >
-                    <div className="st-kpi-card__icon">%</div>
                     <div className="st-kpi-card__label">Комиссия (выдано)</div>
-                    <div className="st-kpi-card__value">{fmtRub(kpi.commission_total)}</div>
-                    <span className="st-kpi-card__hint">Нажмите для детализации →</span>
+                    <div className="st-kpi-card__value">{formatRub(kpi.commission_total)}</div>
+                    <span className="st-kpi-card__hint">Только по выданным заказам · нажмите для детализации →</span>
                 </button>
                 <div className="st-kpi-card">
-                    <div className="st-kpi-card__icon">🛒</div>
                     <div className="st-kpi-card__label">Заказов выдано</div>
-                    <div className="st-kpi-card__value">{kpi.orders_count}</div>
+                    <div className="st-kpi-card__value">{formatInt(kpi.orders_count)}</div>
                     <Delta value={kpi.orders_delta} />
                 </div>
                 <div className="st-kpi-card">
-                    <div className="st-kpi-card__icon">📊</div>
                     <div className="st-kpi-card__label">Средний чек</div>
-                    <div className="st-kpi-card__value">{fmtRub(kpi.avg_order_value)}</div>
+                    <div className="st-kpi-card__value">{formatRub(kpi.avg_order_value)}</div>
+                    <span className="st-kpi-card__hint">Чистый доход на заказ (выдано)</span>
                 </div>
                 <div className="st-kpi-card">
-                    <div className="st-kpi-card__icon">📦</div>
                     <div className="st-kpi-card__label">Товаров продано</div>
-                    <div className="st-kpi-card__value">{kpi.items_sold}</div>
+                    <div className="st-kpi-card__value">{formatInt(kpi.items_sold)}</div>
                 </div>
             </div>
 
             <div className="st-two-col">
                 <div className="st-chart-card">
-                    <div className="st-chart-card__title">Чистый доход по месяцам (выдано)</div>
+                    <div className="st-chart-card__title">Чистый доход по месяцам (выдано, за 12 мес)</div>
                     <BarChart values={monthly.revenue} labels={monthly.months} suffix=" ₽" />
                 </div>
                 <div className="st-chart-card">
-                    <div className="st-chart-card__title">Заказов выдано по месяцам</div>
+                    <div className="st-chart-card__title">Заказов выдано по месяцам (за 12 мес)</div>
                     <BarChart
                         values={monthly.orders}
                         labels={monthly.months}
@@ -355,41 +353,48 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                     {topProducts.length === 0 ? (
                         <div className="st-empty">Нет данных за выбранный период</div>
                     ) : (
-                        <table className="st-top-table">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Товар</th>
-                                    <th>Чистый доход</th>
-                                    <th>Комиссия</th>
-                                    <th>Заказов</th>
-                                    <th>Продано</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {topProducts.map((p, i) => (
-                                    <tr key={p.id}>
-                                        <td>
-                                            <span className={`st-rank st-rank--${i + 1}`}>{i + 1}</span>
-                                        </td>
-                                        <td>
-                                            <div className="st-top-product">
-                                                {p.image ? (
-                                                    <img src={p.image} alt={p.title} className="st-top-product__img" />
-                                                ) : (
-                                                    <div className="st-top-product__placeholder">📦</div>
-                                                )}
-                                                <span className="st-top-product__name">{p.title}</span>
-                                            </div>
-                                        </td>
-                                        <td style={{ fontWeight: 700 }}>{fmtRub(p.revenue)}</td>
-                                        <td>{fmtRub(p.commission_total)}</td>
-                                        <td>{p.orders_count}</td>
-                                        <td>{p.items_sold} шт.</td>
+                        <div className="st-top-table-wrap">
+                            <table className="st-top-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Товар</th>
+                                        <th className="st-col-money">Чистый доход</th>
+                                        <th className="st-col-money">Комиссия</th>
+                                        <th>Заказов</th>
+                                        <th>Продано</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {topProducts.map((p, i) => (
+                                        <tr key={p.id}>
+                                            <td>
+                                                <span className={`st-rank st-rank--${i + 1}`}>{i + 1}</span>
+                                            </td>
+                                            <td>
+                                                <Link
+                                                    href={route('seller.products.manage', p.id)} 
+                                                    className="st-top-product st-top-product--link"
+                                                >
+                                                    {p.image ? (
+                                                        <img src={p.image} alt={p.title} className="st-top-product__img" />
+                                                    ) : (
+                                                        <div className="st-top-product__placeholder">📦</div>
+                                                    )}
+                                                    <span className="st-top-product__name">{p.title}</span>
+                                                </Link>
+                                            </td>
+                                            <td className="st-col-money" style={{ fontWeight: 700 }}>
+                                                {formatRub(p.revenue)}
+                                            </td>
+                                            <td className="st-col-money">{formatRub(p.commission_total)}</td>
+                                            <td>{formatInt(p.orders_count)}</td>
+                                            <td>{formatInt(p.items_sold)} шт.</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
             </div>
@@ -409,7 +414,7 @@ export default function Index({ kpi, monthly, byStatus, topProducts, daily, peri
                 breakdown={commissionBreakdown}
                 loading={commissionLoading}
                 period={period}
-                fmtRub={fmtRub}
+                fmtRub={formatRub}
             />
         </SellerLayout>
     );

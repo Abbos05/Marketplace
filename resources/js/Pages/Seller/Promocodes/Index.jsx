@@ -62,8 +62,6 @@ export default function Index({ promocodes }) {
         <SellerLayout title="Промокоды">
             <Head title="Промокоды" />
 
-            {flash.success && <div className="promo-flash promo-flash--success">{flash.success}</div>}
-            {flash.error   && <div className="promo-flash promo-flash--error">{flash.error}</div>}
 
             <div className="promo-layout">
                 {/* Left: table */}

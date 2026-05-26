@@ -20,8 +20,8 @@ return new class extends Migration
             $table->string('password', 255);
             $table->string('name', 80)->nullable();
             $table->string('last_name', 80)->nullable();
-            // Исправлено: default значение теперь есть в списке ENUM
-            $table->enum('role', ['user', 'seller', 'admin', 'moderator'])->default('user');
+            $table->text('description')->nullable();
+            $table->enum('role', ['user', 'seller', 'admin', 'moderator', 'pvz'])->default('user');
             $table->string('avatar', 255)->nullable();
             $table->boolean('is_active')->default(true);
             $table->boolean('is_blocked')->default(false);
@@ -67,6 +67,8 @@ return new class extends Migration
             'email' => 'admin@gmail.com',
             'password' => Hash::make('admin'),
             'name' => 'Администратор',
+            'last_name' => 'главный',
+            'description' => 'Главный администратор проекта',
             'role' => 'admin',
             'phone' => '79959460905',
             'avatar' => null,

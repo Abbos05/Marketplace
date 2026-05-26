@@ -22,6 +22,11 @@ return new class extends Migration
             $table->decimal('rating', 3, 2)->default(0);
             $table->unsignedBigInteger('total_sales')->default(0);
             $table->json('working_hours')->nullable();
+            $table->timestamp('restore_requested_at')->nullable();
+            $table->string('pending_shop_name', 120)->nullable();
+            $table->text('pending_description')->nullable();
+            $table->boolean('pending_description_change')->default(false);
+            $table->timestamp('shop_changes_requested_at')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

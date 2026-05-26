@@ -5,10 +5,15 @@ export function buildCatalogParams(state) {
     const params = {};
 
     if (state.search) params.search = state.search;
-    if (state.sort && state.sort !== 'new') params.sort = state.sort;
+    if (state.sort && state.sort !== defaultSortForContext(state)) {
+        params.sort = state.sort;
+    }
     if (state.priceFrom !== '' && state.priceFrom != null) params.price_from = state.priceFrom;
     if (state.priceTo !== '' && state.priceTo != null) params.price_to = state.priceTo;
     if (state.categoryId) params.category_id = state.categoryId;
+    if (state.onPromotion) params.on_promotion = 1;
+    if (state.ratingMin) params.rating_min = state.ratingMin;
+    if (state.page && state.page > 1) params.page = state.page;
 
     if (state.attributes && Object.keys(state.attributes).length > 0) {
         params.attr = {};
@@ -28,6 +33,10 @@ export function buildCatalogParams(state) {
     return params;
 }
 
+export function defaultSortForContext(state) {
+    return state.search ? 'relevance' : 'new';
+}
+
 export function filtersToState(filters = {}) {
     const attrs = {};
     if (filters.attributes) {
@@ -40,12 +49,17 @@ export function filtersToState(filters = {}) {
         });
     }
 
+    const search = filters.search || '';
+
     return {
-        search: filters.search || '',
-        sort: filters.sort || 'new',
+        search,
+        sort: filters.sort || defaultSortForContext({ search }),
         priceFrom: filters.price_from ?? '',
         priceTo: filters.price_to ?? '',
         categoryId: filters.category_id ?? null,
+        onPromotion: Boolean(filters.on_promotion),
+        ratingMin: filters.rating_min ?? null,
+        page: filters.page ?? 1,
         attributes: attrs,
     };
 }
@@ -62,14 +76,54 @@ export function getCatalogRoute(context, { categoryId, sellerId }) {
 
 export function getCatalogOnlyKeys(context) {
     if (context === 'home') {
-        return ['mysqlNftsData', 'search', 'sort', 'filters', 'facets', 'total'];
+        return ['mysqlProductsData', 'search', 'sort', 'filters', 'facets', 'total', 'pagination'];
     }
-    return ['products', 'filters', 'facets', 'total'];
+    if (context === 'seller') {
+        return ['products', 'filters', 'facets', 'total', 'pagination', 'seller', 'sellerId'];
+    }
+    return ['products', 'filters', 'facets', 'total', 'pagination'];
 }
 
-export const SORT_OPTIONS = [
-    { value: 'new', label: 'Новинки' },
-    { value: 'cheap', label: 'Сначала дешевле' },
-    { value: 'expensive', label: 'Сначала дороже' },
-    { value: 'popular', label: 'Популярные' },
-];
+/** @param {{ search?: string }} state */
+export function getSortOptions(state = {}) {
+    const options = [
+        { value: 'new', label: 'Новинки' },
+        { value: 'old', label: 'Старые' },
+        { value: 'cheap', label: 'Сначала дешевле' },
+        { value: 'expensive', label: 'Сначала дороже' },
+        { value: 'popular', label: 'Популярные' },
+        { value: 'rating', label: 'По рейтингу' },
+    ];
+
+    if (state.search) {
+        return [{ value: 'relevance', label: 'По релевантности' }, ...options];
+    }
+
+    return options;
+}
+
+export const SORT_OPTIONS = getSortOptions();
+
+/**
+ * Preserve active catalog filters when submitting a new search from the header.
+ */
+export function mergeCatalogSearchParams(searchText, filters = {}) {
+    const state = filtersToState(filters);
+    state.search = searchText;
+    state.page = 1;
+    if (!searchText) {
+        state.sort = 'new';
+    } else if (!filters.sort || filters.sort === 'new') {
+        state.sort = 'relevance';
+    }
+    return buildCatalogParams(state);
+}
+
+export function clampPriceValue(value, facetMin, facetMax) {
+    if (value === '' || value == null) return '';
+    const num = Number(value);
+    if (Number.isNaN(num)) return '';
+    if (facetMin != null && num < facetMin) return String(Math.round(facetMin));
+    if (facetMax != null && num > facetMax) return String(Math.round(facetMax));
+    return String(Math.round(num));
+}

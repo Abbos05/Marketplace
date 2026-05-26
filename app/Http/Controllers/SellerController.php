@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\Review;
 use App\Models\User;
 use App\Http\Controllers\Concerns\RedirectsArticleSearch;
 use App\Services\CatalogFilterService;
@@ -27,42 +28,62 @@ class SellerController extends Controller
 
         $sellerId = (int) $id;
 
+        $sellerUser = User::query()
+            ->with('sellerProfile')
+            ->whereKey($sellerId)
+            ->first();
+
+        if (! $sellerUser?->sellerProfile) {
+            abort(404);
+        }
+
         $baseFactory = fn () => Product::forCatalogPresentation()
             ->where('products.seller_id', $sellerId)
             ->visibleInCatalog();
 
         $result = $this->catalogFilters->process($request, $baseFactory, [
+            'fixed_seller_id' => $sellerId,
             'allow_category_facet' => true,
             'search_fields' => ['title', 'short_description'],
-            'limit' => $request->filled('search')
-                ? (int) config('marketplace.catalog_search_limit', 10)
-                : null,
         ]);
 
         $products = $result['products'];
         $this->catalogFilters->markFavorites($products);
 
-        $sellerUser = User::query()->with('sellerProfile')->find($sellerId);
+        $reviewStats = Review::query()
+            ->where('is_moderated', true)
+            ->whereHas('product', fn ($q) => $q->where('seller_id', $sellerId))
+            ->selectRaw('COUNT(*) as reviews_count, AVG(rating) as avg_rating')
+            ->first();
+
+        $reviewsCount = (int) ($reviewStats->reviews_count ?? 0);
+        $avgRating = $reviewStats->avg_rating !== null
+            ? round((float) $reviewStats->avg_rating, 1)
+            : null;
 
         $shopFavoritesCount = DB::table('favorites')
             ->join('products', 'favorites.product_id', '=', 'products.id')
             ->where('products.seller_id', $sellerId)
             ->count();
 
+        $profile = $sellerUser->sellerProfile;
+
         return Inertia::render('SellerProfile/Seller', [
+            'sellerId' => $sellerId,
             'products' => $products,
             'seller' => [
                 'id' => $sellerId,
-                'name' => $sellerUser?->sellerProfile?->shop_name ?: ($sellerUser?->name ?? 'Продавец'),
-                'img' => $sellerUser?->avatar,
-                'rating' => $sellerUser?->sellerProfile?->rating ?? '5.0',
-                'review' => 0,
-                'orders' => $sellerUser?->sellerProfile?->total_sales ?? 0,
+                'name' => $profile->shop_name ?: ($sellerUser->name ?? 'Продавец'),
+                'img' => $sellerUser->avatar,
+                'rating' => $avgRating,
+                'reviews_count' => $reviewsCount,
+                'orders' => (int) ($profile->total_sales ?? 0),
                 'likes' => (int) $shopFavoritesCount,
             ],
             'filters' => $result['filters'],
             'facets' => $result['facets'],
             'total' => $result['total'],
+            'pagination' => $result['pagination'],
         ]);
     }
 }

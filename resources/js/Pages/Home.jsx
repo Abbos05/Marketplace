@@ -1,47 +1,68 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Slider from '@/Components/Slider/Slider';
 import ProductPage from '@/Components/Product/ProductPage';
+
 import ProductsCatalog from '@/Components/Product/FilterProducts';
 import '../../css/Home.css';
-import LikeProductsCom from '@/Components/Product/ProductPage';
+import ProductRecommendationsSection from '@/Components/Product/ProductRecommendationsSection';
 
 export default function Home({ auth, categoryData, showModal, homeSlides = [] }) {
     const {
-        mysqlNftsData,
+        mysqlProductsData,
         search = '',
         filters = {},
+        initialCount = 50,
+        step = 30,
+        maxCount,
         facets = {},
         total = 0,
+        pagination = null,
         LikeProducts,
     } = usePage().props;
 
+    const [displayCount, setDisplayCount] = useState(initialCount);
+    
+    const cap = maxCount != null ? Math.min(maxCount, mysqlProductsData.length) : mysqlProductsData.length;
+    const visible = mysqlProductsData.slice(0, Math.min(displayCount, cap));
+    const canShowMore = visible.length < cap;
+
+    const showMore = () => {
+        setDisplayCount((prev) => Math.min(prev + step, cap));
+    };
     return (
         <MainLayout auth={auth} categories={categoryData} showModal={showModal}>
             <Head title="Home" />
 
             {search ? (
-                <div className="nfts_block">
+                <>
                     <ProductsCatalog
-                        dataProduct={mysqlNftsData}
+                        dataProduct={mysqlProductsData}
                         category={{ name: 'Результаты поиска', id: null }}
                         filters={{ ...filters, search }}
                         facets={facets}
                         total={total}
+                        pagination={pagination}
                         isHomePage={true}
                     />
-                    {LikeProducts && LikeProducts.length > 0 && LikeProductsCom && (
-                        <>
-                            <h2 className="info_dop">Возможно, вам понравится</h2>
-                            <LikeProductsCom products={LikeProducts} />
-                        </>
-                    )}
-                </div>
+                    <ProductRecommendationsSection
+                        products={LikeProducts}
+                        titleClassName="info_dop"
+                    />
+                </>
             ) : (
                 <>
-                    <Slider slides={homeSlides} />
-                    <ProductPage products={mysqlNftsData} />
+                    {homeSlides.length > 0 && (
+                                          <Slider slides={homeSlides} />
+
+                    )}
+                    <ProductPage products={visible} />
+                    {canShowMore && (
+                <button type="button" className="showMore__btn" onClick={showMore}>
+                    Показать еще
+                </button>
+            )}
                 </>
             )}
         </MainLayout>

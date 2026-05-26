@@ -27,6 +27,25 @@ class Order extends Model
 
     public const STATUS_REFUSED = 'REFUSED';
 
+    /** @var array<string, string> */
+    public const STATUS_LABELS = [
+        self::STATUS_NEW => 'Новый заказ',
+        self::STATUS_INTRANSIT => 'В пути',
+        self::STATUS_DELIVERED => 'В пункте выдачи',
+        self::STATUS_ISSUED => 'Выдан',
+        self::STATUS_CANCELED => 'Отменён',
+        self::STATUS_REFUSED => 'Отказ от получения',
+    ];
+
+    public static function statusLabel(?string $status): string
+    {
+        if ($status === null || $status === '') {
+            return '—';
+        }
+
+        return self::STATUS_LABELS[$status] ?? $status;
+    }
+
     /**
      * @return list<string>
      */
@@ -75,6 +94,24 @@ class Order extends Model
         ];
     }
 
+    /** Завершение выдачи в ПВЗ — только оператор пункта или администратор. */
+    public static function pickupFinalizationStatuses(): array
+    {
+        return [
+            self::STATUS_ISSUED,
+            self::STATUS_REFUSED,
+        ];
+    }
+
+    public function canStaffAssignStatus(User $actor, string $status): bool
+    {
+        if (in_array($status, self::pickupFinalizationStatuses(), true)) {
+            return $actor->isAdmin();
+        }
+
+        return true;
+    }
+
     public function isPaid(): bool
     {
         return $this->payment_status === 'paid';
@@ -105,6 +142,10 @@ class Order extends Model
         'order_code',
         'buyer_id',
         'pickup_point_id',
+        'issued_by_user_id',
+        'issued_at',
+        'refused_by_user_id',
+        'refused_at',
         'status',
         'total',
         'discount',
@@ -119,6 +160,8 @@ class Order extends Model
     protected $casts = [
         'total' => 'decimal:2',
         'discount' => 'decimal:2',
+        'issued_at' => 'datetime',
+        'refused_at' => 'datetime',
     ];
 
     public function buyer()
@@ -134,6 +177,16 @@ class Order extends Model
     public function pickupPoint()
     {
         return $this->belongsTo(PickupPoint::class, 'pickup_point_id');
+    }
+
+    public function issuedByUser()
+    {
+        return $this->belongsTo(User::class, 'issued_by_user_id');
+    }
+
+    public function refusedByUser()
+    {
+        return $this->belongsTo(User::class, 'refused_by_user_id');
     }
 
     public function items()

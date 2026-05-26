@@ -25,7 +25,6 @@ const PAYMENT_METHOD_LABELS = {
 
 export default function Show({ order, items, nextStatuses, statusLabels }) {
     const { props } = usePage();
-    const flash = props.flash ?? {};
     const [submitting, setSubmitting] = useState(false);
 
     const handleStatusUpdate = (status) => {
@@ -50,8 +49,6 @@ export default function Show({ order, items, nextStatuses, statusLabels }) {
             <Head title={`Заказ ${order.number}`} />
 
             {/* Flash messages */}
-            {flash.success && <div className="ord-flash ord-flash--success">{flash.success}</div>}
-            {flash.error   && <div className="ord-flash ord-flash--error">{flash.error}</div>}
 
             {/* Back link */}
             <Link href={route('seller.orders')} className="ord-back">
@@ -288,7 +285,7 @@ export default function Show({ order, items, nextStatuses, statusLabels }) {
                             ) : (
                                 <div className="ord-no-transitions">
                                     {order.status === 'ISSUED' && 'Заказ выдан покупателю'}
-                                    {order.status === 'DELIVERED' && 'Заказ в пункте выдачи — ожидает выдачи'}
+                                    {order.status === 'DELIVERED' && 'Заказ в пункте выдачи — выдачу оформляет сотрудник ПВЗ'}
                                     {order.status === 'CANCELED' && 'Заказ отменён'}
                                     {order.status === 'REFUSED' && 'Покупатель отказался от получения'}
                                     {!['ISSUED','DELIVERED','CANCELED','REFUSED'].includes(order.status) && 'Изменение статуса недоступно'}

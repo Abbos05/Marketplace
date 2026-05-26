@@ -1,5 +1,17 @@
 
 
+.home-promotions {
+  margin: 32px 0 8px;
+  padding: 0 16px;
+}
+
+.home-promotions__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #111;
+}
+
 /* SectionInfo */
 .SectionInfo {
     margin-top: 50px;

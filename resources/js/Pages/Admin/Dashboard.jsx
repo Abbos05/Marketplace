@@ -2,42 +2,24 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import BarcodeScannerModal from '@/Components/BarcodeScannerModal';
+import { ORDER_STATUS_MAP, orderStatusOptionsFor } from '@/lib/orderStatusOptions';
 import '../../../css/admin/dashboard.css';
 
-const ROLE_LABELS = { admin: 'Админ', moderator: 'Модератор', seller: 'Продавец', user: 'Пользователь' };
+const ROLE_LABELS = { admin: 'Админ', moderator: 'Модератор', seller: 'Продавец', pvz: 'Оператор ПВЗ', user: 'Пользователь' };
 
-const ORDER_STATUSES = [
-    { value: 'NEW', label: 'Новый заказ' },
-    { value: 'INTRANSIT', label: 'В пути' },
-    { value: 'DELIVERED', label: 'В пункте выдачи' },
-    { value: 'ISSUED', label: 'Выдан' },
-    { value: 'CANCELED', label: 'Отменён' },
-    { value: 'REFUSED', label: 'Отказ от получения' },
-];
-const ORDER_STATUS_MAP = Object.fromEntries(ORDER_STATUSES.map(s => [s.value, s.label]));
 const PAYMENT_STATUS_MAP = { pending: 'Ожидает', paid: 'Оплачен', failed: 'Ошибка', refunded: 'Возврат' };
-const UNPAID_ALLOWED_STATUSES = ['NEW', 'INTRANSIT', 'DELIVERED', 'CANCELED', 'REFUSED'];
 const LOGIN_METHOD_LABELS = {
     password: 'Пароль',
-    phone_otp: 'Код по телефону',
+    phone_otp: 'Код по телефону (SMS)',
+    phone_otp_notification: 'Код в уведомлениях',
+    phone_otp_2fa: 'Телефон + пароль',
+    phone_password_reset: 'Сброс пароля',
     email_otp: 'Код по email',
     phone_password: 'Пароль по телефону',
     google: 'Google',
     yandex: 'Yandex',
     github: 'GitHub',
 };
-
-function orderStatusOptionsFor(order) {
-    if (order.payment_status === 'paid') {
-        return ORDER_STATUSES;
-    }
-    const allowed = ORDER_STATUSES.filter((s) => UNPAID_ALLOWED_STATUSES.includes(s.value));
-    if (allowed.some((s) => s.value === order.status)) {
-        return allowed;
-    }
-    const current = ORDER_STATUSES.find((s) => s.value === order.status);
-    return current ? [{ ...current, disabled: true }, ...allowed] : allowed;
-}
 
 function formatPhone(p) {
     if (!p) return '';
@@ -71,7 +53,7 @@ function timeAgo(iso) {
     return `${Math.floor(diff / 86400)} д назад`;
 }
 
-function RevenueChart({ data = [] }) {
+function RevenueChart({ data = [], chartId = 'adm-revenue-chart-svg' }) {
     const width  = 720;
     const height = 220;
     const padL   = 50;
@@ -111,7 +93,7 @@ function RevenueChart({ data = [] }) {
                     <div className="adm-chart-summary-label">Средний чек</div>
                 </div>
             </div>
-            <svg className="adm-chart-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+            <svg id={chartId} className="adm-chart-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
                 {/* Y axis grid + labels */}
                 {yLabels.map((v, i) => {
                     const y = padT + innerH - (innerH * i) / yTicks;
@@ -161,16 +143,82 @@ function RevenueChart({ data = [] }) {
     );
 }
 
+function drawChartToCanvas(data) {
+    const width = 900;
+    const height = 320;
+    const padL = 56;
+    const padR = 16;
+    const padT = 24;
+    const padB = 40;
+    const innerW = width - padL - padR;
+    const innerH = height - padT - padB;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    if (!data.length) return canvas;
+
+    const maxRevenue = Math.max(1, ...data.map((d) => Number(d.revenue) || 0));
+    const barW = innerW / data.length;
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '12px sans-serif';
+    for (let i = 0; i <= 4; i++) {
+        const y = padT + innerH - (innerH * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(width - padR, y);
+        ctx.stroke();
+    }
+    data.forEach((d, i) => {
+        const v = Number(d.revenue) || 0;
+        const h = (v / maxRevenue) * innerH;
+        const x = padL + i * barW + 2;
+        const y = padT + innerH - h;
+        ctx.fillStyle = '#2563eb';
+        ctx.fillRect(x, y, Math.max(2, barW - 4), h);
+    });
+    return canvas;
+}
+
 function RevenueExportBar() {
     const today = new Date().toISOString().slice(0, 10);
     const monthAgo = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
     const [from, setFrom]   = useState(monthAgo);
     const [to, setTo]       = useState(today);
     const [status, setStatus] = useState('paid');
+    const [pngLoading, setPngLoading] = useState(false);
 
-    const download = () => {
-        const params = new URLSearchParams({ from, to, status }).toString();
-        window.location.href = `/admin/reports/revenue?${params}`;
+    const query = () => new URLSearchParams({ from, to, status }).toString();
+
+    const downloadCsv = () => {
+        window.location.href = `/admin/reports/revenue?${query()}`;
+    };
+
+    const downloadPdf = () => {
+        window.location.href = `/admin/reports/revenue/pdf?${query()}`;
+    };
+
+    const downloadPng = async () => {
+        setPngLoading(true);
+        try {
+            const res = await fetch(`/admin/reports/revenue/chart?from=${from}&to=${to}`, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const json = await res.json();
+            const canvas = drawChartToCanvas(json.data ?? []);
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `revenue_chart_${from}_${to}.png`;
+            a.click();
+        } catch {
+            alert('Не удалось сформировать график');
+        } finally {
+            setPngLoading(false);
+        }
     };
 
     return (
@@ -189,17 +237,23 @@ function RevenueExportBar() {
                 <option value="CANCELED">Только отменённые</option>
                 <option value="REFUSED">Только отказы от получения</option>
             </select>
-            <button onClick={download} className="adm-action-btn adm-btn-approve adm-btn-big">
-                📊 Скачать Excel
+            <button type="button" onClick={downloadCsv} className="adm-action-btn adm-btn-approve adm-btn-big">
+                Скачать CSV
+            </button>
+            <button type="button" onClick={downloadPng} className="adm-action-btn adm-btn-view adm-btn-big" disabled={pngLoading}>
+                {pngLoading ? 'График…' : 'Скачать график (PNG)'}
+            </button>
+            <button type="button" onClick={downloadPdf} className="adm-action-btn adm-btn-big">
+                Скачать PDF
             </button>
         </div>
     );
 }
 
 export default function AdminDashboard({
-    auth, stats, pendingSellers = [], users = [],
+    auth, stats, pendingSellers = [], users = [], usersMeta = {},
     orderSearch = '', orderResults = [],
-    sessions = [], loginHistory = [], currentSessionId,
+    sessions = [], sessionsMeta = {}, loginHistory = [], loginHistoryMeta = {}, currentSessionId,
     revenueChart = [],
 }) {
     const { staffAccess } = usePage().props;
@@ -221,7 +275,35 @@ export default function AdminDashboard({
     const [pendingQuery, setPendingQuery] = useState('');
     const [sessionQuery, setSessionQuery] = useState('');
     const [sessionFilter, setSessionFilter] = useState('all'); // 'all' | 'online'
-    const [userFilter, setUserFilter] = useState('all'); // 'all' | 'active' | 'blocked' | 'deleted'
+    const [userFilter, setUserFilter] = useState(usersMeta.filter ?? 'all');
+    const [userSort, setUserSort] = useState(usersMeta.sort ?? 'created_at');
+    const [userDir, setUserDir] = useState(usersMeta.dir ?? 'desc');
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const sectionParam = params.get('section');
+        const filterParam = params.get('filter');
+
+        if (sectionParam) {
+            const section = sectionParam === 'pending-pvz' || sectionParam === 'pending-shop' ? 'users' : sectionParam;
+            setActiveSection(section);
+            sessionStorage.setItem('admin_section', section);
+        } else {
+            const saved = sessionStorage.getItem('admin_section');
+            if (saved === 'pending-shop' || saved === 'pending-pvz') {
+                setActiveSection('users');
+                sessionStorage.setItem('admin_section', 'users');
+            }
+        }
+
+        if (filterParam) {
+            setUserFilter(filterParam);
+        } else if (sectionParam === 'pending-pvz' || sessionStorage.getItem('admin_section') === 'pending-pvz') {
+            setUserFilter('pvz_pending');
+        } else if (sectionParam === 'pending-shop' || sessionStorage.getItem('admin_section') === 'pending-shop') {
+            setUserFilter('shop_changes');
+        }
+    }, []);
     const [expandedOrder, setExpandedOrder] = useState(null);
     const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -319,18 +401,69 @@ export default function AdminDashboard({
             || (u.seller_profile?.inn || '').includes(pendingQuery);
     });
 
-    const visibleUsers = users.filter(u => {
-        if (userFilter === 'active'  && (u.is_blocked || u.deleted_at)) return false;
-        if (userFilter === 'blocked' && !u.is_blocked) return false;
-        if (userFilter === 'deleted' && !u.deleted_at) return false;
-        if (!userQuery) return true;
-        const q = userQuery.toLowerCase();
-        return (u.name || '').toLowerCase().includes(q)
-            || (u.last_name || '').toLowerCase().includes(q)
-            || (u.email || '').toLowerCase().includes(q)
-            || (u.phone || '').includes(userQuery)
-            || String(u.id).includes(userQuery);
-    });
+    const shopChangesCount = stats.pending_shop_changes ?? 0;
+    const pvzPendingCount = stats.pvz_pending_applications ?? 0;
+
+    const reloadUsers = (overrides = {}) => {
+        router.get('/admin/dashboard', {
+            users_page: overrides.page ?? 1,
+            users_filter: overrides.filter ?? userFilter,
+            users_search: overrides.search ?? userQuery.trim(),
+            users_sort: overrides.sort ?? userSort,
+            users_dir: overrides.dir ?? userDir,
+            section: 'users',
+        }, {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['users', 'usersMeta', 'stats'],
+        });
+    };
+
+    const applyUserFilter = (filter) => {
+        setUserFilter(filter);
+        reloadUsers({ page: 1, filter });
+    };
+
+    const applyUserSort = (sort, dir) => {
+        setUserSort(sort);
+        setUserDir(dir);
+        reloadUsers({ page: 1, sort, dir });
+    };
+
+    const loadMoreUsers = () => {
+        reloadUsers({ page: (usersMeta.page ?? 1) + 1 });
+    };
+
+    const submitUserSearch = (e) => {
+        e?.preventDefault();
+        reloadUsers({ page: 1, search: userQuery.trim() });
+    };
+
+    const exportAllUsers = () => {
+        const params = new URLSearchParams({
+            users_filter: userFilter,
+            users_search: userQuery.trim(),
+            users_sort: userSort,
+            users_dir: userDir,
+        });
+        window.location.href = `/admin/reports/users?${params}`;
+    };
+
+    const loadMoreSessions = () => {
+        router.get('/admin/dashboard', {
+            sessions_page: (sessionsMeta.page ?? 1) + 1,
+            section: 'sessions',
+        }, { preserveScroll: true, only: ['sessions', 'sessionsMeta'] });
+    };
+
+    const loadMoreLoginHistory = () => {
+        router.get('/admin/dashboard', {
+            login_page: (loginHistoryMeta.page ?? 1) + 1,
+            section: 'sessions',
+        }, { preserveScroll: true, only: ['loginHistory', 'loginHistoryMeta'] });
+    };
+
+    const visibleUsers = users;
 
     const sections = [
         { key: 'overview', label: 'Обзор' },
@@ -346,6 +479,11 @@ export default function AdminDashboard({
             title: 'Все товары',
             description: 'Каталог товаров, модерация, статусы и управление витриной.',
             href: '/admin/products',
+        },
+        {
+            title: 'Пункты выдачи',
+            description: 'Список ПВЗ, операторы, закрытие пунктов и назначение сотрудников.',
+            href: '/admin/pickup-points',
         },
         {
             title: 'Слайдер главной',
@@ -398,6 +536,7 @@ export default function AdminDashboard({
                                 {s.label}
                             </button>
                         ))}
+                       
                         <a href="/profile" className="adm-nav-item adm-nav-back">← Профиль</a>
                     </nav>
                 </aside>
@@ -584,7 +723,7 @@ export default function AdminDashboard({
                                                                     className="adm-action-btn adm-btn-reject"
                                                                     onClick={() => kickSession(s.id)}
                                                                 >
-                                                                    Кикнуть
+                                                                    Завершить
                                                                 </button>
                                                             )}
                                                         </div>
@@ -598,6 +737,13 @@ export default function AdminDashboard({
                                     <div className="adm-empty">Сессии не найдены</div>
                                 )}
                             </div>
+                            {sessionsMeta.has_more && (
+                                <div style={{ marginTop: 12, textAlign: 'center' }}>
+                                    <button type="button" className="adm-action-btn adm-btn-view" onClick={loadMoreSessions}>
+                                        Показать ещё сессии
+                                    </button>
+                                </div>
+                            )}
 
                             <div className="adm-section-subhead">
                                 <h2>История входов</h2>
@@ -656,6 +802,13 @@ export default function AdminDashboard({
                                     <div className="adm-empty">История входов не найдена</div>
                                 )}
                             </div>
+                            {loginHistoryMeta.has_more && (
+                                <div style={{ marginTop: 12, textAlign: 'center' }}>
+                                    <button type="button" className="adm-action-btn adm-btn-view" onClick={loadMoreLoginHistory}>
+                                        Показать ещё историю входов
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -680,7 +833,7 @@ export default function AdminDashboard({
                             ) : (
                                 <div className="adm-pending-list">
                                     {visiblePending.map(u => (
-                                        <div key={u.id} className="adm-pending-card">
+                                        <div key={u.id} className={`adm-pending-card ${u.application_type === 'restore' ? 'adm-pending-card--restore' : ''}`}>
                                             <div className="adm-pending-user">
                                                 <img src={u.avatar || '/img/profiles/profile.png'} className="adm-avatar" alt="" />
                                                 <div>
@@ -696,7 +849,17 @@ export default function AdminDashboard({
                                             </div>
                                             {u.seller_profile && (
                                                 <div className="adm-pending-shop">
-                                                    <div className="adm-shop-name">{u.seller_profile.shop_name}</div>
+                                                    <div className="adm-shop-name">
+                                                        {u.seller_profile.shop_name}
+                                                        {u.application_type === 'restore' && (
+                                                            <span className="adm-badge adm-badge-restore">Восстановление компании</span>
+                                                        )}
+                                                    </div>
+                                                    {u.application_type === 'restore' && u.restore_requested_at && (
+                                                        <div className="adm-shop-meta">
+                                                            Запрошено: {new Date(u.restore_requested_at).toLocaleString('ru-RU')}
+                                                        </div>
+                                                    )}
                                                     {u.seller_profile.inn && <div className="adm-shop-meta">ИНН: {u.seller_profile.inn}</div>}
                                                     {u.seller_profile.pickup_address && (
                                                         <div className="adm-shop-meta">Адрес: {u.seller_profile.pickup_address}</div>
@@ -711,7 +874,9 @@ export default function AdminDashboard({
                                             )}
                                             <div className="adm-pending-actions">
                                                 <a href={`/admin/users/${u.id}/detail`} className="adm-action-btn adm-btn-view">Подробнее</a>
-                                                <button className="adm-action-btn adm-btn-approve" onClick={() => approveSeller(u.id)}>Одобрить</button>
+                                                <button className="adm-action-btn adm-btn-approve" onClick={() => approveSeller(u.id)}>
+                                                    {u.application_type === 'restore' ? 'Одобрить восстановление' : 'Одобрить'}
+                                                </button>
                                                 <button className="adm-action-btn adm-btn-reject" onClick={() => rejectSeller(u.id)}>Отклонить</button>
                                             </div>
                                         </div>
@@ -724,28 +889,55 @@ export default function AdminDashboard({
                     {/* ── USERS ── */}
                     {activeSection === 'users' && (
                         <div>
-                            <h1 className="adm-title">Пользователи ({users.length})</h1>
+                            <h1 className="adm-title">Пользователи ({usersMeta.total ?? users.length})</h1>
+
+                            <div className="adm-filter-row" style={{ marginBottom: 10 }}>
+                                <select
+                                    className="adm-status-select"
+                                    value={`${userSort}:${userDir}`}
+                                    onChange={(e) => {
+                                        const [sort, dir] = e.target.value.split(':');
+                                        applyUserSort(sort, dir);
+                                    }}
+                                >
+                                    <option value="created_at:desc">Дата регистрации ↓</option>
+                                    <option value="created_at:asc">Дата регистрации ↑</option>
+                                    <option value="name:asc">Имя А–Я</option>
+                                    <option value="name:desc">Имя Я–А</option>
+                                    <option value="role:asc">Роль: админ → пользователь</option>
+                                    <option value="role:desc">Роль: пользователь → админ</option>
+                                </select>
+                                <button type="button" className="adm-action-btn adm-btn-view" onClick={exportAllUsers}>
+                                    Скачать отчёт (CSV)
+                                </button>
+                            </div>
 
                             <div className="adm-filter-row">
                                 {[
-                                    { k: 'all',     l: `Все (${users.length})` },
-                                    { k: 'active',  l: `Активные (${users.filter(u => !u.is_blocked && !u.deleted_at).length})` },
-                                    { k: 'blocked', l: `Заблокированные (${users.filter(u => u.is_blocked && !u.deleted_at).length})` },
-                                    { k: 'deleted', l: `Удалённые (${users.filter(u => u.deleted_at).length})` },
+                                    { k: 'all', l: 'Все' },
+                                    { k: 'active', l: 'Активные' },
+                                    { k: 'shop_changes', l: `Изменения магазина (${shopChangesCount})` },
+                                    { k: 'pvz_pending', l: `Заявки ПВЗ (${pvzPendingCount})` },
+                                    { k: 'blocked', l: 'Заблокированные' },
+                                    { k: 'deleted', l: 'Удалённые' },
                                 ].map(t => (
                                     <button
                                         key={t.k}
+                                        type="button"
                                         className={`adm-filter-pill ${userFilter === t.k ? 'active' : ''}`}
-                                        onClick={() => setUserFilter(t.k)}
+                                        onClick={() => applyUserFilter(t.k)}
                                     >{t.l}</button>
                                 ))}
-                                <input
-                                    type="text"
-                                    className="admin-search-input adm-flex-search"
-                                    placeholder="Поиск по имени, email, телефону, ID..."
-                                    value={userQuery}
-                                    onChange={(e) => setUserQuery(e.target.value)}
-                                />
+                                <form onSubmit={submitUserSearch} style={{ display: 'flex', gap: 8, flex: 1 }}>
+                                    <input
+                                        type="text"
+                                        className="admin-search-input adm-flex-search"
+                                        placeholder="Поиск по имени, email, телефону, ID..."
+                                        value={userQuery}
+                                        onChange={(e) => setUserQuery(e.target.value)}
+                                    />
+                                    <button type="submit" className="adm-action-btn adm-btn-view">Найти</button>
+                                </form>
                             </div>
 
                             <div className="adm-table-wrap">
@@ -762,11 +954,17 @@ export default function AdminDashboard({
                                     </thead>
                                     <tbody>
                                         {visibleUsers.map(u => (
-                                            <tr key={u.id} className={u.is_blocked ? 'adm-row-blocked' : ''}>
+                                            <tr key={u.id} className={`${u.is_blocked ? 'adm-row-blocked' : ''} ${(u.shop_changes_pending || u.pvz_application_pending) ? 'adm-row-highlight' : ''}`}>
                                                 <td>
                                                     <div className="adm-cell-user">
                                                         <img src={u.avatar || '/img/profiles/profile.png'} className="adm-avatar-sm" alt="" />
                                                         <span>{[u.name, u.last_name].filter(Boolean).join(' ') || 'Без имени'}</span>
+                                                        {u.shop_changes_pending && (
+                                                            <span className="adm-user-flag adm-user-flag--shop">Изменения магазина</span>
+                                                        )}
+                                                        {u.pvz_application_pending && (
+                                                            <span className="adm-user-flag adm-user-flag--pvz">Заявка ПВЗ</span>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td>
@@ -791,7 +989,9 @@ export default function AdminDashboard({
                                                 <td>{new Date(u.created_at).toLocaleDateString('ru-RU')}</td>
                                                 <td>
                                                     <div className="adm-cell-actions">
-                                                        <a href={`/admin/users/${u.id}/detail`} className="adm-action-btn adm-btn-view">Детали</a>
+                                                        <a href={`/admin/users/${u.id}/detail`} className="adm-action-btn adm-btn-view">
+                                                            Детали
+                                                        </a>
                                                         {u.id !== auth?.user?.id && u.id !== 1 && !u.deleted_at && (
                                                             <button
                                                                 className={`adm-action-btn ${u.is_blocked ? 'adm-btn-unblock' : 'adm-btn-block'}`}
@@ -810,6 +1010,13 @@ export default function AdminDashboard({
                                     <div className="adm-empty">Пользователи не найдены</div>
                                 )}
                             </div>
+                            {usersMeta.has_more && (
+                                <div style={{ marginTop: 16, textAlign: 'center' }}>
+                                    <button type="button" className="adm-action-btn adm-btn-view" onClick={loadMoreUsers}>
+                                        Показать ещё ({visibleUsers.length} из {usersMeta.total})
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -822,7 +1029,7 @@ export default function AdminDashboard({
                                 <input
                                     type="text"
                                     className="admin-search-input"
-                                    placeholder="Точный номер ORD-..., код выдачи (10 символов), суточный код 1234 5678, ID или email"
+                                    placeholder="Точный номер 123..., код выдачи (10 символов), суточный код 1234 5678, ID или email"
                                     value={orderQuery}
                                     onChange={(e) => setOrderQuery(e.target.value)}
                                 />
@@ -847,7 +1054,7 @@ export default function AdminDashboard({
                             {!orderSearch && orderResults.length === 0 && (
                                 <div className="adm-empty">
                                     Введите значение целиком — поиск только по точному совпадению (не по части кода).<br />
-                                    Номер заказа <code className="adm-code">ORD-...</code>, код выдачи (10 символов),
+                                    Номер заказа <code className="adm-code">234...</code>, код выдачи (10 символов),
                                     суточный код <code className="adm-code">1234 5678</code>, ID покупателя или email.
                                     Можно отсканировать QR / штрихкод.
                                 </div>
@@ -970,13 +1177,14 @@ export default function AdminDashboard({
                                                                 defaultValue={o.status}
                                                                 onChange={(e) => updateOrderStatus(o.id, e.target.value)}
                                                             >
-                                                                {orderStatusOptionsFor(o).map(s => (
+                                                                {orderStatusOptionsFor(o, auth.user?.role).map(s => (
                                                                     <option key={s.value} value={s.value} disabled={s.disabled}>{s.label}</option>
                                                                 ))}
                                                             </select>
                                                             <span className="adm-status-hint">
                                                                 Текущий: {ORDER_STATUS_MAP[o.status]}
                                                                 {o.payment_status !== 'paid' && ' · выдача после оплаты'}
+                                                                {auth.user?.role === 'moderator' && ' · «Выдан»/«Отказ» — только админ или ПВЗ'}
                                                             </span>
                                                             <a
                                                                 href={`/admin/reports/order/${o.id}`}

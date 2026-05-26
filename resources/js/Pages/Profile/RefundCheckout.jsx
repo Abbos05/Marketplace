@@ -8,7 +8,7 @@ const STATUS_LABELS = {
     REFUSED: 'Отказ от получения',
 };
 
-export default function RefundCheckout({ auth, order, isDemo = true }) {
+export default function RefundCheckout({ auth, order }) {
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
 
@@ -23,7 +23,7 @@ export default function RefundCheckout({ auth, order, isDemo = true }) {
             router.post(route('order.refund.complete', order.id), {}, {
                 onFinish: () => setLoading(false),
             });
-        }, isDemo ? 1400 : 600);
+        }, 1200);
     };
 
     return (
@@ -31,7 +31,10 @@ export default function RefundCheckout({ auth, order, isDemo = true }) {
             <Head title={`Возврат — заказ ${order.number}`} />
 
             <div className="refund-page">
-                <Link href={route('order.show', order.id)} className="refund-back">
+                <Link
+                    href={route('order.show', { order: order.id, view: 1 })}
+                    className="refund-back"
+                >
                     ← Назад к заказу
                 </Link>
 
@@ -40,12 +43,6 @@ export default function RefundCheckout({ auth, order, isDemo = true }) {
                         <div className="refund-checkout-logo">Stripe</div>
                         <span className="refund-checkout-badge">Возврат средств</span>
                     </div>
-
-                    {isDemo && (
-                        <div className="refund-demo-banner">
-                            Демо-режим: реальные деньги не переводятся. Имитация возврата для дипломного проекта.
-                        </div>
-                    )}
 
                     <h1 className="refund-checkout-title">Возврат на карту</h1>
 
@@ -87,9 +84,7 @@ export default function RefundCheckout({ auth, order, isDemo = true }) {
                                 Подтвердить возврат
                             </button>
                             <p className="refund-checkout-note">
-                                {isDemo
-                                    ? 'После подтверждения заказ будет помечен как «деньги возвращены».'
-                                    : 'Средства вернутся на карту, с которой была оплата (3–10 рабочих дней).'}
+                                Средства вернутся на карту, с которой была оплата (3–10 рабочих дней).
                             </p>
                         </>
                     )}

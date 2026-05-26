@@ -6,10 +6,10 @@ import '../../../../css/seller/manage.css';
 
 const STATUS_LABELS = {
     moderation: { label: 'На модерации', cls: 'moderation' },
-    approved:   { label: 'Опубликован',  cls: 'approved'   },
-    rejected:   { label: 'Отклонён',     cls: 'rejected'   },
-    hidden:     { label: 'Скрыт',        cls: 'hidden'      },
-    draft:      { label: 'Черновик',     cls: 'draft'       },
+    approved: { label: 'Опубликован', cls: 'approved' },
+    rejected: { label: 'Отклонён', cls: 'rejected' },
+    hidden: { label: 'Скрыт', cls: 'hidden' },
+    draft: { label: 'Черновик', cls: 'draft' },
 };
 
 function formatOptions(options) {
@@ -18,11 +18,11 @@ function formatOptions(options) {
 }
 
 export default function Manage({ product, variants }) {
-    const [stockValues, setStockValues]   = useState(() =>
+    const [stockValues, setStockValues] = useState(() =>
         Object.fromEntries(variants.map((v) => [v.id, String(v.stock)])),
     );
-    const [savingStock, setSavingStock]   = useState({});
-    const [processing, setProcessing]     = useState(false);
+    const [savingStock, setSavingStock] = useState({});
+    const [processing, setProcessing] = useState(false);
 
     const status = STATUS_LABELS[product.status] ?? { label: product.status, cls: 'draft' };
 
@@ -63,9 +63,20 @@ export default function Manage({ product, variants }) {
 
             {/* Toolbar */}
             <div className="manage-toolbar">
-                <Link href={route('seller.products')} className="manage-back-btn">
-                    ← Мои товары
-                </Link>
+                <div className="manage-toolbar">
+                    <Link
+                        className="manage-back-btn"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            window.history.back();
+                        }}>
+                        ← Назад
+                    </Link>
+                    <p className='manage-back-btn'>-</p>
+                    <Link href={route('seller.products')} className="manage-back-btn">
+                        Мои товары
+                    </Link>
+                </div>
                 <div className="manage-toolbar-actions">
                     <Link
                         href={route('seller.products.edit', product.id)}
@@ -177,6 +188,7 @@ export default function Manage({ product, variants }) {
                                     <th>Артикул</th>
                                     <th>Цена</th>
                                     <th>Остаток</th>
+                                    <th>Просмотры</th>
                                     <th>Статус</th>
                                     <th>Действия</th>
                                 </tr>
@@ -192,8 +204,8 @@ export default function Manage({ product, variants }) {
                                                 !v.is_active
                                                     ? 'manage-row--hidden'
                                                     : stockZero
-                                                    ? 'manage-row--warn'
-                                                    : ''
+                                                        ? 'manage-row--warn'
+                                                        : ''
                                             }
                                         >
                                             {/* Фото */}
@@ -264,6 +276,9 @@ export default function Manage({ product, variants }) {
                                                     <div className="manage-stock-warn">Нет в наличии</div>
                                                 )}
                                             </td>
+
+                                            {/* Просмотры */}
+                                            <td>{v.views_count ?? 0}</td>
 
                                             {/* Статус */}
                                             <td>

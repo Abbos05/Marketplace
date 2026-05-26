@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import '../../css/product/ShopPage.css';
 import '../../css/product/categories.css';
 import ProductsCatalog from '@/Components/Product/FilterProducts';
-import Recommendations from '@/Components/Product/ProductPage';
+import ProductRecommendationsSection from '@/Components/Product/ProductRecommendationsSection';
 
 export default function CategoryPage({ auth }) {
   const {
@@ -14,17 +14,12 @@ export default function CategoryPage({ auth }) {
     filters,
     facets = {},
     total = 0,
+    pagination = null,
     LikeProducts,
     showSubcategories = false,
     subcategories = [],
     breadcrumbs = [],
   } = usePage().props;
-
-  const [displayCount, setDisplayCount] = useState(5);
-
-  const showMore = () => {
-    setDisplayCount((prevCount) => Math.min(prevCount + 10, LikeProducts.length));
-  };
 
   return (
     <MainLayout auth={auth}>
@@ -63,7 +58,6 @@ export default function CategoryPage({ auth }) {
 
       {showSubcategories ? (
         <section className="category category--nested">
-          <div className="container">
             <div className="category_header">
               <h2>
                 Подкатегории <span>{category?.name}</span>
@@ -94,7 +88,6 @@ export default function CategoryPage({ auth }) {
                 </div>
               ))}
             </div>
-          </div>
         </section>
       ) : (
         <ProductsCatalog
@@ -103,23 +96,12 @@ export default function CategoryPage({ auth }) {
           filters={filters || {}}
           facets={facets}
           total={total}
+          pagination={pagination}
           isCategoryPage={true}
         />
       )}
 
-      {LikeProducts && LikeProducts.length > 0 && (
-        <>
-          <section className="category-header">
-            <h2>Возможно, вам понравится</h2>
-          </section>
-          <Recommendations products={LikeProducts.slice(0, displayCount)} />
-          {displayCount < LikeProducts.length && (
-            <button type="button" className="showMore__btn" onClick={showMore}>
-              Показать еще
-            </button>
-          )}
-        </>
-      )}
+      <ProductRecommendationsSection products={LikeProducts} />
     </MainLayout>
   );
 }

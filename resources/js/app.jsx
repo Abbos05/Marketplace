@@ -1,4 +1,5 @@
 import '../css/app.css';
+import '../css/shared/phone-modal.css';
 import './bootstrap';
 
 import { createInertiaApp, router } from '@inertiajs/react';

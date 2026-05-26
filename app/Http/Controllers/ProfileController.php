@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\PreparesCatalogRecommendations;
 use App\Models\Order;
 use App\Models\PickupPoint;
 use Illuminate\Support\Facades\Hash;
@@ -17,32 +18,32 @@ use Carbon\Carbon;
 use Inertia\Inertia;
 use App\Models\User;
 use App\Notifications\MarketplaceAlert;
+use App\Support\NotificationCategory;
+use App\Services\OtpCodeGenerator;
+use App\Services\UserRestrictionService;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Favorite;
+use App\Models\Review;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
+    use PreparesCatalogRecommendations;
+
     public function index()
     {
        $user = auth()->user()->load(['sellerProfile', 'defaultPickupPoint.region']);
 
-        // Рекомендации
-        $LikeProducts = Product::with('user', 'category')
-            ->visibleInCatalog()
-            ->limit(20)
-            ->get();
-        Product::enrichForCatalog($LikeProducts);
-        $this->markFavorites($LikeProducts);
+        $LikeProducts = $this->catalogRecommendations();
         // Заказы с items и маппингом статусов
         $orders = Order::with('items.variant.product')
             ->where('buyer_id', $user->id)
             ->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_ISSUED, Order::STATUS_REFUSED])
             ->orderBy('created_at', 'desc')
-            ->limit(1)
+            ->limit(3)
             ->get()
             ->map(function ($order) {
                 $order->frontend_status =
@@ -81,24 +82,32 @@ class ProfileController extends Controller
 
         $adminUsers = [];
         if ($user->isStaff()) {
+            $restriction = app(UserRestrictionService::class);
             $adminUsers = User::withTrashed()
-                ->with('sellerProfile')
-                ->orderByRaw("FIELD(role, 'admin', 'moderator', 'seller', 'user')")
+                ->with(['sellerProfile', 'approvedPickupPointStaff'])
+                ->orderByRaw("FIELD(role, 'admin', 'moderator', 'seller', 'pvz', 'user')")
                 ->orderBy('created_at', 'desc')
                 ->get()
-                ->map(fn($u) => [
-                    'id'             => $u->id,
-                    'name'           => $u->name,
-                    'last_name'      => $u->last_name,
-                    'email'          => $u->email,
-                    'phone'          => $u->phone,
-                    'role'           => $u->role,
-                    'is_blocked'     => $u->is_blocked,
-                    'avatar'         => $u->avatar,
-                    'deleted_at'     => $u->deleted_at,
-                    'created_at'     => $u->created_at,
-                    'seller_profile' => $u->sellerProfile ? ['shop_name' => $u->sellerProfile->shop_name] : null,
-                ]);
+                ->map(function ($u) use ($restriction, $user) {
+                    $flags = $restriction->roleFlagsFor($u);
+
+                    return [
+                        'id'             => $u->id,
+                        'name'           => $u->name,
+                        'last_name'      => $u->last_name,
+                        'email'          => $u->email,
+                        'phone'          => $u->phone,
+                        'role'           => $u->role,
+                        'is_blocked'     => $u->is_blocked,
+                        'avatar'         => $u->avatar,
+                        'deleted_at'     => $u->deleted_at,
+                        'created_at'     => $u->created_at,
+                        'seller_profile' => $u->sellerProfile ? ['shop_name' => $u->sellerProfile->shop_name] : null,
+                        'can_assign_seller' => $flags['can_assign_seller'],
+                        'can_assign_pvz' => $flags['can_assign_pvz'],
+                        'assignable_roles' => $restriction->assignableRolesFor($user, $u),
+                    ];
+                });
         }
 
         $pickupPoints = PickupPoint::query()
@@ -139,6 +148,58 @@ class ProfileController extends Controller
                 return $event;
             });
 
+        $ordersCount = Order::where('buyer_id', $user->id)
+            ->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_REFUSED])
+            ->count();
+
+        $myReviewsScope = fn ($query) => $query
+            ->where('user_id', $user->id)
+            ->where(function ($q) {
+                $q->whereNull('deleted_at')
+                    ->orWhereNotNull('moderation_comment');
+            });
+
+        $reviewsCount = Review::query()
+            ->withTrashed()
+            ->tap($myReviewsScope)
+            ->count();
+
+        $myReviewsCollection = Review::query()
+            ->withTrashed()
+            ->with([
+                'product' => fn ($q) => $q->select('id', 'title')->with([
+                    'images' => fn ($iq) => $iq->whereNull('variant_id')->orderByDesc('is_main')->orderBy('sort_order'),
+                ]),
+            ])
+            ->tap($myReviewsScope)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        Product::enrichForCatalog($myReviewsCollection->pluck('product')->filter()->unique('id')->values());
+
+        $myReviews = $myReviewsCollection->map(function (Review $r) {
+            $moderationStatus = $r->trashed() && $r->moderation_comment
+                ? 'rejected'
+                : ($r->is_moderated ? 'published' : 'pending');
+
+            return [
+                'id' => $r->id,
+                'rating' => $r->rating,
+                'comment' => $r->comment,
+                'is_moderated' => $r->is_moderated,
+                'moderation_status' => $moderationStatus,
+                'moderation_comment' => $moderationStatus === 'rejected' ? $r->moderation_comment : null,
+                'created_at' => $r->created_at?->toIso8601String(),
+                'product' => $r->product ? [
+                    'id' => $r->product->id,
+                    'title' => $r->product->title,
+                    'image' => $r->product->image,
+                ] : null,
+                'order_id' => $r->order_id,
+            ];
+        });
+
         return Inertia::render('Profile/Index', [
             'LikeProducts'  => $LikeProducts,
             'auth'          => ['user' => $user],
@@ -146,11 +207,20 @@ class ProfileController extends Controller
             'orders'        => $orders,
             'myFavorites'   => $myFavorites,
             'sellerProfile' => $user->sellerProfile,
+            'closedSellerProfile' => app(\App\Services\AccountDeletionService::class)->closedSellerProfilePayload($user->id),
+            'sellerRestorePending' => app(\App\Services\AccountDeletionService::class)->sellerRestorePendingPayload($user),
             'adminUsers'    => $adminUsers,
             'pickupPoints'  => $pickupPoints,
             'userSessions'  => $userSessions,
             'loginHistory'  => $loginHistory,
             'currentSessionId' => request()->session()->getId(),
+            'accountDeletion' => app(\App\Services\AccountDeletionService::class)->accountDeletionInfo($user),
+            'myReviews' => $myReviews,
+            'profileCounts' => [
+                'orders' => $ordersCount,
+                'favorites' => $myFavorites->count(),
+                'reviews' => $reviewsCount,
+            ],
         ]);
     }
 
@@ -170,6 +240,22 @@ class ProfileController extends Controller
         }
 
         return back()->with('success', 'Сессия завершена.');
+    }
+
+    public function destroyOtherSessions(Request $request): RedirectResponse
+    {
+        $currentSessionId = $request->session()->getId();
+
+        $deleted = DB::table('sessions')
+            ->where('user_id', $request->user()->id)
+            ->where('id', '!=', $currentSessionId)
+            ->delete();
+
+        if ($deleted === 0) {
+            return back()->with('success', 'Других активных сеансов нет.');
+        }
+
+        return back()->with('success', "Завершено сеансов: {$deleted}.");
     }
 
     public function updateDefaultPickup(Request $request): RedirectResponse
@@ -199,95 +285,7 @@ class ProfileController extends Controller
     }
 
 
-    public function filter(Request $request)
-    {
-        $user = Auth::user();
-
-        $myNfts = collect(); // по умолчанию — пустая коллекция
-        $user = Auth::user();
-        $myNfts = Product::where('seller_id', $user->id)->where('is_on_action', 1)
-            ->with(['category', 'user']) // добавляем загрузку пользователя
-            ->get();
-
-        // Правильно проверяем параметр запроса
-        if ($request->filter == "myNfts") {
-            $myNfts = Product::where('user_id', $user->id)
-                ->with(['category', 'user'])
-                ->orderByRaw("FIELD(status, 'sold', 'relevant', 'moderation', 'rejection')")
-                ->orderBy('created_at', 'desc')
-                ->get();
-        }
-        // В ProfileController@filter
-        if ($request->filter == "myHistory") {
-            $transactions = Transaction::with(['nft', 'buyer', 'seller'])
-                ->where('buyer_id', $user->id)
-                ->orWhere('seller_id', $user->id)
-                ->latest()
-                ->get()
-                ->map(function ($tx) use ($user) {
-                    $isBuyer = $tx->buyer_id == $user->id;
-                    $counterparty = $isBuyer ? $tx->seller : $tx->buyer;
-                    return [
-                        'id' => $tx->id,
-                        'type' => $tx->buyer_id == $user->id ? 'buy' : 'sell',
-                        'nft' => $tx->nft,
-                        'status' => $tx->status == 'failed' ? 'Неуспешно' : ($tx->status == 'completed' ? 'Успешно' : 'в процессе'),
-                        'price' => $tx->amount,
-                        'created_at' => $tx->created_at,
-                        'counterparty' => [
-                            'id' => $counterparty?->id,
-                            'name' => $counterparty?->name,
-                            'avatar' => $counterparty?->avatar,
-                            'trashed' => $counterparty?->trashed(), // <-- Добавляем флаг
-                        ],
-                    ];
-                });
-
-            $myNfts = $transactions; // ← Передаём как nfts
-        }
-        if ($request->filter == "myCheck") {
-            $myNfts = Product::where('user_id', $user->id)->where('status', 'moderation')
-                ->with(['category', 'user'])
-                ->get();
-        }
-        if ($request->filter == "myFavorites") {
-
-            $myNfts = Product::whereHas('favorites', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
-                ->with(['category', 'user'])
-                ->get();
-        }
-        if ($request->filter == "myCart") {
-            $myNfts = Product::whereHas('carts', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
-                ->with(['category', 'user'])
-                ->get();
-        }
-
-        // dd($myNfts);
-        return Inertia::render('Profile/Index', [
-            'auth' => ['user' => $user],
-            'categories' => Category::all(),
-            'nfts' => $myNfts->toArray(),   // ← массив, а не коллекция
-            'activeFilter' => $request->filter ?? null,
-            'pickupPoints' => PickupPoint::query()
-                ->active()
-                ->with('region')
-                ->orderBy('sort_order')
-                ->orderBy('title')
-                ->get()
-                ->map(fn (PickupPoint $p) => [
-                    'id' => $p->id,
-                    'label' => $p->title.($p->region ? ' — '.$p->region->name : ''),
-                    'title' => $p->title,
-                    'address' => $p->address,
-                    'region_name' => $p->region?->name,
-                ]),
-        ]);
-    }
-
+   
 
     public function favorites()
     {
@@ -309,12 +307,9 @@ class ProfileController extends Controller
         $this->markFavorites($myFavorites, true);
 
 
-        $LikeProducts = Product::forCatalogPresentation()
-            ->where('status', 'approved')
-            ->limit(24)
-            ->get();
-        Product::enrichForCatalog($LikeProducts);
-        $this->markFavorites($LikeProducts);
+        $LikeProducts = $this->catalogRecommendations([
+            'exclude_product_ids' => $favoriteProductIds->all(),
+        ]);
 
         return Inertia::render('Profile/Favorite', [
             'auth' => ['user' => $user],
@@ -361,10 +356,13 @@ class ProfileController extends Controller
         ]);
         $user->refresh();
         if ($user->is_blocked && ! $wasBlocked) {
+            app(UserRestrictionService::class)->applyBlock($user);
+            $user->refresh();
             $user->notify(new MarketplaceAlert(
                 'Аккаунт заблокирован',
-                'Ваш доступ к платформе ограничен. Напишите в поддержку, если это ошибка.',
-                route('messages.index', ['notifications' => 1], false),
+                'Ваш доступ к покупкам и продаже ограничен. Вы можете выдать заказы, уже прибывшие в ваш пункт выдачи. Напишите в поддержку.',
+                null,
+                NotificationCategory::Account,
             ));
         }
 
@@ -374,12 +372,13 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
+      
         $rules = [
             'name'      => 'nullable|string|max:50',
             'last_name' => 'nullable|string|max:50',
             'email'     => 'nullable|email|max:255|unique:users,email,' . $user->id,
-            'description' => 'nullable|string|max:500',
-            'avatar' => 'nullable|image|max:2048',
+            'description' => 'nullable|string|max:4000',
+            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
             'current_password' => 'nullable|string',
             'password' => 'nullable|string|min:4|confirmed',
         ];
@@ -394,10 +393,11 @@ class ProfileController extends Controller
             'email.unique' => 'Пользователь с таким email уже существует.',
 
             'description.string' => 'Описание должно быть текстом.',
-            'description.max' => 'Описание не должно превышать 500 символов.',
+            'description.max' => 'Описание слишком длинное.',
 
-            'avatar.image' => 'Аватар должен быть изображением.',
-            'avatar.max' => 'Размер аватара не должен превышать 2 МБ.',
+            'avatar.image' => 'Аватар должен быть изображением (JPG, PNG, WEBP).',
+            'avatar.mimes' => 'Поддерживаются форматы JPG, PNG, WEBP и GIF.',
+            'avatar.max' => 'Размер аватара не должен превышать 10 МБ.',
 
             'current_password.string' => 'Текущий пароль должен быть текстом.',
 
@@ -407,15 +407,33 @@ class ProfileController extends Controller
 
         ]);
 
-        // Аватар
-        if ($request->hasFile('avatar')) {
-            if ($user->avatar) {
-                Storage::delete('public/' . $user->avatar);
+        if ($request->filled('description')) {
+            try {
+                $validated['description'] = $this->sanitizeProfileDescription($request->input('description'));
+            } catch (\InvalidArgumentException $e) {
+                return back()->withErrors(['description' => $e->getMessage()]);
             }
-            $validated['avatar'] = $request->file('avatar')->store('avatars', 'public');
         } else {
-            $validated['avatar'] = $user->avatar;
+            $validated['description'] = null;
         }
+
+    // Аватар — напрямую в public/img/avatars (не storage)
+    if ($request->hasFile('avatar')) {
+        $this->deleteUserAvatar($user->avatar);
+
+        $file = $request->file('avatar');
+        $dir = public_path("img/avatars/{$user->id}");  // ← public/img/avatars
+
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $filename = $file->hashName();
+        $file->move($dir, $filename);
+        $validated['avatar'] = "/img/avatars/{$user->id}/{$filename}";
+    } else {
+        unset($validated['avatar']);
+    }
 
         // Пароль
         if ($request->filled('password')) {
@@ -436,7 +454,8 @@ class ProfileController extends Controller
             $user->notify(new MarketplaceAlert(
                 'Пароль изменён',
                 'Пароль вашего аккаунта был успешно обновлён. Если это были не вы, немедленно свяжитесь с поддержкой.',
-                route('messages.index', ['notifications' => 1], false),
+                null,
+                NotificationCategory::Security,
             ));
         }
 
@@ -467,14 +486,21 @@ class ProfileController extends Controller
             'phone.unique' => 'Этот номер телефона уже привязан к другому аккаунту.',
         ]);
 
-        $otp = '000000';
+        $otp = app(OtpCodeGenerator::class)->real();
         $request->session()->put('profile_phone_pending', $validated['phone']);
-        $request->session()->put('profile_phone_otp', $otp);
+        $request->session()->put('profile_phone_otp_hash', Hash::make($otp));
         $request->session()->put('profile_phone_otp_expires', now()->addMinutes(10)->timestamp);
+
+        $request->user()->notify(new MarketplaceAlert(
+            'Код подтверждения телефона',
+            "Код для привязки номера: {$otp}. Код отображается в этом уведомлении.",
+            null,
+            NotificationCategory::AuthProfilePhone,
+        ));
 
         return response()->json([
             'success' => true,
-            'message' => 'Код подтверждения отправлен.',
+            'message' => 'Код отправлен в уведомления и на почту.',
         ]);
     }
 
@@ -488,10 +514,16 @@ class ProfileController extends Controller
         ]);
 
         $phone = $request->session()->get('profile_phone_pending');
-        $otp = $request->session()->get('profile_phone_otp');
+        $otpHash = $request->session()->get('profile_phone_otp_hash');
         $expires = $request->session()->get('profile_phone_otp_expires');
 
-        if (! $phone || $otp !== $request->input('code') || ! $expires || now()->timestamp > $expires) {
+        if (
+            ! $phone
+            || ! $otpHash
+            || ! Hash::check($request->input('code'), $otpHash)
+            || ! $expires
+            || now()->timestamp > $expires
+        ) {
             return response()->json([
                 'success' => false,
                 'message' => 'Неверный или истёкший код подтверждения.',
@@ -510,7 +542,7 @@ class ProfileController extends Controller
         }
 
         $request->user()->update(['phone' => $phone]);
-        $request->session()->forget(['profile_phone_pending', 'profile_phone_otp', 'profile_phone_otp_expires']);
+        $request->session()->forget(['profile_phone_pending', 'profile_phone_otp_hash', 'profile_phone_otp_expires']);
 
         return response()->json([
             'success' => true,
@@ -552,7 +584,8 @@ class ProfileController extends Controller
         $user->notify(new MarketplaceAlert(
             'Пароль изменён',
             'Пароль вашего аккаунта был успешно обновлён.',
-            route('messages.index', ['notifications' => 1], false),
+            null,
+            NotificationCategory::Security,
         ));
 
         return redirect()->back()->with('success', 'Пароль обновлен');
@@ -562,7 +595,7 @@ class ProfileController extends Controller
     {
         $actor = auth()->user();
         $allowedRoles = $actor->canAssignStaffRoles()
-            ? ['user', 'seller', 'moderator', 'admin']
+            ? ['user', 'seller', 'pvz', 'moderator', 'admin']
             : ['user', 'seller'];
 
         $request->validate([
@@ -577,7 +610,22 @@ class ProfileController extends Controller
             return back()->with('error', 'Недостаточно прав для изменения роли этого пользователя');
         }
 
+        $check = app(UserRestrictionService::class)->canAssignRole($user, $request->role);
+        if (! $check['ok']) {
+            return back()->with('error', $check['message']);
+        }
+
+        $previousRole = $user->role;
         $user->update(['role' => $request->role]);
+
+        if ($previousRole !== $request->role) {
+            app(\App\Services\MarketplaceAuditService::class)->logRoleChanged(
+                $user,
+                $actor,
+                $previousRole,
+                $request->role,
+            );
+        }
 
         return back()->with('success', 'Роль пользователя изменена');
     }
@@ -622,15 +670,12 @@ class ProfileController extends Controller
         $user = $request->user();
         if ($user) {
             if (auth()->user()->is_blocked === 1) {
-                return back()->with('error', 'Ваш аккаунт заблакирован');
+                return back()->with('error', 'Ваш аккаунт заблокирован');
             }
 
-            $hasActiveOrders = Order::where('buyer_id', $user->id)
-                ->whereNotIn('status', Order::statusesAllowingUserDeletion())
-                ->exists();
-
-            if ($hasActiveOrders) {
-                return back()->with('error', 'Нельзя удалить аккаунт: есть активные заказы. Дождитесь доставки, выдачи или отмены.');
+            $check = app(\App\Services\AccountDeletionService::class)->canDeleteOwnAccount($user);
+            if (! $check['ok']) {
+                return back()->with('error', $check['message']);
             }
 
             Auth::logout();
@@ -683,5 +728,43 @@ class ProfileController extends Controller
         }
 
         return $phone;
+    }
+
+    private function sanitizeProfileDescription(?string $html): ?string
+    {
+        if ($html === null || trim($html) === '') {
+            return null;
+        }
+
+        $allowed = '<p><br><strong><b><em><i><u><ul><ol><li><div><span>';
+        $clean = strip_tags($html, $allowed);
+        $plain = trim(preg_replace('/\s+/u', ' ', strip_tags($clean)) ?? '');
+
+        if (mb_strlen($plain) > 500) {
+            throw new \InvalidArgumentException('Описание не должно превышать 500 символов.');
+        }
+
+        return $clean !== '' ? $clean : null;
+    }
+
+    private function deleteUserAvatar(?string $avatarPath): void
+    {
+        if (empty($avatarPath)) {
+            return;
+        }
+        
+        // Полный путь к файлу
+        $fullPath = public_path($avatarPath);
+        
+        // Удаляем файл если существует
+        if (is_file($fullPath)) {
+            unlink($fullPath);
+        }
+        
+        // Удаляем папку пользователя если она пустая
+        $userDir = dirname($fullPath);
+        if (is_dir($userDir) && count(scandir($userDir)) === 2) { // Только . и ..
+            rmdir($userDir);
+        }
     }
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import '../../../css/product/product.css';
-
+    
 function normalizeImageUrl(product) {
     if (!product) return '/img/products/default.png';
     const direct = product.image ?? product.main_image;
@@ -136,7 +136,8 @@ export default function ProductCard({ product, hideFooter = false }) {
     const ratingDisplay = ratingStr ?? '0.0';
     const shopName = product.seller_shop_name ?? product.seller?.name ?? 'Магазин';
     const verified = !!product.seller_verified;
-    const showPromoBadges = showOldPrice;
+    const promotionBadges = product.promotion_badges ?? [];
+    const showPromoBadges = showOldPrice || promotionBadges.length > 0;
 
     const productHref =
         variantId != null
@@ -163,6 +164,11 @@ export default function ProductCard({ product, hideFooter = false }) {
                                     <p>Скидка</p>
                                 </div>
                             ) : null}
+                            {promotionBadges.map((badge, idx) => (
+                                <div key={`${badge.label}-${idx}`} className="product__stock__item product__stock__item--promo">
+                                    <p title={badge.title}>{badge.label}</p>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>

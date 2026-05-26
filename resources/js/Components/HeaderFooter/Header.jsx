@@ -3,6 +3,8 @@ import HeaderMenu from './HeaderMenu';
 import { Link, router, usePage } from '@inertiajs/react';
 import { pinWidgetFromHeaderDrag } from '@/lib/messagesWidget';
 import BarcodeScannerModal from '@/Components/BarcodeScannerModal';
+import HeaderSearchWithSuggestions from '@/Components/HeaderFooter/HeaderSearchWithSuggestions';
+import { mergeCatalogSearchParams } from '@/lib/catalogFilters';
 import '../../../css/MainLayout.css';
 
 const Header = ({ setIsModalOpen }) => {
@@ -108,9 +110,7 @@ const Header = ({ setIsModalOpen }) => {
       return;
     }
 
-    const params = { search: trimmed };
-    if (filters?.price_from) params.price_from = filters.price_from;
-    if (filters?.price_to) params.price_to = filters.price_to;
+    const params = mergeCatalogSearchParams(trimmed, filters || {});
 
     const currentPath = window.location.pathname;
     let targetPath = '/';
@@ -293,38 +293,15 @@ const Header = ({ setIsModalOpen }) => {
   );
 
   const renderSearch = (className = '') => (
-    <div className={`header-search ${className}`.trim()}>
-      <input
-        type="text"
-        placeholder="Поиск по названию или артикулу..."
-        maxLength="45"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-      />
-   
-      <button
-        type="button"
-        onClick={() => setScannerOpen(true)}
-        className="search-btn search-btn-camera"
-        aria-label="Сканировать артикул или штрихкод"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.2l1.2-1.8A1.6 1.6 0 0 1 10.2 3.5h3.6a1.6 1.6 0 0 1 1.3.7L16.3 6h1.2A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Z" stroke="currentColor" strokeWidth="2" />
-          <circle cx="12" cy="12.5" r="3.2" stroke="currentColor" strokeWidth="2" />
-        </svg>
-      </button>
-      <button type="button" onClick={handleSearch} className="search-btn" aria-label="Найти">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 27"
-          fill="none"
-        >
-          <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2.3" />
-          <path d="M16.2 16.2L21 21" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" />
-        </svg>
-      </button>
-    </div>
+    <HeaderSearchWithSuggestions
+      className={className}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+      onSearch={handleSearch}
+      onOpenScanner={() => setScannerOpen(true)}
+      onNavigate={() => setIsMobileSearchOpen(false)}
+      filters={filters}
+    />
   );
 
   const renderMessagesAction = () => {
@@ -338,12 +315,8 @@ const Header = ({ setIsModalOpen }) => {
     const icon = (
       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" className="products__basket">
         <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" />
-        {user ? (
-          <>
             <line x1="8" y1="9" x2="17" y2="9" stroke="currentColor" strokeWidth="2.6" />
             <line x1="8" y1="13" x2="15" y2="13" stroke="currentColor" strokeWidth="2.2" />
-          </>
-        ) : null}
       </svg>
     );
 

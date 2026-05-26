@@ -7,6 +7,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use App\Notifications\MarketplaceAlert;
+use App\Support\NotificationCategory;
 use App\Services\LoginHistoryRecorder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,7 +52,8 @@ class AuthenticatedSessionController extends Controller
             $user->notify(new MarketplaceAlert(
                 'Вход в аккаунт',
                 'Вход выполнен '.now()->timezone('Europe/Moscow')->format('d.m.Y H:i').' (MSK). Если это были не вы, смените пароль.',
-                route('messages.index', ['notifications' => 1], false),
+                null,
+                NotificationCategory::Security,
             ));
         }
 

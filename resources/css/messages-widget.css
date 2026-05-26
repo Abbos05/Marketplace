@@ -228,6 +228,11 @@ html.msg-embed-doc #app {
   max-height: 100%;
 }
 
+.msg-page--embed .msg-scroll-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
 .msg-page--embed .msg-scroll {
   flex: 1 1 0;
   min-height: 0;

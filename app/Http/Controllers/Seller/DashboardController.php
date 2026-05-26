@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -15,46 +16,42 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // Проверка, что пользователь продавец
         if ($user->role !== 'seller') {
             return redirect()->route('profile');
         }
 
-        // Получаем товары продавца (используем seller_id)
-        $products = Product::where('seller_id', $user->id)->get();
+        $sellerId = $user->id;
 
-        // Статистика - используем правильную связь items.variant.product
         $stats = [
-            'total_products' => $products->count(),
-            'total_orders' => Order::whereHas('items.variant.product', function ($q) use ($user) {
-                $q->where('seller_id', $user->id);
-            })->count(),
-            'total_sales' => Order::whereHas('items.variant.product', function ($q) use ($user) {
-                $q->where('seller_id', $user->id);
-            })->sum('total'),
-            'pending_orders' => Order::whereHas('items.variant.product', function ($q) use ($user) {
-                $q->where('seller_id', $user->id);
-            })->whereIn('status', [Order::STATUS_NEW, Order::STATUS_INTRANSIT])->count(),
+            'total_products' => Product::where('seller_id', $sellerId)->count(),
+            'total_orders' => Order::whereHas('items', fn ($q) => $q->where('seller_id', $sellerId))->count(),
+            'total_sales' => $this->sumSellerPayout($sellerId, realized: true),
+            'pending_orders' => Order::whereHas('items', fn ($q) => $q->where('seller_id', $sellerId))
+                ->whereIn('status', [Order::STATUS_NEW, Order::STATUS_INTRANSIT])
+                ->count(),
         ];
 
-        // Последние заказы
-        // Вместо 'user' используй 'buyer'
-        $recentOrders = Order::with(['items.variant.product', 'buyer']) // ← замени user на buyer
-            ->whereHas('items.variant.product', function ($q) use ($user) {
-                $q->where('seller_id', $user->id);
-            })
-            ->orderBy('created_at', 'desc')
+        $recentOrders = Order::with(['buyer', 'items'])
+            ->whereHas('items', fn ($q) => $q->where('seller_id', $sellerId))
+            ->orderByDesc('created_at')
             ->limit(5)
-            ->get();
+            ->get()
+            ->map(fn (Order $order) => $this->formatRecentOrder($order, $sellerId));
 
-        // Популярные товары (используем views_count)
-        $popularProducts = Product::where('seller_id', $user->id)
-            ->orderBy('views_count', 'desc')
+        $popularProducts = Product::query()
+            ->where('seller_id', $sellerId)
+            ->withSum('variants as variants_views_sum', 'views_count')
+            ->orderByDesc('variants_views_sum')
             ->limit(5)
-            ->get();
+            ->get()
+            ->map(fn (Product $product) => [
+                'id' => $product->id,
+                'title' => $product->title,
+                'views_count' => (int) ($product->variants_views_sum ?? 0),
+                'image' => $product->resolveListingImageUrl(),
+            ]);
 
-        // Данные для графика (продажи по месяцам)
-        $salesChart = $this->getSalesChartData($user->id);
+        $salesChart = $this->getSalesChartData($sellerId);
 
         return Inertia::render('Seller/Dashboard', [
             'stats' => $stats,
@@ -64,15 +61,38 @@ class DashboardController extends Controller
             'sellerProfile' => $user->sellerProfile,
         ]);
     }
-private function getSalesChartData($userId)
-{
-    $months = [];
-    $sales = [];
 
-    for ($i = 11; $i >= 0; $i--) {
-        $month = now()->subMonths($i);
-        
-        // Русские названия месяцев
+    private function sumSellerPayout(int $sellerId, bool $realized): float
+    {
+        $query = OrderItem::query()->where('seller_id', $sellerId);
+        $realized ? $query->realizedRevenue() : $query->pendingRevenue();
+
+        return (float) $query->sum(DB::raw(OrderItem::payoutAmountSql()));
+    }
+
+    private function formatRecentOrder(Order $order, int $sellerId): array
+    {
+        $sellerItems = $order->items->where('seller_id', $sellerId);
+        $sellerPayout = $sellerItems->sum(fn ($i) => $i->seller_payout_amount > 0
+            ? (float) $i->seller_payout_amount
+            : ((float) $i->price_at_purchase * $i->quantity) - (float) $i->commission_amount);
+
+        return [
+            'id' => $order->id,
+            'number' => $order->number,
+            'status' => $order->status,
+            'seller_payout' => (float) $sellerPayout,
+            'buyer' => $order->buyer ? [
+                'name' => $order->buyer->name,
+            ] : null,
+        ];
+    }
+
+    private function getSalesChartData(int $sellerId): array
+    {
+        $months = [];
+        $sales = [];
+
         $monthNames = [
             'January' => 'Янв',
             'February' => 'Фев',
@@ -87,23 +107,23 @@ private function getSalesChartData($userId)
             'November' => 'Ноя',
             'December' => 'Дек',
         ];
-        
-        $englishMonth = $month->format('F');
-        $russianMonth = $monthNames[$englishMonth] ?? $englishMonth;
-        
-        $months[] = $russianMonth;
 
-        $total = Order::whereHas('items.variant.product', function ($q) use ($userId) {
-            $q->where('seller_id', $userId);
-        })
-            ->whereYear('created_at', $month->year)
-            ->whereMonth('created_at', $month->month)
-            ->sum('total');
+        for ($i = 11; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $englishMonth = $month->format('F');
+            $months[] = $monthNames[$englishMonth] ?? $englishMonth;
 
-        $sales[] = $total;
+            $query = OrderItem::query()
+                ->where('seller_id', $sellerId)
+                ->whereHas('order', fn ($q) => $q
+                    ->whereYear('created_at', $month->year)
+                    ->whereMonth('created_at', $month->month));
+
+            $query->realizedRevenue();
+
+            $sales[] = (float) $query->sum(DB::raw(OrderItem::payoutAmountSql()));
+        }
+
+        return ['months' => $months, 'sales' => $sales];
     }
-
-    return ['months' => $months, 'sales' => $sales];
-}
-
 }

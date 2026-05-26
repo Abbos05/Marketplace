@@ -15,7 +15,7 @@ export const FOOTER_COLUMNS = {
   sellers: {
     title: 'Продавцам',
     links: [
-      { label: 'Стать продавцом', href: '/profile', auth: true },
+      { label: 'Стать продавцом', href: '/profile?tab=company', auth: true },
       { label: 'Панель продавца', href: '/seller/dashboard', auth: true },
       { label: 'Статистика', href: '/seller/statistics', auth: true },
       { label: 'Настройки магазина', href: '/seller/settings', auth: true },
@@ -27,6 +27,7 @@ export const FOOTER_COLUMNS = {
       { label: 'О маркетплейсе', href: '/about' },
       { label: 'Контакты', href: '/contacts' },
       { label: 'Помощь', href: '/help' },
+      { label: 'Партнёрство ПВЗ', href: '/pickup/partner' },
     ],
   },
 };

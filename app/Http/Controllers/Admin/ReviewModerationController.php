@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Review;
+use App\Services\ReviewImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,7 +15,7 @@ class ReviewModerationController extends Controller
     public function index(Request $request): Response
     {
         $status = $request->query('status', 'pending');
-        if (! in_array($status, ['pending', 'published', 'all'], true)) {
+        if (! in_array($status, ['pending', 'published', 'hidden', 'all'], true)) {
             $status = 'pending';
         }
 
@@ -23,8 +24,17 @@ class ReviewModerationController extends Controller
                 'product:id,title',
                 'user:id,name',
                 'variant:id,options',
-            ])
-            ->orderByDesc('created_at');
+                'moderator:id,name',
+                'images',
+            ]);
+
+        if ($status === 'hidden') {
+            $query->onlyTrashed();
+        } else {
+            $query->whereNull('deleted_at');
+        }
+
+        $query->orderByDesc('created_at');
 
         if ($status === 'pending') {
             $query->where('is_moderated', false);
@@ -48,7 +58,9 @@ class ReviewModerationController extends Controller
             });
         }
 
-        $reviews = $query->paginate(20)->withQueryString()->through(function (Review $r) {
+        $imageService = app(ReviewImageService::class);
+
+        $reviews = $query->paginate(20)->withQueryString()->through(function (Review $r) use ($status, $imageService) {
             $comment = (string) ($r->comment ?? '');
             $snippet = mb_strlen($comment) > 160 ? mb_substr($comment, 0, 160).'…' : $comment;
 
@@ -57,8 +69,14 @@ class ReviewModerationController extends Controller
                 'rating' => (int) $r->rating,
                 'comment' => $comment,
                 'comment_snippet' => $snippet,
+                'images' => $imageService->mapImagesForFrontend($r->images),
                 'is_moderated' => (bool) $r->is_moderated,
+                'is_hidden' => $status === 'hidden' || $r->trashed(),
+                'moderation_comment' => $r->moderation_comment,
+                'moderated_at' => $r->moderated_at?->format('d.m.Y H:i'),
+                'moderator_name' => $r->moderator?->name,
                 'created_at' => $r->created_at?->format('d.m.Y H:i'),
+                'deleted_at' => $r->deleted_at?->format('d.m.Y H:i'),
                 'product' => $r->product ? [
                     'id' => $r->product->id,
                     'title' => $r->product->title,
@@ -80,16 +98,47 @@ class ReviewModerationController extends Controller
 
     public function approve(Review $review): RedirectResponse
     {
-        $review->update(['is_moderated' => true]);
+        $review->update([
+            'is_moderated' => true,
+            'moderation_comment' => null,
+            'moderated_at' => now(),
+            'moderated_by' => auth()->id(),
+        ]);
 
-        return redirect()->route('admin.reviews.index', $this->reviewsIndexQuery())->with('success', 'Отзыв опубликован.');
+        return redirect()->route('admin.reviews.index', $this->reviewsIndexQuery())
+            ->with('success', 'Отзыв опубликован.');
     }
 
-    public function reject(Review $review): RedirectResponse
+    public function reject(Request $request, Review $review): RedirectResponse
     {
+        $data = $request->validate([
+            'moderation_comment' => 'required|string|min:3|max:2000',
+        ]);
+
+        $review->update([
+            'is_moderated' => false,
+            'moderation_comment' => $data['moderation_comment'],
+            'moderated_at' => now(),
+            'moderated_by' => auth()->id(),
+        ]);
         $review->delete();
 
-        return redirect()->route('admin.reviews.index', $this->reviewsIndexQuery())->with('success', 'Отзыв отклонён и скрыт.');
+        return redirect()->route('admin.reviews.index', $this->reviewsIndexQuery())
+            ->with('success', 'Отзыв скрыт.');
+    }
+
+    public function restore(int $reviewId): RedirectResponse
+    {
+        $review = Review::onlyTrashed()->findOrFail($reviewId);
+        $review->restore();
+        $review->update([
+            'is_moderated' => false,
+            'moderated_at' => null,
+            'moderated_by' => null,
+        ]);
+
+        return redirect()->route('admin.reviews.index', ['status' => 'pending'])
+            ->with('success', 'Отзыв восстановлен и снова на модерации.');
     }
 
     /**

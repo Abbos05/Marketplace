@@ -2,13 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import { router, useForm } from '@inertiajs/react';
-import { canManageUserAsStaff, canAssignStaffRoles, isStaff, roleOptionsFor } from '@/lib/staffAccess';
+import { canManageUserAsStaff, canAssignStaffRoles, isStaff, roleOptionsFor, roleOptionsForTarget } from '@/lib/staffAccess';
 
 import PhoneVerificationModal from '@/Components/Profile/PhoneVerificationModal';
 import BlockedAccountModal from '@/Components/Profile/BlockedAccountModal';
+import BlockedAccountBanner from '@/Components/Profile/BlockedAccountBanner';
+import ConfirmModal from '@/Components/ConfirmModal';
 import DeleteAccountModal from '@/Components/Profile/DeleteAccountModal';
+import ProfileSidebar from '@/Components/Profile/ProfileSidebar';
+import ProfileHelpPanel from '@/Components/Profile/ProfileHelpPanel';
+import ProfileHomeDashboard from '@/Components/Profile/ProfileHomeDashboard';
+import RichTextEditor from '@/Components/Profile/RichTextEditor';
+import { compressAvatarImage, formatFileSize } from '@/lib/compressAvatarImage';
+import { MESSAGES_FAQ, PICKUP_FAQ, COMPANY_FAQ, PVZ_PARTNER_FAQ } from '@/lib/profileFaqContent';
+import { profileMobileTitle } from '@/lib/profileTabLabels';
+import { resolveAvatarUrl } from '@/lib/avatarUrl';
+import { clearPhoneAuthFlow } from '@/lib/phoneAuthSession';
 import MyFavorites from '@/Components/Product/ProductPage';
-import Recommendations from '@/Components/Product/ProductPage';
 import Barcode from 'react-barcode';
 
 import '../../../css/profile/style.css';
@@ -16,8 +26,24 @@ import '../../../css/profile/style.css';
 import CompanyFormModal from '@/Components/Company/CompanyFormModal';
 import CompanyProfile from '@/Components/Company/CompanyProfile';
 
-export default function Profile({ auth, products = [], LikeProducts = [], orders = [], myFavorites = [], sellerProfile = null, adminUsers = [], pickupPoints = [], userSessions = [], loginHistory = [], currentSessionId = null }) {
-  const { staffAccess } = usePage().props;
+const PROFILE_TABS = ['main', 'orders', 'favorites', 'company', 'settings', 'reviews', 'messages', 'pickup', 'pvz'];
+
+function resolveProfileTabFromSearch(search = '') {
+  const tab = new URLSearchParams(search).get('tab');
+  return tab && PROFILE_TABS.includes(tab) ? tab : 'main';
+}
+
+const PROFILE_MOBILE_MQ = '(max-width: 768px)';
+
+function initialMobileShowMenu() {
+  if (typeof window === 'undefined') return true;
+  if (!window.matchMedia(PROFILE_MOBILE_MQ).matches) return true;
+  return !new URLSearchParams(window.location.search).has('tab');
+}
+
+export default function Profile({ auth, products = [], LikeProducts = [], orders = [], myFavorites = [], myReviews = [], profileCounts = {}, sellerProfile = null, closedSellerProfile = null, sellerRestorePending = null, adminUsers = [], pickupPoints = [], userSessions = [], loginHistory = [], currentSessionId = null, accountDeletion = null }) {
+  const { staffAccess, pvzAccess } = usePage().props;
+  const { url: pageUrl } = usePage();
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const { data: pickupForm, setData: setPickupForm, patch: patchPickup, processing: pickupProcessing, errors: pickupErrors } = useForm({
@@ -32,45 +58,74 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
     e.preventDefault();
     patchPickup(route('profile.default-pickup'), {
       preserveScroll: true,
-      onSuccess: () => { setEditingCard(null); setMessage('Пункт выдачи сохранён'); },
+      onSuccess: () => { setShowPickupForm(false); setMessage('Пункт выдачи сохранён'); },
     });
   };
 
   const isStaffUser = staffAccess?.isStaff ?? isStaff(auth.user);
   const canAssignRoles = staffAccess?.canAssignStaffRoles ?? canAssignStaffRoles(auth.user);
   const panelTitle = staffAccess?.panelTitle ?? 'Панель управления';
-  const [activeTab, setActiveTabState] = useState(
-    () => sessionStorage.getItem('profile_tab') || 'main'
-  );
+  const hasCompanySection = !!(sellerProfile || closedSellerProfile || sellerRestorePending);
+  const showCompaniesTab = !isStaffUser && hasCompanySection;
+  const [activeTab, setActiveTabState] = useState(() => {
+    if (typeof window === 'undefined') return 'main';
+    return resolveProfileTabFromSearch(window.location.search);
+  });
+  const [isMobileProfile, setIsMobileProfile] = useState(false);
+  const [mobileShowMenu, setMobileShowMenu] = useState(initialMobileShowMenu);
   const setActiveTab = (tab) => {
     setActiveTabState(tab);
-    sessionStorage.setItem('profile_tab', tab);
+    const next = new URL(window.location.href);
+    if (tab === 'main') {
+      next.searchParams.delete('tab');
+    } else {
+      next.searchParams.set('tab', tab);
+    }
+    const query = next.searchParams.toString();
+    window.history.replaceState({}, '', query ? `${next.pathname}?${query}` : next.pathname);
   };
-  const [displayCount, setDisplayCount] = useState(8);
   const [adminSearch, setAdminSearch] = useState('');
   const [adminFilter, setAdminFilter] = useState('all');
   const [adminRoleChanges, setAdminRoleChanges] = useState({});
-  const showMore = () => {
-    setDisplayCount(prevCount => Math.min(prevCount + 8, LikeProducts.length));
-  };
-
-  // Модалки
   // Верификация: открывается когда нет email (телефон — основной идентификатор, уже есть)
   const [isPhoneOpen, setIsPhoneOpen] = useState(false);
-  const [isBlockedOpen, setIsBlockedOpen] = useState(auth.user.is_blocked === 1);
+  const isUserBlocked = !!auth.user.is_blocked;
+  const [isBlockedOpen, setIsBlockedOpen] = useState(isUserBlocked);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [confirmRestoreCompany, setConfirmRestoreCompany] = useState(false);
+  const [restorePending, setRestorePending] = useState(false);
   const [message, setMessage] = useState(null);
-  const needsProfileVerification = (!auth.user.email || !auth.user.phone) && auth.user.is_active !== 0;
+  const needsProfileVerification =
+    (!auth.user.name?.trim() || !auth.user.email || !auth.user.phone) && auth.user.is_active !== 0;
+  const isPvzUser = auth.user.role === 'pvz' || pvzAccess?.isPvz;
+  const isSeller = auth.user.role === 'seller' && !!sellerProfile;
 
   useEffect(() => {
-    if (auth.user.is_blocked === 1) setIsBlockedOpen(true);
-  }, [auth.user.is_blocked]);
+    sessionStorage.removeItem('profile_tab');
+  }, []);
+
+  useEffect(() => {
+    const tab = resolveProfileTabFromSearch(window.location.search);
+    if (isStaffUser && tab === 'company') {
+      setActiveTab('main');
+      return;
+    }
+    setActiveTabState(tab);
+  }, [pageUrl, isStaffUser]);
+
+  useEffect(() => {
+    if (isUserBlocked) setIsBlockedOpen(true);
+  }, [isUserBlocked]);
 
   // ─── Настройки: какая карточка открыта для редактирования ───────────────────
   const [editingCard, setEditingCard] = useState(null); // 'personal' | 'contacts' | 'pickup' | 'security' | 'sessions'
 
   // Форма: личные данные (фото + имя + фамилия + описание)
-  const [avatarPreview, setAvatarPreview] = useState(auth.user.avatar || '/img/profiles/profile.png');
+  const userAvatarUrl = resolveAvatarUrl(auth.user.avatar) || '/img/profiles/profile.png';
+  const [avatarPreview, setAvatarPreview] = useState(userAvatarUrl);
+  const [avatarUploadError, setAvatarUploadError] = useState(null);
+  const [avatarUploadHint, setAvatarUploadHint] = useState(null);
   const { data: profileData, setData: setProfileData, post: postProfile, processing: profileProcessing, errors: profileErrors, reset: resetProfile } = useForm({
     name:        auth.user.name        || '',
     last_name:   auth.user.last_name   || '',
@@ -78,21 +133,50 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
     avatar: null,
   });
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) { setProfileData('avatar', file); setAvatarPreview(URL.createObjectURL(file)); }
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setAvatarUploadError(null);
+    setAvatarUploadHint('Обрабатываем фото...');
+
+    try {
+      const prepared = await compressAvatarImage(file);
+      setProfileData('avatar', prepared);
+      setAvatarPreview(URL.createObjectURL(prepared));
+      setAvatarUploadHint(`Готово: ${formatFileSize(prepared.size)} (JPG, оптимизировано для загрузки)`);
+    } catch (err) {
+      setProfileData('avatar', null);
+      setAvatarUploadError(err.message || 'Не удалось обработать фото.');
+      setAvatarUploadHint(null);
+    }
   };
 
   const handleProfileSubmit = (e) => {
     e.preventDefault();
+    if (avatarUploadError) {
+      setMessage(avatarUploadError);
+      return;
+    }
     const formData = new FormData();
     formData.append('name',        profileData.name);
     formData.append('last_name',   profileData.last_name);
-    formData.append('description', profileData.description);
+    formData.append('description', profileData.description || '');
     if (profileData.avatar) formData.append('avatar', profileData.avatar);
     postProfile('/profile/update', {
       data: formData, forceFormData: true, preserveState: true, preserveScroll: true,
-      onSuccess: () => { resetProfile('avatar'); setEditingCard(null); setMessage('Личные данные обновлены!'); },
+      onSuccess: () => {
+        resetProfile('avatar');
+        setEditingCard(null);
+        setAvatarUploadError(null);
+        setAvatarUploadHint(null);
+        setMessage('Личные данные обновлены!');
+      },
+      onError: (errors) => {
+        const first = errors.avatar || errors.description || errors.name || errors.last_name;
+        if (first) setMessage(Array.isArray(first) ? first[0] : first);
+      },
     });
   };
 
@@ -114,7 +198,10 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
 
   const loginMethodLabels = {
     password: 'Пароль',
-    phone_otp: 'Код по телефону',
+    phone_otp: 'Код по телефону (SMS)',
+    phone_otp_notification: 'Код в уведомлениях',
+    phone_otp_2fa: 'Телефон + пароль',
+    phone_password_reset: 'Сброс пароля',
     email_otp: 'Код по email',
     phone_password: 'Пароль по телефону',
     google: 'Google',
@@ -159,6 +246,73 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
     });
   };
 
+  const goSettingsSection = (section) => {
+    setActiveTab('settings');
+    if (!section) {
+      setEditingCard(null);
+      return;
+    }
+    if (section === 'personal') {
+      setProfileData('name', auth.user.name || '');
+      setProfileData('last_name', auth.user.last_name || '');
+      setProfileData('description', auth.user.description || '');
+      setAvatarPreview(resolveAvatarUrl(auth.user.avatar) || '/img/profiles/profile.png');
+    }
+    if (section === 'contacts') {
+      setContactData('email', auth.user.email || '');
+    }
+    setEditingCard(section);
+  };
+
+  useEffect(() => {
+    const mq = window.matchMedia(PROFILE_MOBILE_MQ);
+    const sync = () => setIsMobileProfile(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileProfile) {
+      setMobileShowMenu(true);
+      return;
+    }
+    setMobileShowMenu(!new URLSearchParams(window.location.search).has('tab'));
+  }, [pageUrl, isMobileProfile]);
+
+  const profilePageClassName = [
+    'profile-page',
+    isMobileProfile && mobileShowMenu ? 'is-mobile-menu' : '',
+    isMobileProfile && !mobileShowMenu ? 'is-mobile-content' : '',
+  ].filter(Boolean).join(' ');
+
+  const mobileSectionTitle = profileMobileTitle(activeTab, activeTab === 'settings' ? editingCard : null);
+
+  const openProfileSection = (tab) => {
+    setActiveTab(tab);
+    if (tab !== 'settings') setEditingCard(null);
+    if (tab === 'pickup') {
+      setPickupForm('default_pickup_point_id', auth.user.default_pickup_point_id ?? '');
+    }
+    if (isMobileProfile) {
+      setMobileShowMenu(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const openProfileSettings = (section) => {
+    goSettingsSection(section);
+    if (isMobileProfile) {
+      setMobileShowMenu(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const backToProfileMenu = () => {
+    setMobileShowMenu(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Форма: безопасность (смена пароля)
   const { data: secData, setData: setSecData, post: postSec, processing: secProcessing, errors: secErrors, reset: resetSec } = useForm({
     current_password: '',
@@ -177,15 +331,37 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
       onSuccess: () => { resetSec(); setEditingCard(null); setMessage('Пароль успешно изменён!'); },
     });
   };
-
-  // Выход из аккаунта
+ 
   const handleLogout = () => {
-    if (!confirm('Вы уверены, что хотите выйти из аккаунта?')) return;
-    router.post(route('logout'), {}, {
-      // После разлогина делаем hard-reload, чтобы получить свежий CSRF-токен.
-      // Без этого мета-тег csrf-token остаётся старым и следующий POST
-      // из модала авторизации падает с "CSRF token mismatch".
-      onSuccess: () => { window.location.href = '/'; }
+    setConfirmModal({
+      title: 'Выйти из аккаунта?',
+      message: 'Вы будете перенаправлены на главную страницу. Войти снова можно в любой момент.',
+      confirmText: 'Выйти',
+      variant: 'default',
+      onConfirm: () => {
+        clearPhoneAuthFlow();
+        router.post(route('logout'));
+      },
+    });
+  };
+
+  const kickAllOtherSessions = () => {
+    const others = userSessions.filter((session) => session.id !== currentSessionId);
+    if (others.length === 0) {
+      setMessage('Других активных сеансов нет');
+      return;
+    }
+    setConfirmModal({
+      title: 'Завершить все сеансы?',
+      message: `Будут закрыты все входы (${others.length}), кроме этого устройства.`,
+      confirmText: 'Завершить все',
+      variant: 'danger',
+      onConfirm: () => {
+        router.delete(route('profile.sessions.destroy-others'), {
+          preserveScroll: true,
+          onSuccess: () => setMessage('Все другие сеансы завершены'),
+        });
+      },
     });
   };
 
@@ -194,11 +370,24 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
       setMessage('Нельзя завершить текущее устройство');
       return;
     }
-    if (!confirm('Завершить вход на этом устройстве?')) return;
-    router.delete(route('profile.sessions.destroy', sessionId), {
-      preserveScroll: true,
-      onSuccess: () => setMessage('Сессия завершена'),
+    setConfirmModal({
+      title: 'Завершить сессию?',
+      message: 'Вход на выбранном устройстве будет закрыт.',
+      confirmText: 'Завершить',
+      variant: 'danger',
+      onConfirm: () => {
+        router.delete(route('profile.sessions.destroy', sessionId), {
+          preserveScroll: true,
+          onSuccess: () => setMessage('Сессия завершена'),
+        });
+      },
     });
+  };
+
+  const runConfirmAction = () => {
+    if (!confirmModal?.onConfirm) return;
+    confirmModal.onConfirm();
+    setConfirmModal(null);
   };
 
   const onlineUserSessions = userSessions.filter((session) => session.is_online);
@@ -216,6 +405,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
 
   // Компания
   const [showCompanyForm, setShowCompanyForm] = useState(false);
+  const [showPickupForm, setShowPickupForm] = useState(false);
   const { data, setData, post, processing, errors, reset } = useForm({
     inn: '',
     shop_name: '',
@@ -248,77 +438,46 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
   return (
     <MainLayout>
       <Head title="Профиль" />
+ 
+      <div className={profilePageClassName}>
 
-      <div className="profile-page">
 
-
-        {/* ─── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
-        <div className="profile-sidebar">
-          <div className="profile-user">
-            <img
-              src={auth.user.avatar || '/img/profiles/profile.png'}
-              className="avatar"
-              alt="avatar"
-            />
-            <div className="name" title={auth.user.name}>
-              {formatName(auth.user.name)}
-              {auth.user.email && auth.user.phone && (
-                <img src="/img/profiles/check.png" alt="Верифицирован" className="verify-icon" />
-              )}
-            </div>
-          </div>
-
-          <div className="profile-menu">
-            {needsProfileVerification && (
-              <div className="verify" onClick={() => setIsPhoneOpen(true)}>
-                Пройти верификацию
-              </div>
-            )}
-
-            <div onClick={() => setActiveTab('main')} className={activeTab === 'main' ? 'active' : ''}>
-              Главная
-            </div>
-
-            <div onClick={() => setActiveTab('orders')} className={activeTab === 'orders' ? 'active' : ''}>
-              Заказы
-            </div>
-
-            <div onClick={() => setActiveTab('favorites')} className={activeTab === 'favorites' ? 'active' : ''}>
-              Избранное
-            </div>
-
-            {!isStaffUser && (
-              <div onClick={() => setActiveTab('company')} className={activeTab === 'company' ? 'active' : ''}>
-                Мои компании
-              </div>
-            )}
-
-            <div
-              onClick={() => { setActiveTab('settings'); setEditingCard(null); }}
-              className={activeTab === 'settings' ? 'active' : ''}
-            >
-              Настройки
-            </div>
-
-            {isStaffUser && (
-              <div
-                onClick={() => setActiveTab('admin')}
-                className={`profile-menu-admin ${activeTab === 'admin' ? 'active' : ''}`}
-              >
-                {staffAccess?.isModerator ? 'Раздел модератора' : 'Раздел администратора'}
-              </div>
-            )}
-
-            <div className="profile-menu-logout" onClick={handleLogout}>
-              Выйти из аккаунта
-            </div>
-          </div>
-        </div>
+        <ProfileSidebar
+          auth={auth}
+          activeTab={activeTab}
+          settingsSection={activeTab === 'settings' ? editingCard : null}
+          onTabChange={openProfileSection}
+          onSettingsSection={openProfileSettings}
+          onLogout={handleLogout}
+          isUserBlocked={isUserBlocked}
+          formatName={formatName}
+          formatPhone={formatPhone}
+          showCompaniesTab={showCompaniesTab}
+          isStaffUser={isStaffUser}
+          staffAccess={staffAccess}
+          pvzAccess={pvzAccess}
+          isSeller={isSeller}
+          counts={profileCounts}
+          mobileMenuMode={isMobileProfile && mobileShowMenu}
+        />
 
         {/* ─── RIGHT CONTENT ────────────────────────────────────────────────── */}
         <div className="profile-content">
+          {isMobileProfile && !mobileShowMenu && (
+            <div className="profile-mobile-topbar">
+              <button type="button" className="profile-mobile-back" onClick={backToProfileMenu}>
+                <span className="profile-mobile-back-icon" aria-hidden>←</span>
+                Меню профиля
+              </button>
+              <h1 className="profile-mobile-title">{mobileSectionTitle}</h1>
+            </div>
+          )}
 
-          {needsProfileVerification && (
+          {isUserBlocked && (
+            <BlockedAccountBanner onDetailsClick={() => setIsBlockedOpen(true)} />
+          )}
+
+          {needsProfileVerification && !isUserBlocked && activeTab !== 'main' && (
             <div className="verify-banner">
               <div className="verify-banner-content">
                 <div className="verify-banner-text">
@@ -326,9 +485,9 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                   <p>Укажите имя, email и подтвердите телефон, чтобы открыть все возможности платформы:</p>
                   <ul>
                     <li>Оформление заказов</li>
-                    <li>Покупка товаров со скидкой</li>
+                    <li>Заявка на пункт выдачи (ПВЗ)</li>
+                    <li>Регистрация компании продавца</li>
                     <li>Получение и использование промокодов</li>
-                    <li>Участие в эксклюзивных акциях</li>
                   </ul>
                 </div>
                 <div className="verify-banner-button">
@@ -342,19 +501,24 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
 
           {/* === ГЛАВНАЯ === */}
           {activeTab === 'main' && (
-            <div className="Profile__recommendated">
-              {LikeProducts && LikeProducts.length > 0 && (
-                <>
-                  <section className="category-header">
-                    <h2 className='profile__title'>Рекомендации для вас</h2>
-                  </section>
-                  <Recommendations products={LikeProducts.slice(0, displayCount)} />
-                  {displayCount < LikeProducts.length && (
-                    <button className="showMore__btn" onClick={showMore}>Показать еще</button>
-                  )}
-                </>
-              )}
-            </div>
+            <ProfileHomeDashboard
+              auth={auth}
+              orders={orders}
+              profileCounts={profileCounts}
+              LikeProducts={LikeProducts}
+              needsProfileVerification={needsProfileVerification}
+              isUserBlocked={isUserBlocked}
+              isStaffUser={isStaffUser}
+              isPvzUser={isPvzUser}
+              isSeller={isSeller}
+              sellerProfile={sellerProfile}
+              sellerRestorePending={sellerRestorePending}
+              closedSellerProfile={closedSellerProfile}
+              pvzAccess={pvzAccess}
+              onTabChange={openProfileSection}
+              onOpenPhoneModal={() => setIsPhoneOpen(true)}
+              onGoSettings={openProfileSettings}
+            />
           )}
 
           {/* === ЗАКАЗЫ === */}
@@ -427,6 +591,90 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
             </div>
           )}
 
+          {/* === МОИ ОТЗЫВЫ === */}
+          {activeTab === 'reviews' && (
+            <div className="profile-reviews-section">
+              <section className="category-header">
+                <h2 className="profile__title">Мои отзывы</h2>
+                <p className="profile-reviews-hint">
+                  Здесь все отзывы, которые вы оставили на товары. Новый отзыв можно написать на странице заказа после получения.
+                </p>
+              </section>
+              {myReviews && myReviews.length > 0 ? (
+                <ul className="profile-reviews-list">
+                  {myReviews.map((review) => (
+                    <li key={review.id} className="profile-review-card">
+                      <Link
+                        href={review.product?.id ? `/product/${review.product.id}` : '#'}
+                        className="profile-review-product"
+                      >
+                        <img
+                          src={review.product?.image || '/img/products/default.png'}
+                          alt=""
+                          className="profile-review-image"
+                        />
+                        <div className="profile-review-product-meta">
+                          <div className="profile-review-title">
+                            {review.product?.title || 'Товар'}
+                          </div>
+                          <div className="profile-review-stars" aria-label={`Оценка ${review.rating}`}>
+                            {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                          </div>
+                        </div>
+                      </Link>
+                      <div className="profile-review-body">
+                        {review.comment ? (
+                          <p className="profile-review-comment">{review.comment}</p>
+                        ) : (
+                          <p className="profile-review-comment profile-review-comment--empty">Без текста</p>
+                        )}
+                        {review.moderation_status === 'rejected' && review.moderation_comment && (
+                          <p className="profile-review-rejection">
+                            <span className="profile-review-rejection-label">Причина отклонения:</span>
+                            {review.moderation_comment}
+                          </p>
+                        )}
+                        <div className="profile-review-footer">
+                          <span
+                            className={`profile-review-status ${
+                              review.moderation_status === 'published'
+                                ? 'is-published'
+                                : review.moderation_status === 'rejected'
+                                  ? 'is-rejected'
+                                  : 'is-pending'
+                            }`}
+                          >
+                            {review.moderation_status === 'published'
+                              ? 'Опубликован'
+                              : review.moderation_status === 'rejected'
+                                ? 'Отклонён'
+                                : 'На модерации'}
+                          </span>
+                          {review.created_at && (
+                            <time dateTime={review.created_at}>
+                              {new Date(review.created_at).toLocaleDateString('ru-RU')}
+                            </time>
+                          )}
+                          {review.order_id && (
+                            <Link href={`/orders/${review.order_id}`} className="profile-review-order-link">
+                              К заказу
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="empty-favorite products profile-reviews-empty">
+                  <p>Вы ещё не оставляли отзывов</p>
+                  <p className="profile-reviews-hint">После получения заказа откройте его и оцените товары — отзыв появится здесь.</p>
+                  <Link href="/orders" className="shop-now-btn">Перейти к заказам</Link>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* === ИЗБРАННОЕ === */}
           {activeTab === 'favorites' && (
             <div className="Profile__recommendated">
@@ -447,26 +695,231 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
             </div>
           )}
 
+          {/* === СООБЩЕНИЯ === */}
+          {activeTab === 'messages' && (
+            <div className="profile-service-section">
+              <ProfileHelpPanel
+                title="Сообщения и поддержка"
+                intro="Сначала загляните в ответы на частые вопросы — возможно, ответ уже есть. Если нет — откройте чат с поддержкой."
+                items={MESSAGES_FAQ}
+              >
+                <p className="profile-help-action-hint">
+                  В чате можно уточнить статус заказа, оплату, возврат и другие вопросы. Приложите номер заказа или скриншот.
+                </p>
+                <div className="profile-help-action-buttons">
+                  <button
+                    type="button"
+                    className="profile-help-btn profile-help-btn--primary"
+                    onClick={() => router.visit('/messages')}
+                  >
+                    Открыть чат с поддержкой
+                  </button>
+                  <Link href="/contacts" className="profile-help-btn profile-help-btn--outline">
+                    Контакты
+                  </Link>
+                </div>
+              </ProfileHelpPanel>
+            </div>
+          )}
+
+          {/* === ПУНКТ ВЫДАЧИ === */}
+          {activeTab === 'pickup' && !auth.user.is_blocked && (
+            <div className="profile-service-section">
+              <ProfileHelpPanel
+                title="Пункт выдачи"
+                intro="Прочитайте, как работает выдача заказов, затем укажите удобный пункт по умолчанию — его можно сменить при оформлении."
+                items={PICKUP_FAQ}
+              >
+                {!showPickupForm ? (
+                  <>
+                    <div className="profile-pickup-summary">
+                      <span className="profile-pickup-summary-label">Сейчас выбрано:</span>
+                      <span className="profile-pickup-summary-value">
+                        {pickupForm.default_pickup_point_id
+                          ? (pickupPoints.find((p) => p.id === Number(pickupForm.default_pickup_point_id))?.label ?? 'Пункт выдачи')
+                          : 'Не выбран — укажите ниже'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="profile-help-btn profile-help-btn--primary"
+                      onClick={() => {
+                        setPickupForm('default_pickup_point_id', auth.user.default_pickup_point_id ?? '');
+                        setShowPickupForm(true);
+                      }}
+                    >
+                      {pickupForm.default_pickup_point_id ? 'Изменить пункт выдачи' : 'Выбрать пункт выдачи'}
+                    </button>
+                  </>
+                ) : (
+                  <div className="profile-pickup-form-card settings-card">
+                    <div className="settings-card-header">
+                      <div className="settings-card-meta">
+                        <span className="settings-card-icon">📦</span>
+                        <div>
+                          <div className="settings-card-title">ПВЗ по умолчанию</div>
+                          <div className="settings-card-value">Выберите пункт из списка</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="settings-cancel-btn"
+                        onClick={() => {
+                          setPickupForm('default_pickup_point_id', auth.user.default_pickup_point_id ?? '');
+                          setShowPickupForm(false);
+                        }}
+                      >
+                        Свернуть
+                      </button>
+                    </div>
+                    <form className="settings-card-body" onSubmit={handlePickupSubmit}>
+                      <div className="settings-field">
+                        <label className="settings-label">Пункт выдачи</label>
+                        <select
+                          className="settings-input"
+                          value={pickupForm.default_pickup_point_id === '' || pickupForm.default_pickup_point_id == null ? '' : String(pickupForm.default_pickup_point_id)}
+                          onChange={(e) => setPickupForm('default_pickup_point_id', e.target.value === '' ? '' : Number(e.target.value))}
+                        >
+                          <option value="">— выберите пункт —</option>
+                          {pickupPoints.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.label}
+                            </option>
+                          ))}
+                        </select>
+                        {pickupErrors.default_pickup_point_id && (
+                          <p className="settings-error">{pickupErrors.default_pickup_point_id}</p>
+                        )}
+                        <p className="settings-hint-text">
+                          Без пункта выдачи оформить заказ нельзя. Можно указать другой при каждом заказе в корзине.
+                        </p>
+                      </div>
+                      <div className="settings-card-actions">
+                        <button type="submit" className="settings-save-btn" disabled={pickupProcessing}>
+                          {pickupProcessing ? 'Сохранение...' : 'Сохранить'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </ProfileHelpPanel>
+            </div>
+          )}
+
+          {/* === ПАРТНЁРСТВО ПВЗ === */}
+          {activeTab === 'pvz' && !auth.user.is_blocked && !pvzAccess?.isPvz && (
+            <div className="profile-service-section">
+              <ProfileHelpPanel
+                title="Партнёрство: пункт выдачи"
+                intro="Откройте официальный пункт выдачи ALVORA. Изучите условия ниже, затем перейдите к подаче заявки."
+                items={PVZ_PARTNER_FAQ}
+              >
+                {needsProfileVerification ? (
+                  <p className="profile-help-action-hint">
+                    Сначала заполните профиль (имя, email, телефон) — без этого заявку подать нельзя.
+                  </p>
+                ) : (
+                  <p className="profile-help-action-hint">
+                    Анкета займёт несколько минут. После проверки откроется панель оператора ПВЗ.
+                  </p>
+                )}
+                <div className="profile-help-action-buttons">
+                  <button
+                    type="button"
+                    className="profile-help-btn profile-help-btn--primary"
+                    disabled={needsProfileVerification}
+                    onClick={() => router.visit('/pickup/partner')}
+                  >
+                    Подать заявку на пункт выдачи
+                  </button>
+                  {needsProfileVerification && (
+                    <button
+                      type="button"
+                      className="profile-help-btn profile-help-btn--outline"
+                      onClick={() => setIsPhoneOpen(true)}
+                    >
+                      Заполнить профиль
+                    </button>
+                  )}
+                </div>
+              </ProfileHelpPanel>
+            </div>
+          )}
+
           {/* === КОМПАНИИ === */}
-          {activeTab === 'company' && (
+          {activeTab === 'company' && !auth.user.is_blocked && !isStaffUser && (
             <div className="company-page">
+              <ProfileHelpPanel
+                title="Компания продавца"
+                intro="Перед регистрацией магазина ознакомьтесь с ответами — так заявка пройдёт быстрее."
+                items={COMPANY_FAQ}
+              />
+
               <div className="company-mobile-unavailable">
                 <h3>Раздел продавца доступен с компьютера</h3>
                 <p>Для добавления компании и работы с панелью продавца нужен широкий экран. Откройте этот раздел на ноутбуке или ПК.</p>
               </div>
 
-              {!sellerProfile && !showCompanyForm && (
-                <div className="company-empty-state">
+              {isPvzUser && (
+                <div className="company-empty-state" style={{ marginBottom: 24, textAlign: 'left', maxWidth: 640 }}>
+                  <div className="empty-state-icon">📍</div>
+                  <h2>Сейчас у вас роль оператора ПВЗ</h2>
+                  <p>
+                    На одном аккаунте нельзя одновременно быть продавцом и оператором пункта выдачи.
+                    Чтобы открыть компанию продавца, сначала завершите работу ПВЗ в{' '}
+                    <Link href="/pvz/settings">настройках панели ПВЗ</Link> (закрытие с подтверждением администратора),
+                    либо используйте отдельный аккаунт для продаж.
+                  </p>
+                  <Link href="/pvz" className="add-company-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                    Перейти в панель ПВЗ
+                  </Link>
+                </div>
+              )}
+
+              {!isPvzUser && !sellerProfile && sellerRestorePending && !showCompanyForm && (
+                <div className="company-empty-state company-restore-state">
+                  <div className="empty-state-icon">⏳</div>
+                  <h2>Заявка на восстановление отправлена</h2>
+                  <p>
+                    Магазин <strong>{sellerRestorePending.shop_name}</strong>
+                    {sellerRestorePending.inn ? ` (ИНН ${sellerRestorePending.inn})` : ''} ожидает решения администратора в разделе модерации.
+                  </p>
+                  {sellerRestorePending.requested_at && (
+                    <p className="hint">Отправлена: {new Date(sellerRestorePending.requested_at).toLocaleString('ru-RU')}</p>
+                  )}
+                </div>
+              )}
+
+              {!isPvzUser && !sellerProfile && !sellerRestorePending && closedSellerProfile && !showCompanyForm && (
+                <div className="company-empty-state company-restore-state">
                   <div className="empty-state-icon">🏢</div>
-                  <h2>Добавьте компанию</h2>
-                  <p>Укажите ИНН компании, которая будет оплачивать заказы</p>
-                  <button className="add-company-btn" onClick={() => setShowCompanyForm(true)}>
+                  <h2>Восстановить компанию</h2>
+                  <p>
+                    Ранее у вас был магазин <strong>{closedSellerProfile.shop_name}</strong>
+                    {closedSellerProfile.inn ? ` (ИНН ${closedSellerProfile.inn})` : ''}.
+                    После отправки заявки администратор проверит её в модерации.
+                  </p>
+                  {closedSellerProfile.closed_at && (
+                    <p className="hint">Закрыта: {new Date(closedSellerProfile.closed_at).toLocaleString('ru-RU')}</p>
+                  )}
+                  <button type="button" className="add-company-btn" onClick={() => setConfirmRestoreCompany(true)}>
+                    Подать заявку на восстановление
+                  </button>
+                </div>
+              )}
+
+              {!isPvzUser && !sellerProfile && !closedSellerProfile && !showCompanyForm && (
+                <div className="company-empty-state profile-company-cta">
+                  <div className="empty-state-icon">🏢</div>
+                  <h2>Готовы открыть магазин?</h2>
+                  <p>После прочтения вопросов выше нажмите кнопку и заполните данные компании.</p>
+                  <button type="button" className="add-company-btn" onClick={() => setShowCompanyForm(true)}>
                     + Добавить компанию
                   </button>
                 </div>
               )}
 
-              {showCompanyForm && (
+              {!isPvzUser && showCompanyForm && (
                 <div className="company-form-container">
                   <div className="form-header">
                     <h2>Добавьте компанию</h2>
@@ -511,7 +964,22 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                 </div>
               )}
 
-              {sellerProfile && (
+              {sellerProfile && isPvzUser && (
+                <div className="company-card" style={{ opacity: 0.85 }}>
+                  <div className="company-card-header">
+                    <div className="company-title">
+                      <h2>{sellerProfile.shop_name}</h2>
+                      <p className="company-inn">ИНН: {sellerProfile.inn}</p>
+                      <span className="status-badge pending">Приостановлено — активна роль ПВЗ</span>
+                    </div>
+                  </div>
+                  <p className="hint" style={{ padding: '0 20px 20px' }}>
+                    Данные компании сохранены, но панель продавца недоступна, пока вы оператор пункта выдачи.
+                  </p>
+                </div>
+              )}
+
+              {sellerProfile && !isPvzUser && (
                 <div className="company-card">
                   <div className="company-card-header">
                     <div className="company-logo"><div className="logo-placeholder">🏢</div></div>
@@ -581,7 +1049,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                       <div className="settings-card-title">Личные данные</div>
                       {editingCard !== 'personal' && (
                         <div className="settings-card-value">
-                          <img src={auth.user.avatar || '/img/profiles/profile.png'} className="settings-avatar-thumb" alt="avatar" />
+                          <img src={userAvatarUrl} className="settings-avatar-thumb" alt="avatar" />
                           <span>{[auth.user.name, auth.user.last_name].filter(Boolean).join(' ') || 'Не заполнено'}</span>
                         </div>
                       )}
@@ -592,11 +1060,11 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                       setProfileData('name',        auth.user.name        || '');
                       setProfileData('last_name',   auth.user.last_name   || '');
                       setProfileData('description', auth.user.description || '');
-                      setAvatarPreview(auth.user.avatar || '/img/profiles/profile.png');
+                      setAvatarPreview(resolveAvatarUrl(auth.user.avatar) || '/img/profiles/profile.png');
                       setEditingCard('personal');
                     }}>Изменить</button>
                   ) : (
-                    <button className="settings-cancel-btn" onClick={() => { setEditingCard(null); resetProfile('avatar'); setAvatarPreview(auth.user.avatar || '/img/profiles/profile.png'); }}>Отмена</button>
+                    <button className="settings-cancel-btn" onClick={() => { setEditingCard(null); resetProfile('avatar'); setAvatarPreview(userAvatarUrl); }}>Отмена</button>
                   )}
                 </div>
 
@@ -604,10 +1072,17 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                   <form className="settings-card-body" onSubmit={handleProfileSubmit}>
                     <div className="settings-avatar-upload-row">
                       <img src={avatarPreview} className="settings-avatar-large" alt="Превью" />
-                      <label className="settings-avatar-upload-btn">
-                        Загрузить фото
-                        <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
-                      </label>
+                      <div className="settings-avatar-upload-meta">
+                        <label className="settings-avatar-upload-btn">
+                          Загрузить фото
+                          <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+                        </label>
+                        <p className="settings-hint-text">JPG, PNG или WEBP до 10 МБ. Фото с телефона сжимается автоматически.</p>
+                        {avatarUploadHint && <p className="settings-hint-text settings-hint-text--ok">{avatarUploadHint}</p>}
+                        {(avatarUploadError || profileErrors.avatar) && (
+                          <p className="settings-error">{avatarUploadError || profileErrors.avatar}</p>
+                        )}
+                      </div>
                     </div>
                     <div className="settings-fields-row">
                       <div className="settings-field">
@@ -636,18 +1111,13 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                       </div>
                     </div>
                     <div className="settings-field">
-                      <label className="settings-label">
-                        О себе <span className="settings-hint">({profileData.description?.length || 0}/175)</span>
-                      </label>
-                      <textarea
-                        rows={3}
+                      <label className="settings-label">О себе</label>
+                      <RichTextEditor
                         value={profileData.description}
-                        onChange={(e) => setProfileData('description', e.target.value.slice(0, 175))}
-                        className="settings-input settings-textarea"
-                        placeholder="Расскажите о себе..."
-                        maxLength={175}
+                        onChange={(html) => setProfileData('description', html)}
+                        placeholder="Расскажите о себе: опыт, интересы, чем занимаетесь..."
+                        error={profileErrors.description}
                       />
-                      {profileErrors.description && <p className="settings-error">{profileErrors.description}</p>}
                     </div>
                     <div className="settings-card-actions">
                       <button type="submit" className="settings-save-btn" disabled={profileProcessing}>
@@ -724,8 +1194,8 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                 )}
               </div>
 
-              {/* ── Пункт выдачи по умолчанию ─────────────────────────────── */}
-              <div className="settings-card">
+              {/* ── Пункт выдачи (ссылка на раздел) ───────────────────────── */}
+              <div className="settings-card settings-card--link">
                 <div className="settings-card-header">
                   <div className="settings-card-meta">
                     <span className="settings-card-icon">📦</span>
@@ -734,52 +1204,21 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                       <div className="settings-card-value">
                         {pickupForm.default_pickup_point_id
                           ? (pickupPoints.find((p) => p.id === Number(pickupForm.default_pickup_point_id))?.label ?? 'Выбран')
-                          : 'Не выбран — при заказе нужно будет указать'}
+                          : 'Не выбран'}
                       </div>
                     </div>
                   </div>
-                  {editingCard !== 'pickup' ? (
-                    <button className="settings-edit-btn" onClick={() => {
-                      setPickupForm('default_pickup_point_id', auth.user.default_pickup_point_id ?? '');
-                      setEditingCard('pickup');
-                    }}>Изменить</button>
-                  ) : (
-                    <button className="settings-cancel-btn" onClick={() => {
-                      setPickupForm('default_pickup_point_id', auth.user.default_pickup_point_id ?? '');
-                      setEditingCard(null);
-                    }}>Отмена</button>
-                  )}
+                  <button
+                    type="button"
+                    className="settings-edit-btn"
+                    onClick={() => {
+                      setActiveTab('pickup');
+                      setShowPickupForm(true);
+                    }}
+                  >
+                    Открыть раздел
+                  </button>
                 </div>
-                {editingCard === 'pickup' && (
-                  <form className="settings-card-body" onSubmit={handlePickupSubmit}>
-                    <div className="settings-field">
-                      <label className="settings-label">ПВЗ по умолчанию</label>
-                      <select
-                        className="settings-input"
-                        value={pickupForm.default_pickup_point_id === '' || pickupForm.default_pickup_point_id == null ? '' : String(pickupForm.default_pickup_point_id)}
-                        onChange={(e) => setPickupForm('default_pickup_point_id', e.target.value === '' ? '' : Number(e.target.value))}
-                      >
-                        <option value="">— выберите позже при заказе —</option>
-                        {pickupPoints.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.label}
-                          </option>
-                        ))}
-                      </select>
-                      {pickupErrors.default_pickup_point_id && (
-                        <p className="settings-error">{pickupErrors.default_pickup_point_id}</p>
-                      )}
-                      <p className="settings-hint-text">
-                        Без пункта выдачи оформить заказ нельзя: укажите здесь или при каждом заказе в корзине.
-                      </p>
-                    </div>
-                    <div className="settings-card-actions">
-                      <button type="submit" className="settings-save-btn" disabled={pickupProcessing}>
-                        {pickupProcessing ? 'Сохранение...' : 'Сохранить ПВЗ'}
-                      </button>
-                    </div>
-                  </form>
-                )}
               </div>
 
               {/* ── Карточка 3: Безопасность ─────────────────────────────────── */}
@@ -790,7 +1229,9 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                     <div>
                       <div className="settings-card-title">Безопасность</div>
                       {editingCard !== 'security' && (
-                        <div className="settings-card-value">Изменить пароль</div>
+                        <div className="settings-card-value">
+                          {auth.user?.newPassw ? 'Установить пароль (2FA)' : 'Двухэтапная аутентификация'}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -803,6 +1244,11 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
 
                 {editingCard === 'security' && (
                   <form className="settings-card-body" onSubmit={handleSecuritySubmit}>
+                    <p className="settings-hint-text">
+                      {auth.user?.newPassw
+                        ? 'После установки пароля при каждом входе потребуется код с телефона и пароль — это двухэтапная аутентификация (2FA).'
+                        : 'Пароль включён: при входе после кода с телефона нужно ввести пароль (двухэтапная аутентификация).'}
+                    </p>
                     {!auth.user?.newPassw && (
                       <div className="settings-field">
                         <label className="settings-label">Текущий пароль</label>
@@ -857,7 +1303,18 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                     <div className="settings-session-block">
                       <div className="settings-session-head">
                         <h4>Активные устройства</h4>
-                        <span>{onlineUserSessions.length} онлайн из {userSessions.length}</span>
+                        <div className="settings-session-head-actions">
+                          <span>{onlineUserSessions.length} онлайн из {userSessions.length}</span>
+                          {userSessions.some((session) => session.id !== currentSessionId) && (
+                            <button
+                              type="button"
+                              className="settings-danger-btn settings-session-kick-all"
+                              onClick={kickAllOtherSessions}
+                            >
+                              Завершить все, кроме этого
+                            </button>
+                          )}
+                        </div>
                       </div>
                       {userSessions.length === 0 ? (
                         <p className="settings-hint-text">Активных устройств пока нет.</p>
@@ -942,21 +1399,38 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                   </div>
                 </div>
                 <div className="settings-card-body settings-account-actions">
-                  {!isStaffUser ? (
-                    <button className="settings-danger-btn" onClick={() => setIsDeleteOpen(true)}>
-                    Удалить аккаунт
+                  {isStaffUser ? (
+                    <p className="settings-hint-text">Аккаунты администратора и модератора нельзя удалить через профиль.</p>
+                  ) : accountDeletion?.can_delete ? (
+                    <button type="button" className="settings-danger-btn" onClick={() => setIsDeleteOpen(true)}>
+                      Удалить аккаунт
                     </button>
-                  )
-                : (
-                  <h4>Вам нельзя удалить аккаунт</h4>
-                )}
+                  ) : (
+                    <div className="settings-delete-blockers">
+                      <p className="settings-hint-text settings-hint-text--warn">
+                        Удаление аккаунта недоступно, пока не выполнены условия:
+                      </p>
+                      <ul className="settings-delete-blockers__list">
+                        {(accountDeletion?.blockers ?? []).map((b) => (
+                          <li key={b.code}>
+                            <span>{b.message}</span>
+                            {b.action_url && (
+                              <a href={b.action_url} className="settings-delete-blockers__link">
+                                {b.action_label || 'Перейти'}
+                              </a>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* === РАЗДЕЛ АДМИНИСТРАТОРА === */}
-          {activeTab === 'admin' && isStaffUser && (() => {
+          {/* inline admin removed — use «Панель администратора» in menu */}
+          {false && activeTab === 'admin' && isStaffUser && (() => {
             const matchesSearch = (u) =>
               !adminSearch ||
               (u.name || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
@@ -1057,6 +1531,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                           {u.role === 'admin' && 'Админ'}
                           {u.role === 'moderator' && 'Модератор'}
                           {u.role === 'seller' && 'Продавец'}
+                          {u.role === 'pvz' && 'Оператор ПВЗ'}
                           {u.role === 'user' && 'Пользователь'}
                         </span>
                       </div>
@@ -1077,7 +1552,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                                 });
                               }}
                             >
-                              {roleOptionsFor(auth.user).map((opt) => (
+                              {roleOptionsForTarget(auth.user, u).map((opt) => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                               ))}
                             </select>
@@ -1104,13 +1579,19 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                             <button
                               className="admin-action-btn admin-btn-delete"
                               onClick={() => {
-                                if (confirm(`Удалить пользователя ${u.name || '#' + u.id}?`)) {
-                                  router.delete(`/admin/users/${u.id}`, {
-                                    preserveScroll: true,
-                                    preserveState: false,
-                                    onSuccess: () => setMessage(`Пользователь #${u.id} удалён`),
-                                  });
-                                }
+                                setConfirmModal({
+                                  title: 'Удалить пользователя?',
+                                  message: `Аккаунт ${u.name || '#' + u.id} будет деактивирован.`,
+                                  confirmText: 'Удалить',
+                                  variant: 'danger',
+                                  onConfirm: () => {
+                                    router.delete(`/admin/users/${u.id}`, {
+                                      preserveScroll: true,
+                                      preserveState: false,
+                                      onSuccess: () => setMessage(`Пользователь #${u.id} удалён`),
+                                    });
+                                  },
+                                });
                               }}
                             >
                               Удалить
@@ -1149,10 +1630,41 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
         onSuccess={(msg) => setMessage(msg || 'Телефон верифицирован!')}
       />
       <BlockedAccountModal isOpen={isBlockedOpen} onClose={() => setIsBlockedOpen(false)} />
+      <ConfirmModal
+        isOpen={!!confirmModal}
+        onClose={() => setConfirmModal(null)}
+        onConfirm={runConfirmAction}
+        title={confirmModal?.title}
+        message={confirmModal?.message}
+        confirmText={confirmModal?.confirmText}
+        variant={confirmModal?.variant}
+      />
+      <ConfirmModal
+        isOpen={confirmRestoreCompany}
+        onClose={() => setConfirmRestoreCompany(false)}
+        onConfirm={() => {
+          setRestorePending(true);
+          router.post(route('seller-profile.restore'), { confirmed: true }, {
+            onFinish: () => {
+              setRestorePending(false);
+              setConfirmRestoreCompany(false);
+            },
+          });
+        }}
+        title="Подать заявку на восстановление?"
+        message={`Заявка на восстановление магазина «${closedSellerProfile?.shop_name || ''}» будет отправлена администратору. После одобрения вы снова станете продавцом; товары останутся сняты с витрины — их нужно включить отдельно.`}
+        confirmText="Отправить заявку"
+        cancelText="Отмена"
+        variant="default"
+        processing={restorePending}
+      />
       <DeleteAccountModal
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
-        onSuccess={(msg) => setMessage(msg || 'Аккаунт удален')}
+        onError={(msg) => {
+          setIsDeleteOpen(false);
+          setMessage(msg);
+        }}
       />
     </MainLayout>
   );

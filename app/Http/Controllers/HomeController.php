@@ -6,9 +6,11 @@ use App\Models\Category;
 use App\Models\HomeSlide;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Http\Controllers\Concerns\PreparesCatalogRecommendations;
 use App\Http\Controllers\Concerns\RedirectsArticleSearch;
 use App\Services\CatalogFilterService;
 use App\Services\HomeCatalogFeedService;
+use App\Services\PromotionCatalogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,18 +18,19 @@ use Inertia\Inertia;
 
 class HomeController extends Controller
 {
+    use PreparesCatalogRecommendations;
     use RedirectsArticleSearch;
 
     public function __construct(
         private CatalogFilterService $catalogFilters,
         private HomeCatalogFeedService $homeFeed,
+        private PromotionCatalogService $promotionCatalog,
     ) {}
 
     public function index(Request $request, $returnDataOnly = false, $id = null)
     {
         $search = request('search');
         $category = Category::rootsForCatalogNav();
-
         if ($search) {
             if ($redirect = $this->redirectIfArticleSearch($search)) {
                 return $redirect;
@@ -38,23 +41,28 @@ class HomeController extends Controller
             $result = $this->catalogFilters->process($request, $baseFactory, [
                 'allow_category_facet' => true,
                 'search_fields' => ['title', 'short_description'],
-                'limit' => (int) config('marketplace.catalog_search_limit', 10),
             ]);
 
             $products = $result['products'];
+
             $filters = $result['filters'];
             $facets = $result['facets'];
             $total = $result['total'];
+            $pagination = $result['pagination'];
             $sort = $filters['sort'];
             $this->catalogFilters->markFavorites($products);
         } else {
             $products = $this->homeFeed->build();
+
             Product::enrichForCatalog($products);
             $filters = $this->catalogFilters->parseFilters($request);
             $facets = ['price' => ['min' => null, 'max' => null], 'categories' => [], 'attributes' => []];
             $total = $products->count();
+            $pagination = null;
             $sort = $filters['sort'];
             $this->catalogFilters->markFavorites($products);
+            $products = $products->shuffle();
+
         }
 
         $homeSlides = HomeSlide::query()
@@ -65,24 +73,23 @@ class HomeController extends Controller
             ->values()
             ->all();
 
-        // Рекомендуемые товары
-        $LikeProducts = $this->homeFeed->buildRecommendations();
-        Product::enrichForCatalog($LikeProducts);
+      
 
-        $this->catalogFilters->markFavorites($LikeProducts);
+        $LikeProducts = $this->catalogRecommendations();
 
         $data = [
             'LikeProducts' => $LikeProducts,
             'category' => $category,
             'auth' => auth()->user() ? ['user' => auth()->user()] : ['user' => null],
             'canResetPassword' => true,
-            'mysqlNftsData' => $products,
+            'mysqlProductsData' => $products,
             'categoryData' => $category,
             'search' => $search,
             'sort' => $sort,
             'filters' => $filters,
             'facets' => $facets,
             'total' => $total,
+            'pagination' => $pagination ?? null,
             'homeSlides' => $homeSlides,
         ];
 
@@ -131,12 +138,12 @@ class HomeController extends Controller
         $products = $query->take(50)->get();
         Product::enrichForCatalog($products);
 
-        $bestNfts = Product::forCatalogPresentation()
+        $bestProducts = Product::forCatalogPresentation()
             ->visibleInCatalog()
             ->orderBy('created_at', 'desc')
             ->take(9)
             ->get();
-        Product::enrichForCatalog($bestNfts);
+        Product::enrichForCatalog($bestProducts);
 
         $category = Category::rootsForCatalogNav();
 

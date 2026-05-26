@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\PreparesCatalogRecommendations;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -13,7 +14,10 @@ use App\Models\ProductVariant;
 use App\Models\Transaction;
 use App\Services\CommissionService;
 use App\Services\OrderLedgerService;
+use App\Services\OrderNotificationService;
+use App\Services\ReviewImageService;
 use App\Services\StripeRefundService;
+use App\Models\Review;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +25,8 @@ use Inertia\Inertia;
 
 class OrderController extends Controller
 {
+    use PreparesCatalogRecommendations;
+
     public function index()
     {
         $user = auth()->user();
@@ -31,8 +37,20 @@ class OrderController extends Controller
             ->latest()
             ->get();
 
+        $excludeProductIds = $orders
+            ->flatMap(fn (Order $order) => $order->items->pluck('variant.product_id'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $LikeProducts = $this->catalogRecommendations([
+            'exclude_product_ids' => $excludeProductIds,
+        ]);
+
         return Inertia::render('Profile/Orders', [
             'dailyPickupCode' => $dailyPickupCode,
+            'LikeProducts' => $LikeProducts,
             'orders' => $orders->map(function ($order) {
                 return [
                     'id' => $order->id,
@@ -71,6 +89,10 @@ class OrderController extends Controller
         $user = auth()->user();
         $items = $request->items;
 
+        if ($user->is_blocked) {
+            return back()->with('error', 'Аккаунт заблокирован. Оформление заказов недоступно.');
+        }
+
         if (! $user->phone) {
             return redirect()->route('profile')->with('error', 'Подтвердите номер телефона в профиле, чтобы оформить заказ.');
         }
@@ -92,7 +114,7 @@ class OrderController extends Controller
         DB::beginTransaction();
 
         // Генерация номера заказа
-        $number = 'ORD-' . time() . '-' . rand(1000, 9999);
+        $number = time() . '-' . rand(1000, 9999);
         $orderCode = strtoupper(substr(md5(uniqid()), 0, 10));
 
         $order = Order::create([
@@ -257,25 +279,55 @@ class OrderController extends Controller
 
         DB::commit();
 
+        app(OrderNotificationService::class)->notifyCreated($order->fresh());
+
         return redirect()->route('profile.orders')->with('success', 'Заказ оформлен!');
     }
-    public function show(Order $order)
+    public function show(Order $order, Request $request)
     {
         if ($order->buyer_id !== auth()->id()) {
             abort(403);
         }
 
+        if ($this->shouldOfferRefundCheckout($order) && ! $request->boolean('view')) {
+            return redirect()->route('order.refund.checkout', $order);
+        }
+
         $order->load([
             'items.variant.product.seller',
-            'items.review',
+            'items.review.images',
             'pickupPoint.region',
             'region',
         ]);
 
+        $excludeProductIds = $order->items
+            ->pluck('variant.product_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $LikeProducts = $this->catalogRecommendations([
+            'exclude_product_ids' => $excludeProductIds,
+        ]);
+
+        $imageService = app(ReviewImageService::class);
+        $orderPayload = $order->toArray();
+        $orderPayload['items'] = $order->items->map(function (OrderItem $item) use ($order, $imageService) {
+            $row = $item->toArray();
+            $review = $item->review;
+            $row['can_review'] = $this->orderItemCanReview($order, $item, $review);
+            $row['review_unavailable_reason'] = $this->orderItemReviewUnavailableReason($order, $item, $review);
+            $row['review'] = $review ? $this->formatOrderItemReview($review, $imageService) : null;
+
+            return $row;
+        })->values()->all();
+
         return Inertia::render('Profile/OrderShow', [
-            'order' => $order,
+            'order' => $orderPayload,
             'deliveryTrack' => $this->buildDeliveryTrackPayload($order),
             'documents' => $this->buildOrderDocumentsPayload($order),
+            'LikeProducts' => $LikeProducts,
         ]);
     }
 
@@ -482,20 +534,19 @@ class OrderController extends Controller
 
             $order->update(['status' => Order::STATUS_CANCELED]);
             app(OrderLedgerService::class)->reverseCommission($order->fresh());
-
-            $refund = app(StripeRefundService::class)->handleOrderCanceledOrRefused($order, 'buyer_cancel');
+            $order->refresh();
 
             if ($order->payment_status === 'pending') {
                 $order->update(['payment_status' => 'failed']);
                 app(OrderLedgerService::class)->recordCancel($order);
             }
 
-            if ($refund['refunded']) {
-                return back()->with('success', 'Заказ отменён. '.$refund['message']);
-            }
+            app(OrderNotificationService::class)->notifyStatusChange($order->fresh(), Order::STATUS_CANCELED);
 
-            if ($order->payment_status === 'paid' && ! $refund['ok']) {
-                return back()->with('error', 'Заказ отменён, но возврат не выполнен: '.$refund['message']);
+            if ($this->shouldOfferRefundCheckout($order)) {
+                return redirect()
+                    ->route('order.refund.checkout', $order)
+                    ->with('success', 'Заказ отменён. Подтвердите возврат средств на карту.');
             }
 
             return back()->with('success', 'Заказ отменён');
@@ -505,7 +556,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Страница подтверждения возврата (как окно оплаты Stripe; в демо — без реального API).
+     * Страница подтверждения возврата (как окно оплаты Stripe).
      */
     public function refundCheckout(Order $order)
     {
@@ -528,8 +579,6 @@ class OrderController extends Controller
                 ->with('error', 'Сначала отмените заказ или оформите отказ от получения.');
         }
 
-        $refundService = app(StripeRefundService::class);
-
         return Inertia::render('Profile/RefundCheckout', [
             'order' => [
                 'id' => $order->id,
@@ -538,7 +587,6 @@ class OrderController extends Controller
                 'status' => $order->status,
                 'payment_status' => $order->payment_status,
             ],
-            'isDemo' => $refundService->shouldUseDemoRefund($order),
         ]);
     }
 
@@ -568,7 +616,11 @@ class OrderController extends Controller
 
         $result = app(StripeRefundService::class)->refundOrder($order, 'buyer_refund_checkout');
 
-        return redirect()->route('order.show', $order)
+        if ($result['ok']) {
+            app(OrderNotificationService::class)->notifyRefunded($order->fresh());
+        }
+
+        return redirect()->route('order.show', ['order' => $order, 'view' => 1])
             ->with($result['ok'] ? 'success' : 'error', $result['message']);
     }
 
@@ -582,5 +634,66 @@ class OrderController extends Controller
         }
 
         return redirect()->route('order.refund.checkout', $order);
+    }
+
+    private function shouldOfferRefundCheckout(Order $order): bool
+    {
+        return $order->payment_status === 'paid'
+            && in_array($order->status, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true);
+    }
+
+    private function orderItemCanReview(Order $order, OrderItem $item, ?Review $review): bool
+    {
+        if ($review) {
+            return $order->status === Order::STATUS_ISSUED
+                && $order->updated_at->diffInDays(now()) <= 90;
+        }
+
+        return $order->status === Order::STATUS_ISSUED
+            && $order->updated_at->diffInDays(now()) <= 90;
+    }
+
+    private function orderItemReviewUnavailableReason(Order $order, OrderItem $item, ?Review $review): ?string
+    {
+        if ($review) {
+            if ($order->status !== Order::STATUS_ISSUED) {
+                return null;
+            }
+            if ($order->updated_at->diffInDays(now()) > 90) {
+                return 'Срок для редактирования отзыва истёк (90 дней)';
+            }
+
+            return null;
+        }
+
+        if ($order->status !== Order::STATUS_ISSUED) {
+            return 'Отзыв можно оставить после получения заказа';
+        }
+
+        if ($order->updated_at->diffInDays(now()) > 90) {
+            return 'Срок для отзыва истёк (90 дней)';
+        }
+
+        return null;
+    }
+
+    private function formatOrderItemReview(Review $review, ReviewImageService $imageService): array
+    {
+        $moderationStatus = 'pending';
+        if ($review->trashed() || ($review->moderation_comment && ! $review->is_moderated)) {
+            $moderationStatus = 'rejected';
+        } elseif ($review->is_moderated) {
+            $moderationStatus = 'published';
+        }
+
+        return [
+            'id' => $review->id,
+            'rating' => (int) $review->rating,
+            'comment' => $review->comment,
+            'is_moderated' => (bool) $review->is_moderated,
+            'moderation_status' => $moderationStatus,
+            'moderation_comment' => $review->moderation_comment,
+            'images' => $imageService->mapImagesForFrontend($review->images),
+        ];
     }
 }

@@ -14,7 +14,7 @@ class ProductFactory extends Factory
             'title' => fake()->sentence(3),
             'description' => fake()->paragraph(),
             'price' => fake()->numberBetween(1000, 10000),
-            'image' => 'nfts/' . fake()->uuid() . '.jpg',
+            'image' => 'products/' . fake()->uuid() . '.jpg',
             'status' => 'moderation',
             'tags' => 'art,digital',
             'category_id' => Category::factory(), // ← ДОБАВЬ

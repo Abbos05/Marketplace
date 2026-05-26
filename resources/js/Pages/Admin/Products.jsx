@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import ArticleNumber from '@/Components/Product/ArticleNumber';
+import { storefrontVisibility, productAdminHref } from '@/lib/productStorefront';
 import '../../../css/admin/dashboard.css';
 
 const PRODUCT_STATUSES = [
@@ -92,6 +93,12 @@ export default function AdminProducts({ auth, products = [], pagination = {}, se
             return;
         }
 
+        const product = visibleProducts.find((p) => p.id === productId);
+        if (product && !product.seller_can_publish && newStatus === 'approved') {
+            flash('Нельзя вывести на витрину: компания продавца закрыта. Продавец должен восстановить компанию.', true);
+            return;
+        }
+
         router.post(`/admin/products/${productId}/status`, {
             status: newStatus,
             moderation_comment: comment,
@@ -106,6 +113,8 @@ export default function AdminProducts({ auth, products = [], pagination = {}, se
         { k: 'all',        l: 'Все',          c: counts.all },
         { k: 'moderation', l: 'На модерации', c: counts.moderation },
         { k: 'approved',   l: 'Одобрены',     c: counts.approved },
+        { k: 'on_catalog', l: 'На витрине',   c: counts.on_catalog },
+        { k: 'off_catalog', l: 'Сняты с витрины', c: counts.off_catalog },
         { k: 'rejected',   l: 'Отклонены',    c: counts.rejected },
         { k: 'hidden',     l: 'Скрыты',       c: counts.hidden },
         { k: 'archived',   l: 'Архив',        c: counts.archived },
@@ -129,6 +138,8 @@ export default function AdminProducts({ auth, products = [], pagination = {}, se
                     <a href="/admin/home-slides" className="adm-back-link">Слайдер главной</a>
                     <span style={{ margin: '0 8px', color: '#94a3b8' }}>|</span>
                     <a href="/admin/pickup-points" className="adm-back-link">Пункты выдачи</a>
+                    <span style={{ margin: '0 8px', color: '#94a3b8' }}>|</span>
+                    <a href="/admin/promotions" className="adm-back-link">Акции</a>
                 </div>
 
                 <h1 className="adm-title">Все товары ({counts.all || 0})</h1>
@@ -175,7 +186,9 @@ export default function AdminProducts({ auth, products = [], pagination = {}, se
                             Показано: {visibleProducts.length} из {pageInfo.total ?? visibleProducts.length}
                         </div>
                         <div className="adm-products-admin-list">
-                            {visibleProducts.map(p => (
+                            {visibleProducts.map(p => {
+                                const storefront = storefrontVisibility(p);
+                                return (
                                 <div key={p.id} className="adm-product-admin-card">
                                     <img
                                         src={p.image || '/img/products/default.png'}
@@ -184,7 +197,10 @@ export default function AdminProducts({ auth, products = [], pagination = {}, se
                                     />
                                     <div className="adm-product-admin-info">
                                         <div className="adm-product-name">
-                                            #{p.id} · {p.title}
+                                            #{p.id} ·{' '}
+                                            <a href={productAdminHref(p.id)} className="adm-product-title-link" target="_blank" rel="noreferrer">
+                                                {p.title}
+                                            </a>
                                             {p.is_on_action && <span className="adm-action-tag"> Акция</span>}
                                         </div>
                                         <div className="adm-product-price">{Number(p.min_price).toLocaleString('ru-RU')} ₽</div>
@@ -217,6 +233,14 @@ export default function AdminProducts({ auth, products = [], pagination = {}, se
                                         <span className={`adm-product-status-badge ${productStatusColor(p.status)}`}>
                                             {PRODUCT_STATUS_MAP[p.status] || p.status}
                                         </span>
+                                        <span className={`adm-storefront-badge ${storefront.className}`}>
+                                            {storefront.label}
+                                        </span>
+                                        {!p.seller_can_publish && (
+                                            <p className="adm-product-seller-inactive-hint">
+                                                Компания продавца закрыта — статус «Одобрен» не выведет товар на витрину.
+                                            </p>
+                                        )}
                                         <select
                                                 className="adm-status-select"
                                                 value={pendingStatus[p.id] ?? p.status}
@@ -226,7 +250,13 @@ export default function AdminProducts({ auth, products = [], pagination = {}, se
                                                 }))}
                                             >
                                                 {PRODUCT_STATUSES.map(s => (
-                                                    <option key={s.value} value={s.value}>{s.label}</option>
+                                                    <option
+                                                        key={s.value}
+                                                        value={s.value}
+                                                        disabled={!p.seller_can_publish && s.value === 'approved'}
+                                                    >
+                                                        {s.label}
+                                                    </option>
                                                 ))}
                                             </select>
                                             <input
@@ -255,7 +285,8 @@ export default function AdminProducts({ auth, products = [], pagination = {}, se
                                         </a>
                                     </div>
                                 </div>
-                            ))}
+                            );
+                            })}
                         </div>
                         {pageInfo.has_more && (
                             <button

@@ -91,8 +91,8 @@
 
 /* ── Stats row ── */
 .adm-stats-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+   display: flex;
+   flex-wrap: wrap;
     gap: 14px;
     margin-bottom: 24px;
 }
@@ -328,6 +328,11 @@
     font-size: var(--size-md);
     color: #475569;
 }
+.adm-cell-contact span, .adm-cell-user span {
+
+    word-break: break-word;
+ 
+}
 .adm-cell-actions {
     display: flex;
     gap: 6px;
@@ -341,10 +346,11 @@
     font-size: var(--size-s);
     font-weight: var(--fw-600);
 }
-.adm-role-badge.role-admin     { background: rgba(99,102,241,0.15); color: var(--background); }
+.adm-role-badge.role-admin     { background: rgba(241, 99, 191, 0.15); color: var(--background); }
 .adm-role-badge.role-moderator { background: rgba(168,85,247,0.15); color: #7c3aed; }
 .adm-role-badge.role-seller    { background: rgba(245,158,11,0.15);  color: #b45309; }
 .adm-role-badge.role-user      { background: rgba(100,116,139,0.12); color: #475569; }
+.adm-role-badge.role-pvz      { background: rgba(0, 106, 255, 0.164); color: #1a13aa; }
 
 /* ── Status badges ── */
 .adm-status-active  { font-size: var(--size-md); color: #16a34a; font-weight: var(--fw-500); }
@@ -387,13 +393,10 @@
 .adm-link { color: var(--background); text-decoration: none; }
 .adm-link:hover { text-decoration: underline; }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   USER DETAIL PAGE
-   ════════════════════════════════════════════════════════════════════════════ */
+   /* USER DETAIL PAGE */
 .adm-detail-page {
     width: 100%;
     margin: 30px auto;
-    padding: 0 20px;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -568,6 +571,84 @@
   border: 1px solid #e2e8f0;
 }
 .adm-badge-inactive { color: #ef4444; }
+
+.adm-badge-restore {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #b45309;
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+    border-radius: 6px;
+    vertical-align: middle;
+}
+
+.adm-pending-card--restore {
+    border-color: #fdba74;
+    background: linear-gradient(135deg, #fffbeb 0%, #fff 40%);
+}
+
+.adm-pending-card--shop-change {
+    border-color: #93c5fd;
+    background: linear-gradient(135deg, #eff6ff 0%, #fff 45%);
+}
+
+.adm-shop-change-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.adm-shop-change-row .adm-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+}
+
+.adm-row-highlight {
+    background: #f8fbff;
+}
+
+.adm-user-flag {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.adm-user-flag--shop {
+    color: #1d4ed8;
+}
+
+.adm-user-flag--pvz {
+    color: #0f766e;
+}
+
+.adm-moderation-highlight {
+    border: 2px solid #93c5fd;
+    background: linear-gradient(135deg, #eff6ff 0%, #fff 55%);
+    padding: 16px 18px;
+    border-radius: 12px;
+    margin-top: 16px;
+}
+
+.adm-seller-pending-notice--pvz.adm-moderation-highlight {
+    border-color: #5eead4;
+    background: linear-gradient(135deg, #f0fdfa 0%, #fff 55%);
+}
+
+.adm-moderation-hint {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.45;
+}
 .adm-product-card .adm-action-btn { margin: 0 12px 12px; align-self: flex-start; }
 
 /* ── Flash error variant ── */
@@ -1113,7 +1194,7 @@
 /* ── Orders list (detail page) ── */
 .adm-orders-list { display: flex; flex-direction: column; gap: 10px; padding: 8px 16px 16px; }
 .adm-orders-list--scroll {
-    max-height: 520px;
+    max-height: max-content;
     overflow-y: auto;
     margin: 0 0 16px;
     padding-right: 8px;
@@ -1231,7 +1312,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 8px 16px 16px;
+    padding: 8px 0;
 }
 
 .adm-products-load-more {
@@ -1318,6 +1399,182 @@
 .adm-pstatus-moderation { background: rgba(245,158,11,0.12);  color: #b45309; }
 .adm-pstatus-hidden     { background: rgba(100,116,139,0.12); color: #475569; }
 .adm-pstatus-default    { background: rgba(100,116,139,0.08); color: #64748b; }
+
+.adm-storefront-badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: var(--size-s);
+    font-weight: var(--fw-600);
+    white-space: nowrap;
+}
+.adm-storefront--on { background: rgba(34,197,94,0.12); color: #16a34a; }
+.adm-storefront--off { background: rgba(239,68,68,0.1); color: #b45309; }
+
+.adm-product-title-link {
+    color: var(--backgroundBlack);
+    font-weight: var(--fw-600);
+    text-decoration: none;
+}
+.adm-product-title-link:hover { text-decoration: underline; }
+
+.adm-nav-link {
+    display: block;
+    text-decoration: none;
+    color: #334155;
+}
+.adm-nav-link:hover {
+    background: rgba(99,102,241,0.08);
+    color: var(--background);
+}
+
+.adm-seller-closed-notice {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+}
+
+.adm-seller-stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    margin-top: 12px;
+    font-size: var(--size-m);
+    color: #475569;
+}
+
+.adm-audit-timeline {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.adm-audit-title {
+    margin: 0 0 12px;
+    font-size: var(--size-16);
+    font-weight: var(--fw-700);
+}
+
+.adm-audit-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.adm-audit-item {
+    padding: 10px 0;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: var(--size-m);
+}
+
+.adm-audit-item:last-child { border-bottom: none; }
+
+.adm-audit-item__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.adm-audit-item__actor,
+.adm-audit-item__meta {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: var(--size-s);
+}
+
+.adm-product-seller-inactive-hint {
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    font-size: var(--size-s);
+    line-height: 1.4;
+    color: #b45309;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+}
+
+.adm-review-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.adm-review-images__thumb {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    background: #f8fafc;
+    display: block;
+}
+
+.adm-review-images__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.adm-review-modal-preview {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.adm-review-modal-preview__text {
+    margin: 0 0 8px;
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+.adm-review-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 10060;
+    background: rgba(15, 23, 42, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.adm-review-lightbox__inner {
+    position: relative;
+    max-width: min(92vw, 800px);
+    max-height: 90vh;
+}
+
+.adm-review-lightbox__inner img {
+    max-width: 100%;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.adm-review-lightbox__close {
+    position: absolute;
+    top: -36px;
+    right: 0;
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-size: 1.75rem;
+    cursor: pointer;
+}
 
 /* ── Responsive ── */
 @media (max-width: 768px) {

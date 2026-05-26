@@ -532,6 +532,7 @@ class SellerProductController extends Controller
         $totalStock    = $liveVariants->sum('stock');
         $activeCount   = $liveVariants->where('is_active', true)->count();
         $hiddenCount   = $liveVariants->where('is_active', false)->count();
+        $totalViews    = (int) $liveVariants->sum('views_count');
 
         return Inertia::render('Seller/Products/Manage', [
             'product' => [
@@ -542,7 +543,7 @@ class SellerProductController extends Controller
                 'is_listed'          => (bool) $product->is_on_action,
                 'category'       => $product->category?->name ?? '—',
                 'min_price'      => (float) $product->min_price,
-                'views_count'    => (int) ($product->views_count ?? 0),
+                'views_count'    => $totalViews,
                 'sales_count'    => (int) ($product->sales_count ?? 0),
                 'created_at'     => $product->created_at?->format('d.m.Y') ?? '',
                 'main_image'     => $product->resolveListingImageUrl(),
@@ -562,6 +563,7 @@ class SellerProductController extends Controller
                     'price'     => (float) $v->price,
                     'old_price' => $v->old_price ? (float) $v->old_price : null,
                     'stock'     => (int) $v->stock,
+                    'views_count' => (int) ($v->views_count ?? 0),
                     'is_active' => (bool) $v->is_active,
                     'sku'       => $v->sku,
                     'image_url' => $v->images->first()?->url ?? null,

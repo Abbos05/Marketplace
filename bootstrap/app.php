@@ -1,6 +1,9 @@
 <?php
  
+use App\Http\Middleware\EnsureNotBlocked;
+use App\Http\Middleware\PvzMiddleware;
 use App\Http\Middleware\SellerMiddleware;
+use App\Http\Middleware\TouchSessionActivity;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,10 +20,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
-            
+            \App\Http\Middleware\EnsureNotBlocked::class,
+            TouchSessionActivity::class,
         ]);
          $middleware->alias([
             'seller' => SellerMiddleware::class,
+            'pvz' => PvzMiddleware::class,
+            'not_blocked' => EnsureNotBlocked::class,
         ]);
 
         //

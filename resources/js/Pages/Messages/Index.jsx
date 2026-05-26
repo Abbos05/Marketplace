@@ -13,6 +13,7 @@ import {
   widgetTogglePin,
   syncWidgetPath,
 } from '@/lib/messagesWidget';
+import { resolveNotificationActionUrl } from '@/lib/notificationActionUrl';
 import { format, isToday, isYesterday } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import '../../../css/messages.css';
@@ -56,6 +57,18 @@ function MessageBubbleContent({ message: m }) {
       )}
       {hasText && <div className="msg-bubble-text">{m.body}</div>}
     </>
+  );
+}
+
+function ScrollDownFab({ visible, onClick }) {
+  if (!visible) return null;
+
+  return (
+    <button type="button" className="msg-scroll-down" onClick={onClick} aria-label="Прокрутить вниз" title="Вниз">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
   );
 }
 
@@ -177,6 +190,8 @@ export default function Index() {
   const [mobileChat, setMobileChat] = useState(false);
   const scrollRef = useRef(null);
   const notifScrollRef = useRef(null);
+  const isNearBottomRef = useRef(true);
+  const [awayFromBottom, setAwayFromBottom] = useState(false);
   const pageRef = useRef(null);
   const compactBackRef = useRef(false);
   const fileInputRef = useRef(null);
@@ -288,17 +303,45 @@ export default function Index() {
   }, [activeConversation?.id]);
 
 
-  const scrollToBottom = useCallback(() => {
+  const scrollToBottom = useCallback((force = false) => {
     const el = showNotifView ? notifScrollRef.current : scrollRef.current;
     if (!el) return;
+    if (!force && !isNearBottomRef.current) return;
     requestAnimationFrame(() => {
       el.scrollTop = el.scrollHeight;
+      isNearBottomRef.current = true;
+      setAwayFromBottom(false);
     });
   }, [showNotifView]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, activeId, scrollToBottom, notifItems, showNotifView]);
+    const el = showNotifView ? notifScrollRef.current : scrollRef.current;
+    if (!el) return undefined;
+    const threshold = 80;
+    const syncNearBottom = () => {
+      const near = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+      isNearBottomRef.current = near;
+      setAwayFromBottom(!near);
+    };
+    syncNearBottom();
+    el.addEventListener('scroll', syncNearBottom, { passive: true });
+    const ro = new ResizeObserver(syncNearBottom);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', syncNearBottom);
+      ro.disconnect();
+    };
+  }, [activeId, showNotifView]);
+
+  useEffect(() => {
+    isNearBottomRef.current = true;
+    setAwayFromBottom(false);
+    scrollToBottom(true);
+  }, [activeId, showNotifView, scrollToBottom]);
+
+  useEffect(() => {
+    scrollToBottom(false);
+  }, [messages, notifItems, scrollToBottom]);
 
   const totalUnread = useMemo(
     () =>
@@ -478,7 +521,7 @@ export default function Index() {
       applyMutationJson(j);
       form.reset('message');
       setPendingFile(null);
-      setTimeout(scrollToBottom, 50);
+      setTimeout(() => scrollToBottom(true), 50);
     } catch {
       setSendError('Нет связи с сервером');
     }
@@ -537,7 +580,7 @@ export default function Index() {
       }
       applyMutationJson(j);
       cancelEdit();
-      setTimeout(scrollToBottom, 50);
+      setTimeout(() => scrollToBottom(true), 50);
     } catch {
       setEditError('Нет связи с сервером');
     }
@@ -567,7 +610,7 @@ export default function Index() {
       }
       applyMutationJson(j);
       if (Number(editingId) === Number(mid)) cancelEdit();
-      setTimeout(scrollToBottom, 50);
+      setTimeout(() => scrollToBottom(true), 50);
     } catch {
       window.alert('Нет связи с сервером');
     }
@@ -869,7 +912,8 @@ export default function Index() {
                   )}
                 </div>
 
-                <div className="msg-scroll" ref={notifScrollRef}>
+                <div className="msg-scroll-wrap">
+                  <div className="msg-scroll" ref={notifScrollRef}>
                   <div className="msg-fon">
                     <div className="msg-inner">
                       {groupedNotifs.length === 0 && <div className="msg-main-empty msg-main-empty--inline">Пока нет уведомлений</div>}
@@ -878,7 +922,9 @@ export default function Index() {
                           <div key={row.key} className="msg-date-sep">
                             {row.label}
                           </div>
-                        ) : (
+                        ) : (() => {
+                          const notifActionUrl = resolveNotificationActionUrl(row.n.action_url);
+                          return (
                           <div key={row.key} className={`msg-row msg-row--notif ${row.n.read ? 'msg-row--notif-read' : ''}`}>
                             <div className="msg-bubble-avatar msg-bubble-avatar--notif" aria-hidden>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -903,18 +949,21 @@ export default function Index() {
                               </div>
                               <div className="msg-bubble-meta">
                                 <span className="msg-bubble-time">{timeInBubble(row.n.created_at)}</span>
-                                {row.n.action_url && (
-                                  <Link href={row.n.action_url} className="msg-notif-link" onClick={(e) => e.stopPropagation()}>
+                                {notifActionUrl && (
+                                  <Link href={notifActionUrl} className="msg-notif-link" onClick={(e) => e.stopPropagation()}>
                                     Открыть
                                   </Link>
                                 )}
                               </div>
                             </div>
                           </div>
-                        ),
+                          );
+                        })(),
                       )}
                     </div>
                   </div>
+                  </div>
+                  <ScrollDownFab visible={awayFromBottom} onClick={() => scrollToBottom(true)} />
                 </div>
 
                 <div className="msg-composer msg-composer--disabled">
@@ -1006,7 +1055,8 @@ export default function Index() {
                   </div>
                 )}
 
-                <div className="msg-scroll" ref={scrollRef}>
+                <div className="msg-scroll-wrap">
+                  <div className="msg-scroll" ref={scrollRef}>
                   <div className="msg-fon">
                     <div className="msg-inner">
                       {grouped.map((row) =>
@@ -1123,6 +1173,8 @@ export default function Index() {
                       )}
                     </div>
                   </div>
+                  </div>
+                  <ScrollDownFab visible={awayFromBottom} onClick={() => scrollToBottom(true)} />
                 </div>
 
                 {staffSupportActive && !canReplySupport ? (

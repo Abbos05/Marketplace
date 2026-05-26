@@ -63,7 +63,7 @@
     gap: 6px;
     transition: all 0.15s;
 }
-.idx-tab:hover { background: #f1f5f9; border-color: #c7d2e7; }
+.idx-tab:hover { background: #f1f5f9; border-color: #c7d2e7; color: #000;}
 .idx-tab--active { background: var(--backgroundBlack); color: #fff; border-color: var(--backgroundBlack); }
 .idx-tab-count {
     background: rgba(255,255,255,0.25);
@@ -191,6 +191,10 @@
     cursor: pointer;
     transition: all 0.15s;
     white-space: nowrap;
+}
+.seller-user .idx-action-btn {
+    font-size: var(--size-m);
+    
 }
 .idx-action-btn:hover { background: #f1f5f9; }
 .idx-action-btn--primary { background: var(--backgroundBlack); color: #fff; border-color: var(--backgroundBlack); }

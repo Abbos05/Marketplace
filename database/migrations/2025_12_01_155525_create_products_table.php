@@ -16,7 +16,6 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->text('short_description')->nullable();
             $table->decimal('min_price', 12, 2);
-            $table->unsignedBigInteger('views_count')->default(0);
             $table->unsignedBigInteger('sales_count')->default(0);
             $table->enum('status', ['draft', 'moderation', 'approved', 'rejected', 'archived', 'hidden'])->default('moderation');
             $table->text('moderation_comment')->nullable();

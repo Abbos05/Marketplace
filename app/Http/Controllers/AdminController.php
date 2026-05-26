@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\PickupPoint;
+use App\Models\PickupPointStaff;
 use App\Models\SellerProfile;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,121 +16,20 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Product;
 use App\Notifications\MarketplaceAlert;
+use App\Support\NotificationCategory;
+use App\Services\OrderNotificationService;
 use App\Services\OrderLedgerService;
-use App\Services\StripeRefundService;
+use App\Services\PvzAdminOverviewService;
+use App\Services\PvzNotificationService;
+use App\Services\SellerProfileModerationService;
+use App\Services\UserRestrictionService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class AdminController extends Controller
 {
-    public function index(Request $request)
-    {
 
-        $query = User::query();
-        $search = request('search');
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('id', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
-            });
-        }
-
-        $query->orderBy('role', 'desc') // 1. Сначала по роли
-
-            ->orderByRaw('(
-                SELECT COUNT(*)
-                FROM nfts
-                WHERE nfts.user_id = users.id
-                AND nfts.status = "moderation"
-            ) DESC')
-            ->orderBy('is_blocked', 'asc');
-        $usersData = $query->get()->map(function ($user) {
-            $userNfts = Product::where('user_id', $user->id)->get();
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role,
-                'is_blocked' => $user->is_blocked,
-                'numbertel' => $user->numbertel ?? 'Нет номера',
-                'avatar' => $user->avatar,
-                'nft' => $userNfts, // добавляем NFT как массив
-            ];
-        });
-
-        // Получаем активные сессии с данными пользователей
-        $sessions = DB::table('sessions')
-            ->join('users', 'sessions.user_id', '=', 'users.id')
-            ->select(
-                'sessions.id as session_id',
-                'sessions.user_id',
-                'sessions.ip_address',
-                'sessions.user_agent',
-                'sessions.last_activity',
-                'users.name as user_name',
-                'users.email as user_email'
-            )
-            ->whereNotNull('sessions.user_id')
-            ->orderBy('sessions.last_activity', 'desc')
-            ->get()
-            ->map(function ($session) {
-                // Преобразуем last_activity (timestamp) в Carbon
-                $session->last_activity = Carbon::createFromTimestamp($session->last_activity);
-                return $session;
-            });
-        return Inertia::render('Admin/Index', [
-            'users' => $usersData,
-            'nft' => $usersData,
-            'sessions' => $sessions,
-            'currentSessionId' => $request->session()->getId(),
-            'search' => $search,
-        ]);
-    }
-
-    public function showUser(User $user)
-    {
-        $myNfts = Product::where('user_id', $user->id)
-            ->with(['category', 'user'])
-            ->get();
-        return Inertia::render('Admin/Show', [
-            'nfts' => $myNfts,
-            'user' => $user,
-        ]);
-        return inertia('Admin/Show', compact('user', 'nfts'));
-    }
-
-    public function nftbuy(Request $request)
-    {
-        $productId = $request->nft['id'];
-        $product = Product::where('id', $productId)->first();
-        $product->update([
-            'status' => 'relevant',
-        ]);
-        return redirect()->back();
-    }
-    public function nftstop(Request $request)
-    {
-        $productId = $request->nft['id'];
-        $product = Product::where('id', $productId)->first();
-        $product->update([
-            'status' => 'rejection',
-        ]);
-        return redirect()->back();
-    }
-    public function nftsold(Request $request)
-    {
-        $productId = $request->nft['id'];
-        $product = Product::where('id', $productId)->first();
-        $product->update([
-            'status' => 'sold',
-        ]);
-        return redirect()->back();
-    }
-
+   
     public function destroy(Request $request, string $sessionId)
     {
         if ($sessionId === $request->session()->getId()) {
@@ -154,8 +55,16 @@ class AdminController extends Controller
             'platform_commission_total' => (float) OrderItem::query()
                 ->where('commission_status', 'finalized')
                 ->sum('commission_amount'),
-            'pending_approvals'=> User::whereHas('sellerProfile')
-                                      ->where('role', 'user')->count(),
+            'pending_approvals'=> User::query()
+                ->where(function ($q) {
+                    $q->whereHas('sellerProfile', fn ($p) => $p->whereNotNull('restore_requested_at'))
+                        ->orWhere(fn ($q2) => $q2->whereHas('sellerProfile')->where('role', 'user'));
+                })
+                ->count(),
+            'pending_shop_changes' => SellerProfile::query()->shopChangesPending()->count(),
+            'pvz_pending_applications' => PickupPointStaff::query()
+                ->where('status', PickupPointStaff::STATUS_PENDING)
+                ->count(),
             'online_count'     => DB::table('sessions')
                                       ->whereNotNull('user_id')
                                       ->where('last_activity', '>=', $onlineThreshold)
@@ -165,98 +74,52 @@ class AdminController extends Controller
 
         $pendingSellers = User::with('sellerProfile')
             ->whereHas('sellerProfile')
-            ->where('role', 'user')
+            ->where(function ($q) {
+                $q->whereHas('sellerProfile', fn ($p) => $p->whereNotNull('restore_requested_at'))
+                    ->orWhere(function ($q2) {
+                        $q2->where('role', 'user')
+                            ->whereHas('sellerProfile', fn ($p) => $p->whereNull('restore_requested_at'));
+                    });
+            })
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(fn($u) => [
-                'id'             => $u->id,
-                'name'           => $u->name,
-                'last_name'      => $u->last_name,
-                'email'          => $u->email,
-                'phone'          => $u->phone,
-                'avatar'         => $u->avatar,
-                'created_at'     => $u->created_at,
-                'seller_profile' => $u->sellerProfile ? [
-                    'shop_name'      => $u->sellerProfile->shop_name,
-                    'inn'            => $u->sellerProfile->inn,
-                    'legal_address'  => $u->sellerProfile->legal_address,
-                    'pickup_address' => $u->sellerProfile->pickup_address,
-                    'description'    => $u->sellerProfile->description,
-                ] : null,
-            ]);
+            ->map(function ($u) {
+                $profile = $u->sellerProfile;
+                $isRestore = $profile && $profile->isRestorePending();
 
-        // Список пользователей: расширен до 200, поиск — клиентский
-        $users = User::withTrashed()
-            ->orderBy('created_at', 'desc')
-            ->limit(200)
-            ->get()
-            ->map(fn($u) => [
-                'id'         => $u->id,
-                'name'       => $u->name,
-                'last_name'  => $u->last_name,
-                'email'      => $u->email,
-                'phone'      => $u->phone,
-                'role'       => $u->role,
-                'is_blocked' => $u->is_blocked,
-                'avatar'     => $u->avatar,
-                'deleted_at' => $u->deleted_at,
-                'created_at' => $u->created_at,
-            ]);
+                return [
+                    'id'             => $u->id,
+                    'name'           => $u->name,
+                    'last_name'      => $u->last_name,
+                    'email'          => $u->email,
+                    'phone'          => $u->phone,
+                    'avatar'         => $u->avatar,
+                    'created_at'     => $u->created_at,
+                    'application_type' => $isRestore ? 'restore' : 'new',
+                    'restore_requested_at' => $profile?->restore_requested_at,
+                    'seller_profile' => $profile ? [
+                        'shop_name'      => $profile->shop_name,
+                        'inn'            => $profile->inn,
+                        'legal_address'  => $profile->legal_address,
+                        'pickup_address' => $profile->pickup_address,
+                        'description'    => $profile->description,
+                    ] : null,
+                ];
+            });
+
+        $restriction = app(UserRestrictionService::class);
+        $usersPayload = $this->dashboardUsersPayload($request, $restriction);
 
         // Поиск заказов — только точное совпадение (номер, код, суточный код, ID/email/телефон)
         $orderSearch = trim((string) $request->input('order_search', ''));
         $orderResults = $orderSearch !== ''
-            ? $this->searchOrdersExact($orderSearch)
-            : collect();
-
-        // Сессии — джоиним с пользователями
-        $sessions = DB::table('sessions')
-            ->leftJoin('users', 'sessions.user_id', '=', 'users.id')
-            ->select(
-                'sessions.id as id',
-                'sessions.user_id',
-                'sessions.ip_address',
-                'sessions.user_agent',
-                'sessions.last_activity',
-                'users.name as user_name',
-                'users.last_name as user_last_name',
-                'users.email as user_email',
-                'users.avatar as user_avatar',
-                'users.role as user_role',
-                'users.is_blocked as user_is_blocked',
+            ? app(\App\Services\OrderSearchService::class)->mapOrdersForPanel(
+                app(\App\Services\OrderSearchService::class)->searchExact($orderSearch)
             )
-            ->orderBy('sessions.last_activity', 'desc')
-            ->limit(200)
-            ->get()
-            ->map(function ($s) use ($onlineThreshold) {
-                $s->is_online      = $s->last_activity >= $onlineThreshold;
-                $s->last_activity  = Carbon::createFromTimestamp($s->last_activity)->toIso8601String();
-                return $s;
-            });
+            : [];
 
-        $loginHistory = DB::table('account_login_events')
-            ->leftJoin('users', 'account_login_events.user_id', '=', 'users.id')
-            ->select(
-                'account_login_events.id',
-                'account_login_events.user_id',
-                'account_login_events.session_id',
-                'account_login_events.ip_address',
-                'account_login_events.user_agent',
-                'account_login_events.login_method',
-                'account_login_events.created_at',
-                'users.name as user_name',
-                'users.last_name as user_last_name',
-                'users.email as user_email',
-                'users.avatar as user_avatar',
-            )
-            ->orderByDesc('account_login_events.created_at')
-            ->limit(200)
-            ->get()
-            ->map(function ($event) {
-                $event->created_at = Carbon::parse($event->created_at)->toIso8601String();
-
-                return $event;
-            });
+        $sessionsPayload = $this->dashboardSessionsPayload($request, $onlineThreshold);
+        $loginHistoryPayload = $this->dashboardLoginHistoryPayload($request);
 
         // Revenue chart — последние 30 дней
         $chartFrom = Carbon::today()->subDays(29);
@@ -282,19 +145,28 @@ class AdminController extends Controller
         return Inertia::render('Admin/Dashboard', [
             'stats'            => $stats,
             'pendingSellers'   => $pendingSellers,
-            'users'            => $users,
+            'users'            => $usersPayload['items'],
+            'usersMeta'        => $usersPayload['meta'],
             'orderSearch'      => $orderSearch,
             'orderResults'     => $orderResults,
-            'sessions'         => $sessions,
-            'loginHistory'     => $loginHistory,
+            'sessions'         => $sessionsPayload['items'],
+            'sessionsMeta'     => $sessionsPayload['meta'],
+            'loginHistory'     => $loginHistoryPayload['items'],
+            'loginHistoryMeta' => $loginHistoryPayload['meta'],
             'currentSessionId' => $request->session()->getId(),
             'revenueChart'     => $revenueChart,
         ]);
     }
 
-    public function userDetail($userId)
+    public function userDetail(Request $request, $userId)
     {
-        $user = User::withTrashed()->with('sellerProfile')->findOrFail($userId);
+        $user = User::withTrashed()->with([
+            'sellerProfile',
+            'pickupPointStaff' => fn ($q) => $q->with(['proposedRegion', 'pickupPoint'])->orderByDesc('created_at'),
+            'approvedPickupPointStaff.pickupPoint',
+        ])->findOrFail($userId);
+
+        $auditService = app(\App\Services\MarketplaceAuditService::class);
         $onlineThreshold = time() - 300;
 
         $orders = Order::with(['items.variant.product.images'])
@@ -322,36 +194,8 @@ class AdminController extends Controller
                 ]),
             ]);
 
-        $sellerOrders = OrderItem::with(['order', 'variant.product.images'])
-            ->where('seller_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get()
-            ->map(fn($item) => [
-                'id'                => $item->id,
-                'quantity'          => $item->quantity,
-                'price_at_purchase' => $item->price_at_purchase,
-                'product_name'      => $item->variant?->product?->title ?? '—',
-                'product_image'     => $item->variant?->product?->images?->firstWhere('is_main', true)?->url ?? null,
-                'order_number'      => $item->order?->number ?? '—',
-                'order_status'      => $item->order?->status ?? '—',
-                'created_at'        => $item->created_at,
-            ]);
-
-        $products = Product::where('seller_id', $user->id)
-            ->withCount('variants')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(fn($p) => [
-                'id'                 => $p->id,
-                'name'               => $p->title,
-                'min_price'          => $p->min_price,
-                'image'              => $p->images()->where('is_main', true)->value('url'),
-                'status'             => $p->status,
-                'moderation_comment' => $p->moderation_comment,
-                'variants_count'     => $p->variants_count,
-                'created_at'         => $p->created_at,
-            ]);
+        $sellerSalesPayload = $this->userDetailSellerSalesPayload($request, $user->id);
+        $sellerProductsPayload = $this->userDetailSellerProductsPayload($request, $user->id);
 
         $userData = [
             'id'             => $user->id,
@@ -372,6 +216,11 @@ class AdminController extends Controller
                 'rating'         => $user->sellerProfile->rating,
                 'total_sales'    => $user->sellerProfile->total_sales,
             ] : null,
+            'closed_seller_profile' => app(\App\Services\AccountDeletionService::class)->closedSellerProfilePayload($user->id),
+            'seller_restore_pending' => app(\App\Services\AccountDeletionService::class)->sellerRestorePendingPayload($user),
+            'pending_shop_changes' => app(SellerProfileModerationService::class)->pendingPayload($user->sellerProfile),
+            'seller_history' => $auditService->sellerHistorySummary($user->id),
+            'audit_events' => $auditService->eventsForUser($user->id),
             'has_orders'     => Order::where('buyer_id', $user->id)
                 ->whereNotIn('status', Order::statusesAllowingUserDeletion())
                 ->exists(),
@@ -380,6 +229,24 @@ class AdminController extends Controller
                 ->whereHas('order', fn ($q) => $q->whereNotIn('status', Order::statusesAllowingUserDeletion()))
                 ->exists(),
             'has_products'   => Product::where('seller_id', $user->id)->exists(),
+            'pvz_application' => ($pvzStaff = $user->pickupPointStaff
+                ->sortBy(fn ($s) => match ($s->status) {
+                    PickupPointStaff::STATUS_PENDING => 0,
+                    PickupPointStaff::STATUS_APPROVED => 1,
+                    default => 2,
+                })
+                ->first())
+                ? PickupPointStaff::mapForUserDetail($pvzStaff)
+                : null,
+            'pvz_point' => $user->approvedPickupPointStaff?->pickupPoint ? [
+                'id' => $user->approvedPickupPointStaff->pickupPoint->id,
+                'title' => $user->approvedPickupPointStaff->pickupPoint->title,
+                'address' => $user->approvedPickupPointStaff->pickupPoint->address,
+                'is_active' => $user->approvedPickupPointStaff->pickupPoint->is_active,
+                'closure_status' => $user->approvedPickupPointStaff->pickupPoint->closure_status,
+            ] : null,
+            ...app(UserRestrictionService::class)->roleFlagsFor($user),
+            'assignable_roles' => app(UserRestrictionService::class)->assignableRolesFor(auth()->user(), $user),
         ];
 
         $userSessions = DB::table('sessions')
@@ -407,8 +274,13 @@ class AdminController extends Controller
         return Inertia::render('Admin/UserDetail', [
             'user'             => $userData,
             'orders'           => $orders,
-            'sellerOrders'     => $sellerOrders,
-            'products'         => $products,
+            'sellerOrders'     => $sellerSalesPayload['items'],
+            'sellerOrdersMeta' => $sellerSalesPayload['meta'],
+            'products'         => $sellerProductsPayload['items'],
+            'productsMeta'     => $sellerProductsPayload['meta'],
+            'seller_history'   => $userData['seller_history'],
+            'audit_events'     => $userData['audit_events'],
+            'pvzOverview'      => app(PvzAdminOverviewService::class)->forUser($user),
             'userSessions'     => $userSessions,
             'userLoginHistory' => $userLoginHistory,
             'currentSessionId' => request()->session()->getId(),
@@ -417,15 +289,107 @@ class AdminController extends Controller
 
     public function approveSeller(User $user)
     {
+        if ($user->hasSellerRestorePending()) {
+            app(\App\Services\AccountDeletionService::class)->approveSellerCompanyRestore($user, auth()->user());
+
+            return back()->with('success', 'Восстановление компании одобрено. Продавец снова активен.');
+        }
+
         $user->update(['role' => 'seller']);
+
         return back()->with('success', 'Продавец одобрен');
     }
 
     public function rejectSeller(User $user)
     {
+        if ($user->hasSellerRestorePending()) {
+            app(\App\Services\AccountDeletionService::class)->rejectSellerCompanyRestore($user, auth()->user());
+
+            return back()->with('success', 'Заявка на восстановление компании отклонена.');
+        }
+
         $user->sellerProfile?->delete();
         $user->update(['role' => 'user']);
+
         return back()->with('success', 'Заявка продавца отклонена');
+    }
+
+    public function approveShopChanges(User $user)
+    {
+        app(SellerProfileModerationService::class)->approveShopChanges($user, auth()->user());
+
+        return back()->with('success', 'Изменения магазина одобрены и опубликованы.');
+    }
+
+    public function rejectShopChanges(User $user)
+    {
+        app(SellerProfileModerationService::class)->rejectShopChanges($user, auth()->user());
+
+        return back()->with('success', 'Изменения магазина отклонены.');
+    }
+
+    public function approvePickupStaff(PickupPointStaff $pickupPointStaff)
+    {
+        if ($pickupPointStaff->status !== PickupPointStaff::STATUS_PENDING) {
+            return back()->with('error', 'Заявка уже обработана.');
+        }
+
+        $user = $pickupPointStaff->user;
+        if (! $user) {
+            return back()->with('error', 'Пользователь не найден.');
+        }
+
+        if ($pickupPointStaff->type === PickupPointStaff::TYPE_OPEN) {
+            $point = PickupPoint::query()->create([
+                'title' => $pickupPointStaff->proposed_title,
+                'address' => $pickupPointStaff->proposed_address,
+                'region_id' => $pickupPointStaff->proposed_region_id,
+                'is_active' => true,
+                'sort_order' => 0,
+            ]);
+            $pickupPointStaff->pickup_point_id = $point->id;
+        } else {
+            if (! $pickupPointStaff->pickup_point_id) {
+                return back()->with('error', 'Пункт выдачи не указан в заявке.');
+            }
+            if (PickupPointStaff::pickupPointHasApprovedStaff((int) $pickupPointStaff->pickup_point_id)) {
+                return back()->with('error', 'На этом пункте уже есть оператор.');
+            }
+        }
+
+        $pickupPointStaff->update([
+            'status' => PickupPointStaff::STATUS_APPROVED,
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        $user->update(['role' => 'pvz']);
+
+        $pickupPointStaff->load('pickupPoint');
+        $title = $pickupPointStaff->pickupPoint?->title ?? $pickupPointStaff->proposed_title ?? 'ПВЗ';
+        app(PvzNotificationService::class)->notifyApplicationApproved($user, $title);
+
+        return back()->with('success', 'Оператор ПВЗ одобрен.');
+    }
+
+    public function rejectPickupStaff(Request $request, PickupPointStaff $pickupPointStaff)
+    {
+        if ($pickupPointStaff->status !== PickupPointStaff::STATUS_PENDING) {
+            return back()->with('error', 'Заявка уже обработана.');
+        }
+
+        $request->validate([
+            'reject_reason' => 'nullable|string|max:500',
+        ]);
+
+        $pickupPointStaff->update([
+            'status' => PickupPointStaff::STATUS_REJECTED,
+            'reject_reason' => $request->reject_reason,
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        return back()->with('success', 'Заявка оператора ПВЗ отклонена.');
     }
 
     public function updateProductStatus(Request $request, Product $product)
@@ -444,10 +408,19 @@ class AdminController extends Controller
             ]);
         }
 
+        $seller = User::withTrashed()->with('sellerProfile')->find($product->seller_id);
+        $sellerCanPublish = $seller && ! $seller->trashed() && $seller->hasActiveSellerCompany();
+
+        if ($status === 'approved' && ! $sellerCanPublish) {
+            return back()->with('error', 'Нельзя вывести товар на витрину: компания продавца закрыта или аккаунт недоступен. Продавец должен восстановить компанию.');
+        }
+
+        $onCatalog = $status === 'approved' && $sellerCanPublish;
+
         $product->update([
             'status' => $status,
             'moderation_comment' => $comment !== '' ? $comment : null,
-            'is_on_action' => $status === 'approved',
+            'is_on_action' => $onCatalog,
         ]);
 
         $statusLabels = [
@@ -459,7 +432,6 @@ class AdminController extends Controller
             'hidden' => 'скрыт',
         ];
 
-        $seller = User::query()->find($product->seller_id);
         if ($seller) {
             $message = sprintf(
                 'Товар «%s» переведён в статус: %s.',
@@ -474,6 +446,7 @@ class AdminController extends Controller
                 'Статус товара обновлён',
                 $message,
                 route('seller.products.edit', $product, false),
+                NotificationCategory::SellerModeration,
             ));
         }
 
@@ -486,6 +459,11 @@ class AdminController extends Controller
             'status' => ['required', Rule::in(Order::allStatuses())],
         ]);
         $newStatus = $request->status;
+        $actor = $request->user();
+
+        if (! $order->canStaffAssignStatus($actor, $newStatus)) {
+            return back()->with('error', 'Статусы «Выдан» и «Отказ от получения» может установить только администратор или сотрудник пункта выдачи.');
+        }
 
         if (! $order->canSetDeliveryStatus($newStatus)) {
             return back()->with('error', 'Нельзя выдать неоплаченный заказ. Остальные статусы доставки доступны.');
@@ -496,25 +474,15 @@ class AdminController extends Controller
         $message = 'Статус заказа обновлён';
 
         if (in_array($newStatus, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true)) {
-            $refund = app(StripeRefundService::class)->handleOrderCanceledOrRefused($order, 'admin_'.$newStatus);
             app(OrderLedgerService::class)->reverseCommission($order->fresh());
-            if ($refund['refunded']) {
-                $message .= '. '.$refund['message'];
-            } elseif (! $refund['ok']) {
-                return back()->with('error', $message.'. '.$refund['message']);
+            if ($order->payment_status === 'paid') {
+                $message .= '. Покупатель подтвердит возврат средств в личном кабинете.';
             }
         } elseif ($newStatus === Order::STATUS_ISSUED) {
             app(OrderLedgerService::class)->finalizeCommission($order->fresh());
         }
 
-        $order->loadMissing('buyer');
-        if ($order->buyer) {
-            $order->buyer->notify(new MarketplaceAlert(
-                'Заказ обновлён',
-                sprintf('Заказ №%s — новый статус: %s.', $order->number ?? (string) $order->id, $newStatus),
-                route('order.show', $order, false),
-            ));
-        }
+        app(OrderNotificationService::class)->notifyStatusChange($order->fresh(), $newStatus);
 
         return back()->with('success', $message);
     }
@@ -527,6 +495,417 @@ class AdminController extends Controller
         }
         $user->restore();
         return back()->with('success', 'Аккаунт восстановлен');
+    }
+
+    public function exportUsers(Request $request): StreamedResponse
+    {
+        $query = $this->buildDashboardUsersQuery($request);
+        $users = $query->get();
+
+        $filename = 'users_'.now()->format('Y-m-d_His').'.csv';
+        $headers = ['ID', 'Имя', 'Фамилия', 'Email', 'Телефон', 'Роль', 'Зарегистрирован', 'Заблокирован', 'Удалён'];
+        $rows = $users->map(fn (User $u) => [
+            $u->id,
+            $u->name ?? '',
+            $u->last_name ?? '',
+            $u->email ?? '',
+            $u->phone ?? '',
+            $u->role,
+            $u->created_at?->format('Y-m-d H:i'),
+            $u->is_blocked ? 'да' : 'нет',
+            $u->deleted_at?->format('Y-m-d H:i') ?? '',
+        ]);
+
+        return $this->streamCsv($filename, $headers, $rows);
+    }
+
+    public function revenueChartData(Request $request)
+    {
+        [$from, $to] = $this->parseDateRange($request);
+        $chartFrom = $from ?? Carbon::today()->subDays(29);
+        $chartTo = $to ?? Carbon::today();
+        if ($chartFrom->gt($chartTo)) {
+            [$chartFrom, $chartTo] = [$chartTo, $chartFrom];
+        }
+
+        $rows = Order::whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_REFUSED])
+            ->where('created_at', '>=', $chartFrom->copy()->startOfDay())
+            ->where('created_at', '<=', $chartTo->copy()->endOfDay())
+            ->selectRaw('DATE(created_at) as day, SUM(total) as revenue, COUNT(*) as orders_count')
+            ->groupBy('day')
+            ->orderBy('day')
+            ->get()
+            ->keyBy('day');
+
+        $data = [];
+        $cursor = $chartFrom->copy()->startOfDay();
+        $end = $chartTo->copy()->startOfDay();
+        while ($cursor->lte($end)) {
+            $day = $cursor->toDateString();
+            $row = $rows->get($day);
+            $data[] = [
+                'date' => $day,
+                'revenue' => (float) ($row->revenue ?? 0),
+                'count' => (int) ($row->orders_count ?? 0),
+            ];
+            $cursor->addDay();
+        }
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function exportRevenuePdf(Request $request)
+    {
+        [$from, $to] = $this->parseDateRange($request);
+        $status = $request->input('status', 'paid');
+
+        $q = Order::query();
+        if ($from) {
+            $q->where('created_at', '>=', $from);
+        }
+        if ($to) {
+            $q->where('created_at', '<=', $to);
+        }
+        if ($status === 'paid') {
+            $q->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_REFUSED]);
+        } elseif ($status !== 'all') {
+            $q->where('status', $status);
+        }
+
+        $orders = $q->orderBy('created_at', 'desc')->get();
+        $total = (float) $orders->sum('total');
+        $chartFrom = $from ?? Carbon::today()->subDays(29);
+        $chartTo = $to ?? Carbon::today();
+
+        $chartResponse = $this->revenueChartData(new Request([
+            'from' => $chartFrom->format('Y-m-d'),
+            'to' => $chartTo->format('Y-m-d'),
+        ]));
+        $chartData = $chartResponse->getData(true)['data'] ?? [];
+
+        $pdf = Pdf::loadView('reports.revenue', [
+            'from' => $chartFrom->format('d.m.Y'),
+            'to' => $chartTo->format('d.m.Y'),
+            'total' => $total,
+            'ordersCount' => $orders->count(),
+            'chartData' => $chartData,
+        ]);
+
+        $filename = 'revenue_'.($from?->format('Y-m-d') ?? 'all').'_'.($to?->format('Y-m-d') ?? 'all').'.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * @return array{items: array<int, array<string, mixed>>, meta: array<string, mixed>}
+     */
+    private function userDetailSellerSalesPayload(Request $request, int $sellerId): array
+    {
+        $perPage = 25;
+        $page = max(1, (int) $request->input('seller_sales_page', 1));
+        $sort = $request->input('seller_sales_sort', 'date_desc');
+        $status = $request->input('seller_sales_status', 'all');
+
+        $query = OrderItem::with(['order', 'variant.product.images'])
+            ->where('seller_id', $sellerId);
+
+        if ($status !== 'all' && $status !== '') {
+            $query->whereHas('order', fn ($q) => $q->where('status', $status));
+        }
+
+        if ($sort === 'date_asc') {
+            $query->orderBy('created_at', 'asc');
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $total = (clone $query)->count();
+        $limit = $page * $perPage;
+        $rows = $query->limit($limit + 1)->get();
+        $hasMore = $rows->count() > $limit;
+        if ($hasMore) {
+            $rows = $rows->take($limit);
+        }
+
+        $items = $rows->map(fn ($item) => [
+            'id' => $item->id,
+            'quantity' => $item->quantity,
+            'price_at_purchase' => $item->price_at_purchase,
+            'product_name' => $item->variant?->product?->title ?? '—',
+            'product_id' => $item->variant?->product?->id,
+            'product_image' => $item->variant?->product?->images?->firstWhere('is_main', true)?->url ?? null,
+            'order_number' => $item->order?->number ?? '—',
+            'order_status' => $item->order?->status ?? '—',
+            'created_at' => $item->created_at,
+        ])->values()->all();
+
+        return [
+            'items' => $items,
+            'meta' => [
+                'page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'has_more' => $hasMore,
+                'last_page' => (int) ceil(max(1, $total) / $perPage),
+                'sort' => $sort,
+                'status' => $status,
+            ],
+        ];
+    }
+
+    /**
+     * @return array{items: array<int, array<string, mixed>>, meta: array<string, mixed>}
+     */
+    private function userDetailSellerProductsPayload(Request $request, int $sellerId): array
+    {
+        $perPage = 25;
+        $page = max(1, (int) $request->input('seller_products_page', 1));
+        $sort = $request->input('seller_products_sort', 'date_desc');
+        $status = $request->input('seller_products_status', 'all');
+        $search = trim((string) $request->input('seller_products_search', ''));
+        if (mb_strlen($search) > 200) {
+            $search = mb_substr($search, 0, 200);
+        }
+
+        $query = Product::where('seller_id', $sellerId)
+            ->with(['seller.sellerProfile'])
+            ->withCount('variants');
+
+        if ($status !== 'all' && $status !== '') {
+            $query->where('status', $status);
+        }
+
+        if ($search !== '') {
+            $like = '%'.addcslashes($search, '%_\\').'%';
+            $query->where(function ($q) use ($search, $like) {
+                $q->where('title', 'like', $like);
+                if (ctype_digit($search)) {
+                    $q->orWhere('id', (int) $search);
+                }
+            });
+        }
+
+        if ($sort === 'name_asc') {
+            $query->orderBy('title', 'asc');
+        } elseif ($sort === 'name_desc') {
+            $query->orderBy('title', 'desc');
+        } elseif ($sort === 'date_asc') {
+            $query->orderBy('created_at', 'asc');
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $total = (clone $query)->count();
+        $limit = $page * $perPage;
+        $rows = $query->limit($limit + 1)->get();
+        $hasMore = $rows->count() > $limit;
+        if ($hasMore) {
+            $rows = $rows->take($limit);
+        }
+
+        return [
+            'items' => $rows->map(fn ($p) => $this->mapProductForAdmin($p))->values()->all(),
+            'meta' => [
+                'page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'has_more' => $hasMore,
+                'last_page' => (int) ceil(max(1, $total) / $perPage),
+                'sort' => $sort,
+                'status' => $status,
+                'search' => $search,
+            ],
+        ];
+    }
+
+    /**
+     * @return array{items: array<int, array<string, mixed>>, meta: array<string, mixed>}
+     */
+    private function dashboardUsersPayload(Request $request, UserRestrictionService $restriction): array
+    {
+        $perPage = 50;
+        $page = max(1, (int) $request->input('users_page', 1));
+        $limit = $page * $perPage;
+
+        $query = $this->buildDashboardUsersQuery($request);
+        $total = (clone $query)->count();
+        $rows = $query->limit($limit + 1)->get();
+        $hasMore = $rows->count() > $limit;
+        if ($hasMore) {
+            $rows = $rows->take($limit);
+        }
+
+        $items = $rows->map(fn ($u) => [
+            'id' => $u->id,
+            'name' => $u->name,
+            'last_name' => $u->last_name,
+            'email' => $u->email,
+            'phone' => $u->phone,
+            'role' => $u->role,
+            'is_blocked' => $u->is_blocked,
+            'avatar' => $u->avatar,
+            'deleted_at' => $u->deleted_at,
+            'created_at' => $u->created_at,
+            'shop_name' => $u->sellerProfile?->shop_name,
+            'shop_changes_pending' => (bool) $u->sellerProfile?->isShopChangesPending(),
+            'pvz_application_pending' => $u->pickupPointStaff
+                ->contains(fn ($s) => $s->status === PickupPointStaff::STATUS_PENDING),
+            'assignable_roles' => $restriction->assignableRolesFor(auth()->user(), $u),
+        ])->values()->all();
+
+        return [
+            'items' => $items,
+            'meta' => [
+                'page' => $page,
+                'per_page' => $perPage,
+                'has_more' => $hasMore,
+                'total' => $total,
+                'filter' => $request->input('users_filter', 'all'),
+                'search' => trim((string) $request->input('users_search', '')),
+                'sort' => $request->input('users_sort', 'created_at'),
+                'dir' => $request->input('users_dir', 'desc') === 'asc' ? 'asc' : 'desc',
+            ],
+        ];
+    }
+
+    private function buildDashboardUsersQuery(Request $request)
+    {
+        $filter = $request->input('users_filter', 'all');
+        $search = trim((string) $request->input('users_search', ''));
+        $sort = $request->input('users_sort', 'created_at');
+        $dir = $request->input('users_dir', 'desc') === 'asc' ? 'asc' : 'desc';
+
+        $query = User::withTrashed()
+            ->with(['sellerProfile', 'approvedPickupPointStaff', 'pickupPointStaff']);
+
+        if ($filter === 'active') {
+            $query->where(fn ($q) => $q->where('is_blocked', false)->orWhereNull('is_blocked'))
+                ->whereNull('deleted_at');
+        } elseif ($filter === 'blocked') {
+            $query->where('is_blocked', true)->whereNull('deleted_at');
+        } elseif ($filter === 'deleted') {
+            $query->whereNotNull('deleted_at');
+        } elseif ($filter === 'shop_changes') {
+            $query->whereHas('sellerProfile', fn ($p) => $p->shopChangesPending());
+        } elseif ($filter === 'pvz_pending') {
+            $query->whereHas('pickupPointStaff', fn ($s) => $s->where('status', PickupPointStaff::STATUS_PENDING));
+        }
+
+        if ($search !== '') {
+            $like = '%'.addcslashes($search, '%_\\').'%';
+            $query->where(function ($q) use ($search, $like) {
+                $q->where('name', 'like', $like)
+                    ->orWhere('last_name', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhere('phone', 'like', $like);
+                if (ctype_digit($search)) {
+                    $q->orWhere('id', (int) $search);
+                }
+            });
+        }
+
+        if ($sort === 'name') {
+            $query->orderBy('name', $dir)->orderBy('last_name', $dir);
+        } elseif ($sort === 'role') {
+            $query->orderByRaw(
+                "CASE role WHEN 'admin' THEN 1 WHEN 'moderator' THEN 2 WHEN 'seller' THEN 3 WHEN 'pvz' THEN 4 ELSE 5 END ".($dir === 'asc' ? 'ASC' : 'DESC')
+            )->orderBy('created_at', 'desc');
+        } else {
+            $query->orderBy('created_at', $dir);
+        }
+
+        return $query;
+    }
+
+    /**
+     * @return array{items: array<int, object>, meta: array<string, mixed>}
+     */
+    private function dashboardSessionsPayload(Request $request, int $onlineThreshold): array
+    {
+        $perPage = 50;
+        $page = max(1, (int) $request->input('sessions_page', 1));
+        $limit = $page * $perPage;
+
+        $rows = DB::table('sessions')
+            ->leftJoin('users', 'sessions.user_id', '=', 'users.id')
+            ->select(
+                'sessions.id as id',
+                'sessions.user_id',
+                'sessions.ip_address',
+                'sessions.user_agent',
+                'sessions.last_activity',
+                'users.name as user_name',
+                'users.last_name as user_last_name',
+                'users.email as user_email',
+                'users.avatar as user_avatar',
+                'users.role as user_role',
+                'users.is_blocked as user_is_blocked',
+            )
+            ->orderBy('sessions.last_activity', 'desc')
+            ->limit($limit + 1)
+            ->get();
+
+        $hasMore = $rows->count() > $limit;
+        if ($hasMore) {
+            $rows = $rows->take($limit);
+        }
+
+        $items = $rows->map(function ($s) use ($onlineThreshold) {
+            $s->is_online = $s->last_activity >= $onlineThreshold;
+            $s->last_activity = Carbon::createFromTimestamp($s->last_activity)->toIso8601String();
+
+            return $s;
+        })->values()->all();
+
+        return [
+            'items' => $items,
+            'meta' => ['page' => $page, 'per_page' => $perPage, 'has_more' => $hasMore],
+        ];
+    }
+
+    /**
+     * @return array{items: array<int, object>, meta: array<string, mixed>}
+     */
+    private function dashboardLoginHistoryPayload(Request $request): array
+    {
+        $perPage = 50;
+        $page = max(1, (int) $request->input('login_page', 1));
+        $limit = $page * $perPage;
+
+        $rows = DB::table('account_login_events')
+            ->leftJoin('users', 'account_login_events.user_id', '=', 'users.id')
+            ->select(
+                'account_login_events.id',
+                'account_login_events.user_id',
+                'account_login_events.session_id',
+                'account_login_events.ip_address',
+                'account_login_events.user_agent',
+                'account_login_events.login_method',
+                'account_login_events.created_at',
+                'users.name as user_name',
+                'users.last_name as user_last_name',
+                'users.email as user_email',
+                'users.avatar as user_avatar',
+            )
+            ->orderByDesc('account_login_events.created_at')
+            ->limit($limit + 1)
+            ->get();
+
+        $hasMore = $rows->count() > $limit;
+        if ($hasMore) {
+            $rows = $rows->take($limit);
+        }
+
+        $items = $rows->map(function ($event) {
+            $event->created_at = Carbon::parse($event->created_at)->toIso8601String();
+
+            return $event;
+        })->values()->all();
+
+        return [
+            'items' => $items,
+            'meta' => ['page' => $page, 'per_page' => $perPage, 'has_more' => $hasMore],
+        ];
     }
 
     private function parseDateRange(Request $request): array
@@ -727,10 +1106,15 @@ class AdminController extends Controller
         $status = $request->input('status', 'all');
         $perPage = 50;
 
-        $query = Product::with(['seller', 'category', 'images', 'variants:id,product_id,sku'])
+        $query = Product::with(['seller.sellerProfile', 'category', 'images', 'variants:id,product_id,sku'])
+            ->withSum('variants as variants_views_sum', 'views_count')
             ->orderBy('created_at', 'desc');
 
-        if ($status !== 'all') {
+        if ($status === 'off_catalog') {
+            $query->where('status', 'approved')->where('is_on_action', false);
+        } elseif ($status === 'on_catalog') {
+            $query->where('status', 'approved')->where('is_on_action', true);
+        } elseif ($status !== 'all') {
             $query->where('status', $status);
         }
         if ($search !== '') {
@@ -749,30 +1133,14 @@ class AdminController extends Controller
         }
 
         $products = $query->paginate($perPage)->withQueryString();
-        $productItems = $products->getCollection()->map(fn($p) => [
-            'id'                 => $p->id,
-            'title'              => $p->title,
-            'min_price'          => $p->min_price,
-            'status'             => $p->status,
-            'moderation_comment' => $p->moderation_comment,
-            'is_on_action'       => $p->is_on_action,
-            'sales_count'        => $p->sales_count,
-            'views_count'        => $p->views_count,
-            'image'              => $p->images?->firstWhere('is_main', true)?->url,
-            'created_at'         => $p->created_at,
-            'category'           => $p->category ? ['id' => $p->category->id, 'name' => $p->category->name] : null,
-            'seller'             => $p->seller ? [
-                'id'    => $p->seller->id,
-                'name'  => $p->seller->name,
-                'email' => $p->seller->email,
-            ] : null,
-            'variant_skus'       => $p->variants?->pluck('sku')->filter()->values()->all() ?? [],
-        ]);
+        $productItems = $products->getCollection()->map(fn ($p) => $this->mapProductForAdmin($p, includeSeller: true));
 
         $counts = [
             'all'        => Product::count(),
             'moderation' => Product::where('status', 'moderation')->count(),
             'approved'   => Product::where('status', 'approved')->count(),
+            'off_catalog' => Product::where('status', 'approved')->where('is_on_action', false)->count(),
+            'on_catalog' => Product::where('status', 'approved')->where('is_on_action', true)->count(),
             'rejected'   => Product::where('status', 'rejected')->count(),
             'hidden'     => Product::where('status', 'hidden')->count(),
             'archived'   => Product::where('status', 'archived')->count(),
@@ -794,100 +1162,41 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * Поиск заказов в админке: только полное совпадение, без LIKE-подстрок.
-     */
-    private function searchOrdersExact(string $orderSearch)
+    private function mapProductForAdmin(Product $p, bool $includeSeller = false): array
     {
-        $normalized = preg_replace('/\s+/', '', $orderSearch);
-        $digitsOnly = preg_replace('/\D+/', '', $orderSearch);
-        $orderCode = strtoupper($normalized);
-        $dailyCodeFormatted = (strlen($digitsOnly) === 8)
-            ? substr($digitsOnly, 0, 4).' '.substr($digitsOnly, 4, 4)
-            : null;
+        $row = [
+            'id'                 => $p->id,
+            'title'              => $p->title,
+            'name'               => $p->title,
+            'min_price'          => $p->min_price,
+            'status'             => $p->status,
+            'moderation_comment' => $p->moderation_comment,
+            'is_on_action'       => (bool) $p->is_on_action,
+            'catalog_visible'    => $p->isPubliclyVisible(),
+            'seller_can_publish' => $p->sellerCanPublish(),
+            'storefront_block_reason' => $p->storefrontBlockReason(),
+            'sales_count'        => $p->sales_count ?? null,
+            'views_count'        => (int) ($p->variants_views_sum ?? 0),
+            'image'              => $p->relationLoaded('images')
+                ? ($p->images?->firstWhere('is_main', true)?->url)
+                : $p->images()->where('is_main', true)->value('url'),
+            'created_at'         => $p->created_at,
+            'variants_count'     => $p->variants_count ?? null,
+            'variant_skus'       => $p->relationLoaded('variants')
+                ? ($p->variants?->pluck('sku')->filter()->values()->all() ?? [])
+                : [],
+        ];
 
-        return Order::with([
-            'buyer' => fn ($q) => $q->withTrashed(),
-            'items.variant.product.images',
-        ])
-            ->where(function ($q) use ($orderSearch, $normalized, $orderCode, $dailyCodeFormatted, $digitsOnly) {
-                // Номер заказа (ORD-...) — целиком
-                $q->where('number', $orderSearch);
-                if ($normalized !== '' && $normalized !== $orderSearch) {
-                    $q->orWhere('number', $normalized);
-                }
+        if ($includeSeller) {
+            $row['category'] = $p->category ? ['id' => $p->category->id, 'name' => $p->category->name] : null;
+            $row['seller'] = $p->seller ? [
+                'id'    => $p->seller->id,
+                'name'  => $p->seller->name,
+                'email' => $p->seller->email,
+            ] : null;
+        }
 
-                // Код выдачи — ровно 10 символов
-                if (strlen($orderCode) === 10) {
-                    $q->orWhere('order_code', $orderCode);
-                }
-
-                // Суточный код покупателя — ровно 8 цифр (1234 5678 или 12345678)
-                if ($dailyCodeFormatted !== null) {
-                    $q->orWhereHas('buyer', fn ($b) => $b->withTrashed()
-                        ->where('daily_pickup_code', $dailyCodeFormatted));
-                }
-
-                // ID покупателя
-                if (ctype_digit($orderSearch) && (int) $orderSearch > 0) {
-                    $q->orWhereHas('buyer', fn ($b) => $b->withTrashed()
-                        ->where('id', (int) $orderSearch));
-                }
-
-                // Email — целиком
-                if (filter_var($orderSearch, FILTER_VALIDATE_EMAIL)) {
-                    $q->orWhereHas('buyer', fn ($b) => $b->withTrashed()
-                        ->where('email', $orderSearch));
-                }
-
-                // Телефон — только при полном номере (от 10 цифр)
-                if (strlen($digitsOnly) >= 10) {
-                    $q->orWhereHas('buyer', function ($b) use ($digitsOnly) {
-                        $b->withTrashed()
-                            ->where(function ($phoneQ) use ($digitsOnly) {
-                                $phoneQ->where('phone', $digitsOnly)
-                                    ->orWhereRaw(
-                                        "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?",
-                                        [$digitsOnly]
-                                    );
-                            });
-                    });
-                }
-            })
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get()
-            ->map(fn ($o) => [
-                'id'               => $o->id,
-                'number'           => $o->number,
-                'order_code'       => $o->order_code,
-                'total'            => $o->total,
-                'discount'         => $o->discount,
-                'status'           => $o->status,
-                'payment_status'   => $o->payment_status,
-                'delivery_method'  => $o->delivery_method,
-                'delivery_address' => $o->delivery_address,
-                'comment'          => $o->comment,
-                'created_at'       => $o->created_at,
-                'items_count'      => $o->items->count(),
-                'buyer'            => $o->buyer ? [
-                    'id'         => $o->buyer->id,
-                    'name'       => $o->buyer->name,
-                    'last_name'  => $o->buyer->last_name,
-                    'email'      => $o->buyer->email,
-                    'phone'      => $o->buyer->phone,
-                    'avatar'     => $o->buyer->avatar,
-                    'role'       => $o->buyer->role,
-                    'is_blocked' => $o->buyer->is_blocked,
-                    'deleted_at' => $o->buyer->deleted_at,
-                ] : null,
-                'items'            => $o->items->map(fn ($item) => [
-                    'id'                => $item->id,
-                    'quantity'          => $item->quantity,
-                    'price_at_purchase' => $item->price_at_purchase,
-                    'product_name'      => $item->variant?->product?->title ?? '—',
-                    'product_image'     => $item->variant?->product?->images?->firstWhere('is_main', true)?->url ?? null,
-                ]),
-            ]);
+        return $row;
     }
+
 }

@@ -77,10 +77,11 @@ class OrderItem extends Model
                 ->where('payment_status', 'paid'));
     }
     public function review()
-{
-    return $this->hasOne(\App\Models\Review::class, 'variant_id', 'variant_id')
-        ->where('user_id', auth()->id());
-}
+    {
+        return $this->hasOne(Review::class, 'variant_id', 'variant_id')
+            ->whereColumn('reviews.order_id', 'order_items.order_id')
+            ->where('reviews.user_id', auth()->id());
+    }
 // В модели OrderItem добавь
 public function getProductAttribute()
 {

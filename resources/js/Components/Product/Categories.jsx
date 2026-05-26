@@ -14,7 +14,6 @@ const Category = ({ categories = [] }) => {
 
     return (
         <section className="category">
-            <div className="container">
                 <div className="category_header" id="category-block">
                     <h2>
                         Просмотр по <span>каталогам</span>
@@ -32,7 +31,6 @@ const Category = ({ categories = [] }) => {
                         </div>
                     ))}
                 </div>
-            </div>
         </section>
     );
 };

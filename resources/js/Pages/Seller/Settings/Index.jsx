@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import SellerLayout from '@/Layouts/SellerLayout';
+import ConfirmModal from '@/Components/ConfirmModal';
 import '../../../../css/seller/settings.css';
 
 // ── Day labels ──────────────────────────────────────────────────────
@@ -26,9 +27,16 @@ function PasswordRule({ met, label }) {
 
 // ── Tab: Shop ───────────────────────────────────────────────────────
 function ShopTab({ sellerProfile, errors, submitting, setSubmitting }) {
+    const pending = sellerProfile?.pending_shop_changes;
+    const fieldsLocked = !!pending;
+
     const [form, setForm] = useState({
-        shop_name:      sellerProfile?.shop_name      ?? '',
-        description:    sellerProfile?.description    ?? '',
+        shop_name:      pending?.changes_name
+            ? (pending.proposed_shop_name ?? sellerProfile?.shop_name ?? '')
+            : (sellerProfile?.shop_name ?? ''),
+        description:    pending?.changes_description
+            ? (pending.proposed_description ?? '')
+            : (sellerProfile?.description ?? ''),
         inn:            sellerProfile?.inn             ?? '',
         legal_address:  sellerProfile?.legal_address  ?? '',
         pickup_address: sellerProfile?.pickup_address ?? '',
@@ -68,6 +76,28 @@ function ShopTab({ sellerProfile, errors, submitting, setSubmitting }) {
 
     return (
         <form onSubmit={handleSubmit} className="set-form">
+            {pending && (
+                <div className="set-moderation-notice">
+                    <strong>Изменения на модерации</strong>
+                    <p>До одобрения администратором на сайте отображаются прежние данные.</p>
+                    {pending.changes_name && (
+                        <p>
+                            Название: «{pending.current_shop_name}» → «{pending.proposed_shop_name}»
+                        </p>
+                    )}
+                    {pending.changes_description && (
+                        <p>
+                            Описание: {pending.current_description ? `«${pending.current_description}»` : '(пусто)'}
+                            {' → '}
+                            {pending.proposed_description ? `«${pending.proposed_description}»` : '(пусто)'}
+                        </p>
+                    )}
+                    {pending.requested_at && (
+                        <p className="set-hint">Отправлено: {new Date(pending.requested_at).toLocaleString('ru-RU')}</p>
+                    )}
+                </div>
+            )}
+
             {/* Shop name */}
             <div className="set-field-group">
                 <label className="set-label">Название магазина *</label>
@@ -78,7 +108,10 @@ function ShopTab({ sellerProfile, errors, submitting, setSubmitting }) {
                     onChange={e => setForm(p => ({ ...p, shop_name: e.target.value }))}
                     maxLength={120}
                     required
+                    readOnly={fieldsLocked}
+                    disabled={fieldsLocked}
                 />
+                {fieldsLocked && <span className="set-hint">Нельзя изменить, пока заявка на модерации.</span>}
                 {errors.shop_name && <span className="set-error">{errors.shop_name}</span>}
             </div>
 
@@ -92,7 +125,10 @@ function ShopTab({ sellerProfile, errors, submitting, setSubmitting }) {
                     maxLength={2000}
                     rows={4}
                     placeholder="Расскажите покупателям о вашем магазине..."
+                    readOnly={fieldsLocked}
+                    disabled={fieldsLocked}
                 />
+                {fieldsLocked && <span className="set-hint">Нельзя изменить, пока заявка на модерации.</span>}
                 {errors.description && <span className="set-error">{errors.description}</span>}
             </div>
 
@@ -187,30 +223,44 @@ function ShopTab({ sellerProfile, errors, submitting, setSubmitting }) {
 // ── Tab: Account ────────────────────────────────────────────────────
 function AccountTab({ user, errors, submitting, setSubmitting }) {
     const [form, setForm] = useState({
-        name:   user.name  ?? '',
-        email:  user.email ?? '',
-        phone:  user.phone ?? '',
-        avatar: null,
+        name:      user.name      ?? '',
+        last_name: user.last_name ?? '',
+        email:     user.email     ?? '',
+        avatar:    null,
     });
     const [preview, setPreview] = useState(user.avatar ?? null);
+    const [avatarError, setAvatarError] = useState(null);
     const fileRef = useRef(null);
 
-    const handleFile = (e) => {
+    const handleFile = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        setForm(p => ({ ...p, avatar: file }));
-        setPreview(URL.createObjectURL(file));
+
+        setAvatarError(null);
+
+        try {
+            const { compressAvatarImage } = await import('@/lib/compressAvatarImage');
+            const prepared = await compressAvatarImage(file);
+            setForm((p) => ({ ...p, avatar: prepared }));
+            setPreview(URL.createObjectURL(prepared));
+            if (prepared.size > 10 * 1024 * 1024) {
+                setAvatarError('Файл слишком большой даже после сжатия. Выберите другое фото.');
+            }
+        } catch (err) {
+            setForm((p) => ({ ...p, avatar: null }));
+            setAvatarError(err.message || 'Не удалось обработать фото.');
+        }
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (submitting) return;
+        if (submitting || avatarError) return;
         setSubmitting(true);
 
         const fd = new FormData();
-        fd.append('name',  form.name);
+        fd.append('name', form.name);
+        fd.append('last_name', form.last_name);
         fd.append('email', form.email);
-        if (form.phone) fd.append('phone', form.phone);
         if (form.avatar) fd.append('avatar', form.avatar);
         fd.append('_method', 'POST');
 
@@ -221,7 +271,7 @@ function AccountTab({ user, errors, submitting, setSubmitting }) {
         });
     };
 
-    const initials = (user.name ?? 'U').charAt(0).toUpperCase();
+    const initials = [user.name, user.last_name].filter(Boolean).map((n) => n.charAt(0)).join('').toUpperCase() || 'U';
 
     return (
         <form onSubmit={handleSubmit} className="set-form">
@@ -230,13 +280,13 @@ function AccountTab({ user, errors, submitting, setSubmitting }) {
                 <label className="set-label set-label--optional">Фото профиля</label>
                 <div className="set-avatar-block">
                     {preview ? (
-                        <img src={preview} alt="avatar" className="set-avatar-img" />
+                        <img src={ preview} alt="avatar" className="set-avatar-img" />
                     ) : (
                         <div className="set-avatar-placeholder">{initials}</div>
                     )}
                     <div className="set-avatar-info">
                         <h4>Аватар продавца</h4>
-                        <p>JPG, PNG или WEBP, не более 2 МБ</p>
+                        <p>JPG, PNG или WEBP, до 10 МБ (сжимается перед загрузкой)</p>
                         <button type="button" className="set-avatar-btn" onClick={() => fileRef.current?.click()}>
                             Загрузить фото
                         </button>
@@ -250,23 +300,36 @@ function AccountTab({ user, errors, submitting, setSubmitting }) {
                     />
                 </div>
                 {errors.avatar && <span className="set-error">{errors.avatar}</span>}
+                {avatarError && <span className="set-error">{avatarError}</span>}
             </div>
 
-            {/* Name */}
-            <div className="set-field-group">
-                <label className="set-label">Имя *</label>
-                <input
-                    type="text"
-                    className={`set-input ${errors.name ? 'has-error' : ''}`}
-                    value={form.name}
-                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                    maxLength={80}
-                    required
-                />
-                {errors.name && <span className="set-error">{errors.name}</span>}
+            <div className="set-row-2">
+                <div className="set-field-group">
+                    <label className="set-label">Имя *</label>
+                    <input
+                        type="text"
+                        className={`set-input ${errors.name ? 'has-error' : ''}`}
+                        value={form.name}
+                        onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                        maxLength={50}
+                        required
+                    />
+                    {errors.name && <span className="set-error">{errors.name}</span>}
+                </div>
+                <div className="set-field-group">
+                    <label className="set-label">Фамилия *</label>
+                    <input
+                        type="text"
+                        className={`set-input ${errors.last_name ? 'has-error' : ''}`}
+                        value={form.last_name}
+                        onChange={e => setForm(p => ({ ...p, last_name: e.target.value }))}
+                        maxLength={50}
+                        required
+                    />
+                    {errors.last_name && <span className="set-error">{errors.last_name}</span>}
+                </div>
             </div>
 
-            {/* Email + Phone */}
             <div className="set-row-2">
                 <div className="set-field-group">
                     <label className="set-label">Email *</label>
@@ -283,13 +346,12 @@ function AccountTab({ user, errors, submitting, setSubmitting }) {
                     <label className="set-label set-label--optional">Телефон</label>
                     <input
                         type="tel"
-                        className={`set-input ${errors.phone ? 'has-error' : ''}`}
-                        value={form.phone}
-                        onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
-                        placeholder="+7 999 000-00-00"
-                        maxLength={20}
+                        className="set-input"
+                        value={user.phone ?? ''}
+                        readOnly
+                        placeholder="Не указан"
                     />
-                    {errors.phone && <span className="set-error">{errors.phone}</span>}
+                    <p className="set-hint">Номер телефона можно изменить только через службу поддержки</p>
                 </div>
             </div>
 
@@ -391,7 +453,68 @@ const TABS = [
     { key: 'security', label: 'Безопасность' },
 ];
 
-export default function Index({ user, sellerProfile }) {
+function DangerZone({ canCloseSellerCompany, accountDeletion, sellerProfile }) {
+    const [confirmCompany, setConfirmCompany] = useState(false);
+    const [companyPending, setCompanyPending] = useState(false);
+
+    const handleDeleteCompany = () => {
+        setCompanyPending(true);
+        router.post(route('seller.settings.company.close'), { confirmed: true }, {
+            onFinish: () => {
+                setCompanyPending(false);
+                setConfirmCompany(false);
+            },
+        });
+    };
+
+    return (
+        <div className="set-danger-card">
+            <h3 className="set-danger-card__title">Удаление компании</h3>
+            <p className="set-danger-card__text">
+                Магазин «{sellerProfile?.shop_name || 'без названия'}» и все товары будут скрыты с витрины.
+                Заказы, которые уже в пути, будут доставлены покупателям. Новые заказы оформить будет нельзя.
+            </p>
+            {canCloseSellerCompany ? (
+                <button
+                    type="button"
+                    className="set-danger-btn"
+                    onClick={() => setConfirmCompany(true)}
+                >
+                    Удалить компанию продавца
+                </button>
+            ) : (
+                <p className="set-danger-card__hint">Компания не зарегистрирована.</p>
+            )}
+
+            {accountDeletion && !accountDeletion.can_delete && (
+                <div className="set-danger-card__note">
+                    <p>После удаления компании вы сможете удалить личный аккаунт в профиле, если нет других ограничений:</p>
+                    <ul>
+                        {accountDeletion.blockers
+                            .filter((b) => b.code !== 'seller_company')
+                            .map((b) => (
+                                <li key={b.code}>{b.message}</li>
+                            ))}
+                    </ul>
+                </div>
+            )}
+
+            <ConfirmModal
+                isOpen={confirmCompany}
+                onClose={() => setConfirmCompany(false)}
+                onConfirm={handleDeleteCompany}
+                title="Удалить компанию продавца?"
+                message="Все товары исчезнут из каталога. Роль продавца будет снята. Заказы в пути не отменяются — их нужно довести до выдачи."
+                confirmText="Удалить компанию"
+                cancelText="Отмена"
+                variant="danger"
+                processing={companyPending}
+            />
+        </div>
+    );
+}
+
+export default function Index({ user, sellerProfile, accountDeletion = null, canCloseSellerCompany = false }) {
     const { props } = usePage();
     const flash  = props.flash  ?? {};
     const errors = props.errors ?? {};
@@ -409,8 +532,6 @@ export default function Index({ user, sellerProfile }) {
         <SellerLayout title="Настройки" sellerProfile={sellerProfile}>
             <Head title="Настройки" />
 
-            {flash.success && <div className="set-flash set-flash--success">{flash.success}</div>}
-            {flash.error   && <div className="set-flash set-flash--error">{flash.error}</div>}
 
             {/* Tab bar */}
             <div className="set-tabs">
@@ -519,6 +640,24 @@ export default function Index({ user, sellerProfile }) {
                             <li>Меняйте пароль минимум раз в 6 месяцев.</li>
                         </ul>
                     </div>
+
+                    <DangerZone
+                        canCloseSellerCompany={canCloseSellerCompany}
+                        accountDeletion={accountDeletion}
+                        sellerProfile={sellerProfile}
+                    />
+
+                    {accountDeletion?.can_delete && (
+                        <div className="set-card set-card--muted" style={{ padding: '18px 20px' }}>
+                            <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                                Удалить весь аккаунт можно в{' '}
+                                <Link href="/profile" style={{ color: 'var(--backgroundBlack)', fontWeight: 600 }}>
+                                    настройках профиля
+                                </Link>
+                                .
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </SellerLayout>

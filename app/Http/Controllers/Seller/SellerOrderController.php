@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\OrderLedgerService;
-use App\Services\StripeRefundService;
+use App\Services\OrderNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,11 +14,12 @@ use Inertia\Inertia;
 
 class SellerOrderController extends Controller
 {
+    private const PER_PAGE = 50;
+
     /** Переходы статуса доставки (оплата — только payment_status). */
     private const SELLER_TRANSITIONS = [
         Order::STATUS_NEW => [Order::STATUS_INTRANSIT, Order::STATUS_CANCELED],
         Order::STATUS_INTRANSIT => [Order::STATUS_DELIVERED, Order::STATUS_CANCELED],
-        Order::STATUS_DELIVERED => [Order::STATUS_ISSUED, Order::STATUS_REFUSED],
     ];
 
     private const STATUS_LABELS = [
@@ -67,7 +68,7 @@ class SellerOrderController extends Controller
             default       => $query->latest(),
         };
 
-        $paginated = $query->paginate(15)->withQueryString();
+        $paginated = $query->paginate(self::PER_PAGE)->withQueryString();
 
         // Status counts for tabs
         $baseQuery = Order::whereHas('items', fn($q) => $q->where('seller_id', $user->id));
@@ -111,7 +112,7 @@ class SellerOrderController extends Controller
             abort(403, 'Этот заказ не содержит ваших товаров.');
         }
 
-        $order->load(['buyer', 'region', 'payments']);
+        $order->load(['buyer', 'region']);
 
         $nextStatuses = self::filterTransitionsForPayment(
             self::SELLER_TRANSITIONS[$order->status] ?? [],
@@ -173,19 +174,17 @@ class SellerOrderController extends Controller
         }
 
         $order->update(['status' => $newStatus]);
+        $order->refresh();
+
+        app(OrderNotificationService::class)->notifyStatusChange($order, $newStatus);
 
         $flash = 'Статус заказа обновлён: '.(self::STATUS_LABELS[$newStatus] ?? $newStatus);
 
-        if (in_array($newStatus, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true)) {
-            $refund = app(StripeRefundService::class)->handleOrderCanceledOrRefused($order, 'seller_'.$newStatus);
+        if ($newStatus === Order::STATUS_CANCELED) {
             app(OrderLedgerService::class)->reverseCommission($order->fresh());
-            if ($refund['refunded']) {
-                $flash .= '. '.$refund['message'];
-            } elseif (! $refund['ok']) {
-                return back()->with('error', $flash.'. '.$refund['message']);
+            if ($order->payment_status === 'paid') {
+                $flash .= '. Покупатель подтвердит возврат средств в личном кабинете.';
             }
-        } elseif ($newStatus === Order::STATUS_ISSUED) {
-            app(OrderLedgerService::class)->finalizeCommission($order->fresh());
         }
 
         return back()->with('success', $flash);

@@ -5,6 +5,8 @@ import Header from '@/Components/HeaderFooter/Header';
 import Footer from '@/Components/HeaderFooter/Footer';
 import PhoneAuthModal from '@/Components/PhoneAuthModal';
 import MessagesFloatingWidget from '@/Components/MessagesFloatingWidget';
+import FlashBanner from '@/Components/FlashBanner';
+import { useSessionHeartbeat } from '@/lib/useSessionHeartbeat';
 import '../../css/MainLayout.css';
 import '../../css/messages-widget.css';
 
@@ -13,13 +15,8 @@ const MainLayout = ({
   const { props } = usePage();
   const authedUser = props.auth?.user;
   const pageFlash = props.flash ?? flash ?? {};
-  // Ping для поддержания сессии
-  useEffect(() => {
-    const pingInterval = setInterval(() => {
-      fetch('/ping', { method: 'GET', credentials: 'same-origin' }).catch(() => { });
-    }, 5000);
-    return () => clearInterval(pingInterval);
-  }, []);
+
+  useSessionHeartbeat(!!authedUser);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
@@ -72,14 +69,7 @@ const MainLayout = ({
   return (
     <>
       <div className="main-layout container">
-        {(pageFlash.success || pageFlash.error) && (
-          <div
-            className={`main-flash ${pageFlash.error ? 'main-flash--error' : 'main-flash--success'}`}
-            role="alert"
-          >
-            {pageFlash.error || pageFlash.success}
-          </div>
-        )}
+        <FlashBanner flash={pageFlash} />
         <Header
           setIsModalOpen={setIsModalOpen}
           flash={flash}

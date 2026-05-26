@@ -2,6 +2,10 @@
 
 namespace App\Notifications;
 
+use App\Mail\MarketplaceAlertMail;
+use App\Models\User;
+use App\Services\TransactionalMailService;
+use App\Support\NotificationCategory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -13,6 +17,7 @@ class MarketplaceAlert extends Notification
         public string $title,
         public string $body,
         public ?string $actionUrl = null,
+        public string $category = NotificationCategory::General,
     ) {}
 
     /**
@@ -20,7 +25,28 @@ class MarketplaceAlert extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        $channels = ['database'];
+
+        if (
+            $notifiable instanceof User
+            && app(TransactionalMailService::class)->canSendTo($notifiable, $this->category)
+        ) {
+            $channels[] = 'mail';
+        }
+
+        return $channels;
+    }
+
+    public function toMail(object $notifiable): MarketplaceAlertMail
+    {
+        $url = $this->actionUrl;
+
+        if ($url !== null && ! str_starts_with($url, 'http')) {
+            $url = url($url);
+        }
+
+        return (new MarketplaceAlertMail($this->title, $this->body, $url))
+            ->to(app(TransactionalMailService::class)->recipientFor($notifiable));
     }
 
     /**
@@ -32,6 +58,7 @@ class MarketplaceAlert extends Notification
             'title'      => $this->title,
             'body'       => $this->body,
             'action_url' => $this->actionUrl,
+            'category'   => $this->category,
         ];
     }
 }

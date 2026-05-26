@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Category;
+use App\Models\PickupPointStaff;
 use App\Models\Product;
 use App\Services\ChatService;
 use App\Services\NotificationFeedService;
@@ -11,6 +12,33 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    protected static function pvzAccessFor(Request $request): ?array
+    {
+        $user = $request->user();
+        if (! $user) {
+            return null;
+        }
+
+        $pending = PickupPointStaff::query()
+            ->where('user_id', $user->id)
+            ->where('status', PickupPointStaff::STATUS_PENDING)
+            ->first();
+
+        $approved = $user->isPvz()
+            ? $user->approvedPickupPointStaff()->with('pickupPoint')->first()
+            : null;
+
+        return [
+            'isPvz' => $user->isPvz(),
+            'hasPendingApplication' => $pending !== null,
+            'pickupPoint' => $approved?->pickupPoint ? [
+                'id' => $approved->pickupPoint->id,
+                'title' => $approved->pickupPoint->title,
+                'address' => $approved->pickupPoint->address,
+            ] : null,
+        ];
+    }
+
     protected static function deliveryHintFor(Request $request): ?array
     {
         $user = $request->user();
@@ -54,9 +82,9 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'flash' => [
-                'success' => fn () => $request->session()->get('success'),
-                'error' => fn () => $request->session()->get('error'),
-                'review_vote' => fn () => $request->session()->get('review_vote'),
+                'success' => fn () => $request->session()->pull('success'),
+                'error' => fn () => $request->session()->pull('error'),
+                'review_vote' => fn () => $request->session()->pull('review_vote'),
             ],
             'csrfToken' => fn () => csrf_token(),
             'auth' => [
@@ -92,7 +120,22 @@ class HandleInertiaRequests extends Middleware
                     + app(NotificationFeedService::class)->unreadCount($request->user())
                 : 0,
             'footerSocial' => fn () => config('marketplace.footer.social', []),
+            'pvzAccess' => fn () => self::pvzAccessFor($request),
             'catalogSearchQuery' => fn () => trim((string) $request->query('search', '')),
+            'sellerCabinet' => function () use ($request) {
+                $user = $request->user();
+                if (! $user || ! $user->isSeller()) {
+                    return null;
+                }
+                $user->loadMissing('sellerProfile');
+                if (! $user->sellerProfile) {
+                    return null;
+                }
+
+                return [
+                    'shop_name' => $user->sellerProfile->shop_name,
+                ];
+            },
         ];
     }
 }

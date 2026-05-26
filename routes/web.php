@@ -16,22 +16,32 @@ use App\Http\Controllers\Seller\DashboardController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerStatisticsController;
 use App\Http\Controllers\Seller\SellerPromocodesController;
+use App\Http\Controllers\Seller\SellerPromotionController;
+use App\Http\Controllers\Admin\AdminPromotionController;
 use App\Http\Controllers\Seller\SellerSettingsController;
 use App\Http\Controllers\PromocodeController;
 use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ArticleController;
-use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\SellerController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\CommissionDocumentController;
+use App\Http\Controllers\PickupCooperateController;
+use App\Http\Controllers\SearchSuggestionController;
+use App\Http\Controllers\SessionHeartbeatController;
+use App\Http\Controllers\PickupPartnerController;
+use App\Http\Controllers\Pvz\PvzDashboardController;
 use App\Http\Middleware\CheckRole;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
+
+Route::get('/api/catalog/search-suggestions', SearchSuggestionController::class)
+    ->middleware('throttle:90,1')
+    ->name('catalog.search-suggestions');
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/home', [HomeController::class, 'index'])->name('home');
@@ -60,16 +70,13 @@ Route::get('/returns', fn () => Inertia::render('Info/Returns'))->name('returns'
 Route::get('/privacy', fn () => Inertia::render('Info/Privacy'))->name('privacy');
 Route::get('/terms', fn () => Inertia::render('Info/Terms'))->name('terms');
 
+Route::get('/pickup/cooperate', [PickupCooperateController::class, 'show'])->name('pickup.cooperate');
+Route::get('/pickup/partner', [PickupPartnerController::class, 'landing'])->name('pickup.partner');
+
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/ping', function () {
-        DB::table('sessions')
-            ->where('id', request()->session()->getId())
-            ->update(['last_activity' => time()]);
-
-        return redirect()->back();
-    })->middleware(['throttle:60,1']);
-
-
+    Route::get('/api/session/heartbeat', SessionHeartbeatController::class)
+        ->middleware(['throttle:20,1'])
+        ->name('session.heartbeat');
 
     // Корзина
     Route::middleware(['auth'])->group(function () {
@@ -106,7 +113,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Оплата
     Route::post('/payment/order-wallet', [StripePaymentController::class, 'orderWallet'])->name('payment.order.wallet');
-    Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
     Route::get('/checkout/cancel', function () {
         return view('checkout.cancel');
     })->name('checkout.cancel');
@@ -135,6 +141,10 @@ Route::middleware(['auth', CheckRole::class . ':admin,moderator'])->group(functi
     Route::get('/admin/users/{user}/detail', [AdminController::class, 'userDetail'])->name('admin.users.detail');
     Route::post('/admin/sellers/{user}/approve', [AdminController::class, 'approveSeller'])->name('admin.sellers.approve');
     Route::post('/admin/sellers/{user}/reject', [AdminController::class, 'rejectSeller'])->name('admin.sellers.reject');
+    Route::post('/admin/sellers/{user}/approve-shop-changes', [AdminController::class, 'approveShopChanges'])->name('admin.sellers.approve-shop-changes');
+    Route::post('/admin/sellers/{user}/reject-shop-changes', [AdminController::class, 'rejectShopChanges'])->name('admin.sellers.reject-shop-changes');
+    Route::post('/admin/pickup-staff/{pickupPointStaff}/approve', [AdminController::class, 'approvePickupStaff'])->name('admin.pickup-staff.approve');
+    Route::post('/admin/pickup-staff/{pickupPointStaff}/reject', [AdminController::class, 'rejectPickupStaff'])->name('admin.pickup-staff.reject');
     Route::post('/admin/products/{product}/status', [AdminController::class, 'updateProductStatus'])->name('admin.products.status');
     Route::post('/admin/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('admin.orders.status');
     Route::post('/admin/users/{userId}/restore', [AdminController::class, 'restoreUser'])->name('admin.users.restore');
@@ -149,12 +159,24 @@ Route::middleware(['auth', CheckRole::class . ':admin,moderator'])->group(functi
     Route::post('/admin/pickup-points', [PickupPointController::class, 'store'])->name('admin.pickup-points.store');
     Route::patch('/admin/pickup-points/{pickupPoint}', [PickupPointController::class, 'update'])->name('admin.pickup-points.update');
     Route::delete('/admin/pickup-points/{pickupPoint}', [PickupPointController::class, 'destroy'])->name('admin.pickup-points.destroy');
+    Route::post('/admin/pickup-points/{pickupPoint}/assign-operator', [PickupPointController::class, 'assignOperator'])->name('admin.pickup-points.assign-operator');
+    Route::post('/admin/pickup-points/{pickupPoint}/approve-closure', [PickupPointController::class, 'approveClosure'])->name('admin.pickup-points.approve-closure');
+    Route::post('/admin/pickup-points/{pickupPoint}/reject-closure', [PickupPointController::class, 'rejectClosure'])->name('admin.pickup-points.reject-closure');
+
+    Route::get('/admin/promotions', [AdminPromotionController::class, 'index'])->name('admin.promotions.index');
+    Route::post('/admin/promotions', [AdminPromotionController::class, 'store'])->name('admin.promotions.store');
+    Route::post('/admin/promotions/{promotion}/toggle', [AdminPromotionController::class, 'toggle'])->name('admin.promotions.toggle');
+    Route::delete('/admin/promotions/{promotion}', [AdminPromotionController::class, 'destroy'])->name('admin.promotions.destroy');
 
     Route::get('/admin/reviews', [ReviewModerationController::class, 'index'])->name('admin.reviews.index');
     Route::post('/admin/reviews/{review}/approve', [ReviewModerationController::class, 'approve'])->name('admin.reviews.approve');
     Route::post('/admin/reviews/{review}/reject', [ReviewModerationController::class, 'reject'])->name('admin.reviews.reject');
+    Route::post('/admin/reviews/{reviewId}/restore', [ReviewModerationController::class, 'restore'])->name('admin.reviews.restore');
 
     Route::get('/admin/reports/revenue',        [AdminController::class, 'exportRevenue'])->name('admin.reports.revenue');
+    Route::get('/admin/reports/revenue/chart',  [AdminController::class, 'revenueChartData'])->name('admin.reports.revenue.chart');
+    Route::get('/admin/reports/revenue/pdf',    [AdminController::class, 'exportRevenuePdf'])->name('admin.reports.revenue.pdf');
+    Route::get('/admin/reports/users',          [AdminController::class, 'exportUsers'])->name('admin.reports.users');
     Route::get('/admin/reports/user/{userId}',  [AdminController::class, 'exportUserReport'])->name('admin.reports.user');
     Route::get('/admin/reports/order/{order}',  [AdminController::class, 'exportOrderReceipt'])->name('admin.reports.order');
     Route::get('/admin/reports/order/{order}/commission', [CommissionDocumentController::class, 'orderReceipt'])->name('admin.reports.commission');
@@ -167,10 +189,7 @@ Route::middleware(['auth', CheckRole::class . ':admin,moderator'])->group(functi
 
     Route::patch('/admin/users/{user}/role', [ProfileController::class, 'changeRole'])->name('admin.users.role');
 
-    Route::post('/admin/nft/buy', [AdminController::class, 'nftbuy'])->name('admin.nft.buy');
-    Route::post('/admin/nft/stop', [AdminController::class, 'nftstop'])->name('admin.nft.stop');
-    Route::post('/admin/nft/sold', [AdminController::class, 'nftsold'])->name('admin.nft.sold');
-
+ 
     Route::get('/admin/support', [ChatController::class, 'adminSupport'])->name('admin.support');
     Route::get('/admin/support/embed', [ChatController::class, 'adminSupportEmbed'])->name('admin.support.embed');
     Route::post('/admin/support/{conversation}/assign', [ChatController::class, 'assignSupport'])->name('admin.support.assign');
@@ -180,7 +199,11 @@ Route::middleware(['auth', CheckRole::class . ':admin,moderator'])->group(functi
 // Страница продавца
 Route::get('/sellerProfile/{id}', [SellerController::class, 'index'])->name('seller.index');
 Route::middleware(['auth'])->group(function () {
+    Route::get('/pickup/apply', [PickupPartnerController::class, 'applyForm'])->name('pickup.apply.form');
+    Route::post('/pickup/apply', [PickupPartnerController::class, 'apply'])->name('pickup.apply');
+
     Route::post('/seller-profile/store', [SellerProfileController::class, 'store'])->name('seller-profile.store');
+    Route::post('/seller-profile/restore', [SellerProfileController::class, 'restore'])->name('seller-profile.restore');
     Route::get('/seller-profile', [SellerProfileController::class, 'getProfile'])->name('seller-profile.get');
     Route::put('/seller-profile/update', [SellerProfileController::class, 'update'])->name('seller-profile.update');
 
@@ -225,16 +248,35 @@ Route::middleware(['auth', 'seller'])->group(function () {
     Route::get('/seller/statistics', [SellerStatisticsController::class, 'index'])->name('seller.statistics');
     Route::get('/seller/statistics/commission-breakdown', [CommissionDocumentController::class, 'periodBreakdown'])->name('seller.statistics.commission-breakdown');
     Route::get('/seller/statistics/commission-report', [CommissionDocumentController::class, 'periodReport'])->name('seller.statistics.commission-report');
-
+ 
     Route::get('/seller/settings', [SellerSettingsController::class, 'index'])->name('seller.settings');
     Route::post('/seller/settings/shop', [SellerSettingsController::class, 'updateShop'])->name('seller.settings.shop');
     Route::post('/seller/settings/account', [SellerSettingsController::class, 'updateAccount'])->name('seller.settings.account');
     Route::post('/seller/settings/password', [SellerSettingsController::class, 'updatePassword'])->name('seller.settings.password');
+    Route::post('/seller/settings/company/close', [SellerSettingsController::class, 'destroyCompany'])->name('seller.settings.company.close');
 
     Route::get('/seller/promocodes', [SellerPromocodesController::class, 'index'])->name('seller.promocodes');
     Route::post('/seller/promocodes', [SellerPromocodesController::class, 'store'])->name('seller.promocodes.store');
     Route::post('/seller/promocodes/{promo}/toggle', [SellerPromocodesController::class, 'toggle'])->name('seller.promocodes.toggle');
     Route::delete('/seller/promocodes/{promo}', [SellerPromocodesController::class, 'destroy'])->name('seller.promocodes.destroy');
+
+    Route::get('/seller/promotions', [SellerPromotionController::class, 'index'])->name('seller.promotions');
+    Route::post('/seller/promotions', [SellerPromotionController::class, 'store'])->name('seller.promotions.store');
+    Route::post('/seller/promotions/{promotion}/toggle', [SellerPromotionController::class, 'toggle'])->name('seller.promotions.toggle');
+    Route::delete('/seller/promotions/{promotion}', [SellerPromotionController::class, 'destroy'])->name('seller.promotions.destroy');
+});
+
+Route::middleware(['auth', 'pvz'])->group(function () {
+    Route::get('/pvz', [PvzDashboardController::class, 'index'])->name('pvz.dashboard');
+    Route::get('/pvz/queue', [PvzDashboardController::class, 'queue'])->name('pvz.queue');
+    Route::get('/pvz/orders', [PvzDashboardController::class, 'orders'])->name('pvz.orders');
+    Route::post('/pvz/orders/search', [PvzDashboardController::class, 'searchOrders'])->name('pvz.orders.search');
+    Route::get('/pvz/reports', [PvzDashboardController::class, 'reports'])->name('pvz.reports');
+    Route::get('/pvz/settings', [PvzDashboardController::class, 'settings'])->name('pvz.settings');
+    Route::post('/pvz/settings/closure', [PvzDashboardController::class, 'requestClosure'])->name('pvz.settings.closure');
+    Route::post('/pvz/orders/{order}/refusal-code', [PvzDashboardController::class, 'sendRefusalCode'])->name('pvz.orders.refusal-code');
+    Route::post('/pvz/orders/{order}/status', [PvzDashboardController::class, 'updateOrderStatus'])->name('pvz.orders.status');
+    Route::get('/pvz/reports/export', [PvzDashboardController::class, 'exportReport'])->name('pvz.reports.export');
 });
 // Отзыв
 Route::post('/reviews', [ReviewController::class, 'store'])
@@ -245,6 +287,7 @@ Route::post('/reviews/{review}/vote', [ReviewVoteController::class, 'store'])
     ->middleware('auth');
 Route::put('/reviews/{review}', [ReviewController::class, 'update'])
     ->middleware('auth');
-Route::delete('/reviews/{review}', [ReviewController::class, 'destroy']);
+Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])
+    ->middleware('auth');
 
 require __DIR__ . '/auth.php';

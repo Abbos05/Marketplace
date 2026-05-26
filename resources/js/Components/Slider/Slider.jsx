@@ -147,17 +147,7 @@ const Slider = ({ slides = [] }) => {
           </button>
         )}
       </div>
-      <div className="slider__line">
-        {slides.map((_, index) => (
-          <img
-            key={index}
-            src={index === currentImageIndex ? 'img/header/Line__hover.png' : 'img/header/Line.png'}
-            alt=""
-            role="presentation"
-            onClick={() => goToSlide(index)}
-          />
-        ))}
-      </div>
+      
     </section>
   );
 };

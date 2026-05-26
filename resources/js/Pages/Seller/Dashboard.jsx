@@ -1,62 +1,56 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import SellerLayout from '@/Layouts/SellerLayout';
+import { formatInt, formatRub } from '@/lib/formatMoney';
 
-export default function Dashboard({ stats, recentOrders, popularProducts, salesChart, sellerProfile }) {
+export default function Dashboard({ stats, recentOrders, popularProducts, salesChart }) {
     const [chartHover, setChartHover] = useState(null);
 
-    // Находим максимальное значение для масштабирования
     const maxSale = Math.max(...salesChart.sales, 1);
 
     return (
         <SellerLayout title="Главная">
             <Head title="Панель продавца" />
 
-            {/* Статистика */}
             <div className="stats-grid">
                 <div className="stat-card">
-                    <div className="stat-icon">📦</div>
                     <div className="stat-info">
-                        <h3>{stats.total_products}</h3>
+                        <h3>{formatInt(stats.total_products)}</h3>
                         <p>Товаров</p>
                     </div>
                 </div>
 
                 <div className="stat-card">
-                    <div className="stat-icon">🛒</div>
                     <div className="stat-info">
-                        <h3>{stats.total_orders}</h3>
+                        <h3>{formatInt(stats.total_orders)}</h3>
                         <p>Заказов</p>
                     </div>
                 </div>
 
                 <div className="stat-card">
-                    <div className="stat-icon">💰</div>
                     <div className="stat-info">
-                        <h3>{stats.total_sales.toLocaleString()} ₽</h3>
-                        <p>Продажи</p>
+                        <h3>{formatRub(stats.total_sales)}</h3>
+                        <p>Чистый доход (выдано)</p>
                     </div>
                 </div>
 
                 <div className="stat-card">
-                    <div className="stat-icon">⏳</div>
                     <div className="stat-info">
-                        <h3>{stats.pending_orders}</h3>
+                        <h3>{formatInt(stats.pending_orders)}</h3>
                         <p>В обработке</p>
                     </div>
                 </div>
             </div>
 
-            {/* График продаж */}
             <div className="chart-container">
-                <h3>Продажи по месяцам</h3>
+                <h3>Чистый доход по месяцам (выдано)</h3>
                 <div className="chart-wrapper">
                     <div className="chart-bars">
                         {salesChart.sales.map((sale, index) => {
                             const height = (sale / maxSale) * 200;
                             const month = salesChart.months[index];
                             const isHovered = chartHover === index;
-                       
+
                             return (
                                 <div
                                     key={index}
@@ -65,7 +59,7 @@ export default function Dashboard({ stats, recentOrders, popularProducts, salesC
                                     onMouseLeave={() => setChartHover(null)}
                                 >
                                     <div className="chart-bar-tooltip" style={{ opacity: isHovered ? 1 : 0 }}>
-                                        {sale.toLocaleString()} ₽
+                                        {formatRub(sale)}
                                     </div>
                                     <div
                                         className="chart-bar"
@@ -81,19 +75,18 @@ export default function Dashboard({ stats, recentOrders, popularProducts, salesC
                 </div>
                 <div className="chart-stats">
                     <div className="chart-stat">
-                        <span className="stat-label">Средние продажи</span>
+                        <span className="stat-label">Среднее за месяц</span>
                         <span className="stat-value">
-                            {(salesChart.sales.reduce((a, b) => a + b, 0) / 12).toLocaleString()} ₽
+                            {formatRub(salesChart.sales.reduce((a, b) => a + b, 0) / 12)}
                         </span>
                     </div>
                     <div className="chart-stat">
                         <span className="stat-label">Максимум</span>
-                        <span className="stat-value">{Math.max(...salesChart.sales).toLocaleString()} ₽</span>
+                        <span className="stat-value">{formatRub(Math.max(...salesChart.sales))}</span>
                     </div>
                 </div>
             </div>
 
-            {/* Последние заказы и популярные товары */}
             <div className="dashboard-two-columns">
                 <div className="recent-orders">
                     <h3>Последние заказы</h3>
@@ -103,20 +96,20 @@ export default function Dashboard({ stats, recentOrders, popularProducts, salesC
                                 <tr>
                                     <th>№ заказа</th>
                                     <th>Покупатель</th>
-                                    <th>Сумма</th>
+                                    <th>Ваша выплата</th>
                                     <th>Статус</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {recentOrders.map(order => (
+                                {recentOrders.map((order) => (
                                     <tr key={order.id}>
                                         <td>
-                                            <Link href={`/orders/${order.id}`} className="order-link">
+                                            <Link href={route('seller.orders.show', order.id)} className="order-link">
                                                 #{order.number}
                                             </Link>
                                         </td>
                                         <td>{order.buyer?.name || 'Покупатель'}</td>
-                                        <td>{order.total.toLocaleString()} ₽</td>
+                                        <td>{formatRub(order.seller_payout)}</td>
                                         <td>
                                             <span className={`status-badge status-${order.status}`}>
                                                 {order.status === 'NEW' && 'Новый заказ'}
@@ -137,19 +130,23 @@ export default function Dashboard({ stats, recentOrders, popularProducts, salesC
                 </div>
 
                 <div className="popular-products">
-                    <h3>Популярные товары</h3>
+                    <h3>Товары по просмотрам</h3>
                     {popularProducts.length > 0 ? (
-                        popularProducts.map(product => (
-                            <div key={product.id} className="popular-item">
+                        popularProducts.map((product) => (
+                            <Link
+                                key={product.id}
+                                href={route('seller.products.manage', product.id)}
+                                className="popular-item popular-item--link"
+                            >
                                 <img
                                     src={product.image || '/img/products/default.png'}
                                     alt={product.title}
                                 />
                                 <div>
                                     <p>{product.title}</p>
-                                    <small>{product.views_count || 0} просмотров</small>
+                                    <small>{formatInt(product.views_count)} просмотров</small>
                                 </div>
-                            </div>
+                            </Link>
                         ))
                     ) : (
                         <p className="empty-data">Нет товаров</p>

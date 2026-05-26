@@ -12,8 +12,8 @@ const ProductPage = ({ products = [] }) => {
 
     if (rows.length === 0) {
         return (
-            <section className="top_nfts">
-                <div className="container" style={{ color: 'black', fontSize: 24 }}>
+            <section>
+                <div style={{ color: 'black', fontSize: 24 }}>
                     Пока нечего нету
                 </div>
             </section>

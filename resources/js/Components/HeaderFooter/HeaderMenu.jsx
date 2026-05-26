@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { Link, usePage, router } from '@inertiajs/react';
 import { resolveAvatarUrl } from '@/lib/avatarUrl';
+import { clearPhoneAuthFlow } from '@/lib/phoneAuthSession';
+
+const PROFILE_MENU_HOVER_KEY = 'headerProfileMenuHover';
 
 const ProfileIcon = () => (
   <svg className="header-profile-trigger__icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden>
@@ -32,14 +35,41 @@ function displayUserName(name) {
   if (trimmed.length <= 14) return trimmed;
   return `${trimmed.slice(0, 13)}`;
 }
+function getUserDisplayName(user) {
+  const firstName = (user.name || '').trim();
+  const lastName = (user.last_name || '').trim();
+  
+  // Функция для капитализации первой буквы
+  const capitalize = (str) => {
+    if (!str) return '';
+    return str[0].toUpperCase() + str.slice(1).toLowerCase();
+  };
+  
+  // Если имя длинное (≥14 символов) - показываем только имя с троеточием
+  if (firstName.length >= 14) {
+    return `${capitalize(firstName.slice(0, 13))}...`;
+  }
+  
+  // Если имя короткое - показываем имя и первую букву фамилии
+  if (firstName && lastName) {
+    return `${capitalize(firstName)} ${capitalize(lastName[0])}.`;
+  }
+  
+  return capitalize(firstName) || capitalize(lastName) || 'Пользователь';
+}
 
 const HeaderMenu = ({ setIsModalOpen }) => {
-  const { auth: { user } } = usePage().props;
+  const { props, url } = usePage();
+  const { auth: { user } = {}, pvzAccess } = props;
   const isAuthenticated = !!user;
 
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState('dark');
   const menuRef = useRef(null);
+  const pointerInsideRef = useRef(false);
+  const closeTimerRef = useRef(null);
+  const suppressCloseUntilRef = useRef(0);
+  const lastPointerRef = useRef({ x: 0, y: 0 });
 
   const avatarUrl = isAuthenticated ? resolveAvatarUrl(user.avatar) : null;
 
@@ -58,6 +88,7 @@ const HeaderMenu = ({ setIsModalOpen }) => {
 
   const handleLogout = () => {
     setIsOpen(false);
+    clearPhoneAuthFlow();
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '/logout';
@@ -74,7 +105,47 @@ const HeaderMenu = ({ setIsModalOpen }) => {
   };
 
   useEffect(() => {
+    const onMove = (e) => {
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener('mousemove', onMove, { passive: true });
+    return () => window.removeEventListener('mousemove', onMove);
+  }, []);
+
+  const isPointerOverMenu = useCallback(() => {
+    const el = menuRef.current;
+    if (!el) return false;
+    if (el.matches(':hover')) return true;
+
+    const rect = el.getBoundingClientRect();
+    const { x, y } = lastPointerRef.current;
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }, []);
+
+  const syncMenuFromPointer = useCallback(() => {
+    if (isPointerOverMenu() || sessionStorage.getItem(PROFILE_MENU_HOVER_KEY) === '1') {
+      pointerInsideRef.current = true;
+      setIsOpen(true);
+      sessionStorage.removeItem(PROFILE_MENU_HOVER_KEY);
+    }
+  }, [isPointerOverMenu]);
+
+  const scheduleMenuSync = useCallback(() => {
+    syncMenuFromPointer();
+    requestAnimationFrame(syncMenuFromPointer);
+    setTimeout(syncMenuFromPointer, 0);
+    setTimeout(syncMenuFromPointer, 60);
+  }, [syncMenuFromPointer]);
+
+  useLayoutEffect(() => {
+    if (sessionStorage.getItem(PROFILE_MENU_HOVER_KEY) === '1') {
+      scheduleMenuSync();
+    }
+  }, [scheduleMenuSync]);
+
+  useEffect(() => {
     const handleClickOutside = (e) => {
+      if (Date.now() < suppressCloseUntilRef.current) return;
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setIsOpen(false);
       }
@@ -92,12 +163,68 @@ const HeaderMenu = ({ setIsModalOpen }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen]);
 
+  useEffect(() => {
+    scheduleMenuSync();
+  }, [url, scheduleMenuSync]);
+
+  useEffect(() => {
+    const removeFinish = router.on('finish', () => {
+      scheduleMenuSync();
+    });
+    return () => removeFinish();
+  }, [scheduleMenuSync]);
+
+  const openMenu = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    pointerInsideRef.current = true;
+    setIsOpen(true);
+  };
+
+  const closeMenu = () => {
+    pointerInsideRef.current = false;
+    setIsOpen(false);
+  };
+
+  const handleProfileTriggerClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    pointerInsideRef.current = true;
+    suppressCloseUntilRef.current = Date.now() + 900;
+    sessionStorage.setItem(PROFILE_MENU_HOVER_KEY, '1');
+    setIsOpen(true);
+
+    router.visit('/profile', {
+      preserveScroll: true,
+      onFinish: scheduleMenuSync,
+    });
+  };
+
   return (
-    <li className="header-menu" ref={menuRef}>
+    <li
+      className="header-menu"
+      ref={menuRef}
+      onMouseEnter={() => {
+        if (closeTimerRef.current) {
+          clearTimeout(closeTimerRef.current);
+          closeTimerRef.current = null;
+        }
+        openMenu();
+      }}
+      onMouseLeave={() => {
+        closeTimerRef.current = setTimeout(() => {
+          if (Date.now() < suppressCloseUntilRef.current) return;
+          closeMenu();
+        }, 140);
+      }}
+    >
       <button
         type="button"
         className={`header-profile-trigger${isOpen ? ' is-open' : ''}`}
-        onClick={() => setIsOpen((v) => !v)}
+        onClick={isAuthenticated ? handleProfileTriggerClick : null}
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
@@ -109,13 +236,12 @@ const HeaderMenu = ({ setIsModalOpen }) => {
               <ProfileIcon />
             )}
             <span className="header-profile-trigger__name">{displayUserName(user.name)}</span>
-            <ChevronIcon open={isOpen} />
+
           </>
         ) : (
           <>
             <ProfileIcon />
             <span className="header-profile-trigger__name">Профиль</span>
-            <ChevronIcon open={isOpen} />
           </>
         )}
       </button>
@@ -123,19 +249,45 @@ const HeaderMenu = ({ setIsModalOpen }) => {
       {isOpen && (
         <ul className="header-menu-dropdown" role="menu">
           {isAuthenticated ? (
-            <li className="header-menu-item header-menu-item--profile" role="none">
-              <Link href="/profile" role="menuitem" onClick={() => setIsOpen(false)}>
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="" className="header-menu-dropdown-avatar" />
-                ) : (
-                  <ProfileIcon />
-                )}
-                <span className="header-menu-dropdown-user">
-                  <span className="header-menu-dropdown-name">{user.name || 'Пользователь'}</span>
-                  {user.phone && <span className="header-menu-dropdown-meta">Телефон подтверждён</span>}
-                </span>
-              </Link>
-            </li>
+            <>
+              <li className="header-menu-item header-menu-item--profile" role="none">
+                <Link href="/profile" role="menuitem" onClick={() => setIsOpen(false)}>
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="header-menu-dropdown-avatar" />
+                  ) : (
+                    <ProfileIcon />
+                  )}
+                  <span className="header-menu-dropdown-user">
+                  <span className="header-menu-dropdown-name">
+  {getUserDisplayName(user)}
+</span>
+                    {user.phone && <span className="header-menu-dropdown-meta">Телефон подтверждён</span>}
+                  </span>
+                </Link>
+              </li>
+              {pvzAccess?.isPvz && (
+                <li className="header-menu-item" role="none">
+                  <Link href="/pvz" role="menuitem" onClick={() => setIsOpen(false)}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    Панель ПВЗ
+                  </Link>
+                </li>
+              )}
+              {user?.role === 'seller' && (
+                <li className="header-menu-item" role="none">
+                  <Link href="/seller/dashboard" role="menuitem" onClick={() => setIsOpen(false)}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="7" width="20" height="14" rx="2" />
+                      <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+                    </svg>
+                    Панель продавца
+                  </Link>
+                </li>
+              )}
+            </>
           ) : (
             <li className="header-menu-item auth-item" role="none">
               <Link
@@ -154,28 +306,6 @@ const HeaderMenu = ({ setIsModalOpen }) => {
           )}
 
           <li className="header-menu-divider" role="separator" />
-
-          <li className="header-menu-item" role="none">
-            <Link href="/about" role="menuitem" onClick={() => setIsOpen(false)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-              О проекте
-            </Link>
-          </li>
-
-          <li className="header-menu-item" role="none">
-            <Link href="/contacts" role="menuitem" onClick={() => setIsOpen(false)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                <polyline points="22,6 12,13 2,6" />
-              </svg>
-              Контакты
-            </Link>
-          </li>
-
           <li className="header-menu-item" role="none">
             <Link href="/help" role="menuitem" onClick={() => setIsOpen(false)}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -183,6 +313,15 @@ const HeaderMenu = ({ setIsModalOpen }) => {
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
               Поддержка
+            </Link>
+          </li>
+          <li className="header-menu-item" role="none">
+            <Link href="/contacts" role="menuitem" onClick={() => setIsOpen(false)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+              Контакты
             </Link>
           </li>
 
@@ -199,10 +338,19 @@ const HeaderMenu = ({ setIsModalOpen }) => {
               Правила
             </Link>
           </li>
+          <li className="header-menu-item" role="none">
+            <Link href="/about" role="menuitem" onClick={() => setIsOpen(false)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              О проекте
+            </Link>
+          </li>
 
-        
 
-          {isAuthenticated && (
+          {/* {isAuthenticated && (
             <li className="header-menu-item logout-item" role="none" onClick={handleLogout}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -211,7 +359,7 @@ const HeaderMenu = ({ setIsModalOpen }) => {
               </svg>
               Выйти
             </li>
-          )}
+          )} */}
         </ul>
       )}
     </li>

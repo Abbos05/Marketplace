@@ -7,53 +7,88 @@ import ActiveFilterChips, { buildFilterChips } from '@/Components/Catalog/Active
 import { expandCatalogProductRows } from '@/lib/catalogListing';
 import {
     buildCatalogParams,
+    defaultSortForContext,
     filtersToState,
-    getCatalogRoute,
     getCatalogOnlyKeys,
+    getCatalogRoute,
+    getSortOptions,
 } from '@/lib/catalogFilters';
 import '../../../css/product/ShopPage.css';
+
+function filtersSignature(filters = {}) {
+    const { page, ...rest } = filters;
+    return JSON.stringify(rest);
+}
 
 export default function ProductsCatalog({
     dataProduct,
     category,
     seller = null,
+    sellerId: sellerIdProp = null,
     filters = {},
     facets = {},
     total = null,
+    pagination = null,
     isHomePage = false,
-    isCategoryPage = false,
     isSellerProfile = false,
 }) {
-    const initialProducts = dataProduct || [];
-    const listingRows = useMemo(() => expandCatalogProductRows(initialProducts), [initialProducts]);
     const categoryName = category?.name || 'категории';
     const categoryId = category?.id;
-    const sellerId = seller?.id;
+    const sellerId = sellerIdProp ?? seller?.id ?? null;
 
     const filterContext = isHomePage ? 'home' : isSellerProfile ? 'seller' : 'category';
 
     const [filterState, setFilterState] = useState(() => filtersToState(filters));
+    const [accumulatedProducts, setAccumulatedProducts] = useState(() => dataProduct || []);
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-    const [displayCount, setDisplayCount] = useState(24);
+    const [loadingMore, setLoadingMore] = useState(false);
 
     const timeoutRef = useRef(null);
     const skipDebounceRef = useRef(false);
+    const signatureRef = useRef(filtersSignature(filters));
+
+    const sortOptions = useMemo(() => getSortOptions(filterState), [filterState.search]);
 
     useEffect(() => {
-        setFilterState(filtersToState(filters));
-        setDisplayCount(24);
-    }, [filters]);
+        const nextState = filtersToState(filters);
+        setFilterState(nextState);
+
+        const sig = filtersSignature(filters);
+        const page = filters.page ?? 1;
+
+        if (sig !== signatureRef.current || page <= 1) {
+            signatureRef.current = sig;
+            setAccumulatedProducts(dataProduct || []);
+        } else {
+            setAccumulatedProducts((prev) => {
+                const ids = new Set(prev.map((p) => p.id));
+                const appended = (dataProduct || []).filter((p) => !ids.has(p.id));
+                return appended.length ? [...prev, ...appended] : prev;
+            });
+        }
+
+        setLoadingMore(false);
+    }, [filters, dataProduct, sellerId]);
+
+    const listingRows = useMemo(
+        () => expandCatalogProductRows(accumulatedProducts, { oneVariantPerProduct: true }),
+        [accumulatedProducts],
+    );
 
     const applyFilters = useCallback(
         (nextState, immediate = false) => {
+            if (filterContext === 'seller' && !sellerId) {
+                return;
+            }
+
             const params = buildCatalogParams(nextState);
             const url = getCatalogRoute(filterContext, { categoryId, sellerId });
 
             const run = () => {
                 router.get(url, params, {
-                    preserveState: true,
+                    preserveState: filterContext !== 'seller',
                     replace: true,
-                    preserveScroll: true,
+                    preserveScroll: nextState.page > 1,
                     only: getCatalogOnlyKeys(filterContext),
                 });
             };
@@ -67,20 +102,25 @@ export default function ProductsCatalog({
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(run, 400);
         },
-        [filterContext, categoryId, sellerId]
+        [filterContext, categoryId, sellerId],
     );
 
     const updateState = useCallback(
         (patch, immediate = false) => {
+            const resetsPage = !Object.prototype.hasOwnProperty.call(patch, 'page');
             setFilterState((prev) => {
-                const next = { ...prev, ...patch };
+                const next = {
+                    ...prev,
+                    ...patch,
+                    ...(resetsPage ? { page: 1 } : {}),
+                };
                 if (!skipDebounceRef.current) {
                     applyFilters(next, immediate);
                 }
                 return next;
             });
         },
-        [applyFilters]
+        [applyFilters],
     );
 
     const chips = useMemo(() => buildFilterChips(filterState, facets), [filterState, facets]);
@@ -89,7 +129,10 @@ export default function ProductsCatalog({
         if (chip.type === 'price_from') updateState({ priceFrom: '' }, true);
         else if (chip.type === 'price_to') updateState({ priceTo: '' }, true);
         else if (chip.type === 'category_id') updateState({ categoryId: null, attributes: {} }, true);
-        else if (chip.type === 'sort') updateState({ sort: 'new' }, true);
+        else if (chip.type === 'sort') {
+            updateState({ sort: defaultSortForContext(filterState) }, true);
+        } else if (chip.type === 'rating_min') updateState({ ratingMin: null }, true);
+        else if (chip.type === 'on_promotion') updateState({ onPromotion: false }, true);
         else if (chip.type === 'attribute_value') {
             const attrs = { ...filterState.attributes };
             attrs[chip.attrId] = (attrs[chip.attrId] || []).filter((v) => v !== chip.value);
@@ -105,10 +148,13 @@ export default function ProductsCatalog({
     const clearAllFilters = () => {
         const empty = {
             search: filterState.search,
-            sort: 'new',
+            sort: defaultSortForContext(filterState),
             priceFrom: '',
             priceTo: '',
             categoryId: null,
+            onPromotion: false,
+            ratingMin: null,
+            page: 1,
             attributes: {},
         };
         skipDebounceRef.current = true;
@@ -118,7 +164,7 @@ export default function ProductsCatalog({
     };
 
     const clearSearch = () => {
-        updateState({ search: '' }, true);
+        updateState({ search: '', sort: 'new' }, true);
     };
 
     const onAttributeValuesChange = (attrId, vals) => {
@@ -144,8 +190,18 @@ export default function ProductsCatalog({
         }, true);
     };
 
-    const visibleRows = listingRows.slice(0, displayCount);
-    const hasMore = listingRows.length > displayCount;
+    const onPriceApply = ({ priceFrom, priceTo }) => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        updateState({ priceFrom, priceTo, page: 1 }, true);
+    };
+
+    const loadMore = () => {
+        if (!pagination?.has_more || loadingMore) return;
+        setLoadingMore(true);
+        updateState({ page: (filterState.page || 1) + 1 }, true);
+    };
+
+    const hasMore = pagination?.has_more ?? false;
     const resultTotal = total ?? listingRows.length;
 
     const sidebar = (
@@ -153,14 +209,15 @@ export default function ProductsCatalog({
             facets={facets}
             filterState={filterState}
             onSortChange={(sort) => updateState({ sort }, true)}
-            onPriceChange={(field, value) =>
-                updateState({ [field]: value }, false)
-            }
+            onPriceApply={onPriceApply}
+            onRatingChange={(ratingMin) => updateState({ ratingMin }, true)}
             onCategoryToggle={onCategoryToggle}
             onAttributeValuesChange={onAttributeValuesChange}
             onAttributeRangeChange={onAttributeRangeChange}
             onReset={clearAllFilters}
+            onPromotionChange={(checked) => updateState({ onPromotion: checked }, true)}
             showCategoryFacet={filterContext === 'seller' || filterContext === 'home'}
+            showSortInSidebar={false}
         />
     );
 
@@ -182,6 +239,22 @@ export default function ProductsCatalog({
                                     <span className="shop-filters-mobile-btn__badge">{chips.length}</span>
                                 )}
                             </button>
+
+                            <label className="shop-products__sort">
+                                <span className="shop-products__sort-label">Сортировка</span>
+                                <select
+                                    value={filterState.sort}
+                                    onChange={(e) => updateState({ sort: e.target.value }, true)}
+                                    className="shop-products__sort-select"
+                                >
+                                    {sortOptions.map((o) => (
+                                        <option key={o.value} value={o.value}>
+                                            {o.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
                             <p className="shop-products__count">
                                 Найдено: <strong>{resultTotal}</strong>
                             </p>
@@ -198,7 +271,7 @@ export default function ProductsCatalog({
                                 <span>
                                     Результат поиска: <strong>"{filterState.search}"</strong>
                                     {listingRows.length > 0 &&
-                                        ` — показано ${visibleRows.length} из ${resultTotal}`}
+                                        ` — показано ${listingRows.length} из ${resultTotal}`}
                                 </span>
                                 <button
                                     type="button"
@@ -210,11 +283,11 @@ export default function ProductsCatalog({
                             </div>
                         )}
 
-                        {visibleRows.length > 0 ? (
+                        {listingRows.length > 0 ? (
                             <>
                                 <section className="Category_product">
                                     <div className="products__grid">
-                                        {visibleRows.map((product, index) => (
+                                        {listingRows.map((product, index) => (
                                             <ScrollReveal
                                                 key={product.listing_key}
                                                 delay={staggerDelay(index)}
@@ -228,9 +301,10 @@ export default function ProductsCatalog({
                                     <button
                                         type="button"
                                         className="showMore__btn showMore__btn--active shop-products__load-more"
-                                        onClick={() => setDisplayCount((c) => c + 24)}
+                                        onClick={loadMore}
+                                        disabled={loadingMore}
                                     >
-                                        Показать ещё
+                                        {loadingMore ? 'Загрузка…' : 'Показать ещё'}
                                     </button>
                                 )}
                             </>
