@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use App\Notifications\MarketplaceAlert;
 use App\Support\NotificationCategory;
+use App\Support\TestModeAccess;
 use App\Services\LoginHistoryRecorder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,8 +66,9 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        $sessionKey = (string) config('test_mode.session_key', 'test_mode_access_granted');
-        $testModeGranted = (bool) $request->session()->get($sessionKey, false);
+        $testModeGrantedAt = TestModeAccess::isGranted($request->session())
+            ? TestModeAccess::grantedAt($request->session())
+            : null;
 
         Auth::guard('web')->logout();
 
@@ -74,8 +76,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        if ($testModeGranted && (string) config('test_mode.password', '') !== '') {
-            $request->session()->put($sessionKey, true);
+        if ($testModeGrantedAt !== null) {
+            $request->session()->put(TestModeAccess::sessionKey(), $testModeGrantedAt);
         }
 
         return redirect()->route('home');

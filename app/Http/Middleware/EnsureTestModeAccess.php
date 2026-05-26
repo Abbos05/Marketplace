@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\TestModeAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,10 +12,7 @@ class EnsureTestModeAccess
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $password = (string) config('test_mode.password', '');
-        $sessionKey = (string) config('test_mode.session_key', 'test_mode_access_granted');
-
-        if ($password === '') {
+        if (! TestModeAccess::isEnabled()) {
             return $next($request);
         }
 
@@ -22,7 +20,7 @@ class EnsureTestModeAccess
             return $next($request);
         }
 
-        if ((bool) $request->session()->get($sessionKey, false)) {
+        if (TestModeAccess::isGranted($request->session())) {
             return $next($request);
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\TestModeAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -10,11 +11,11 @@ class TestModeAccessController extends Controller
 {
     public function show(): View|RedirectResponse
     {
-        if ((string) config('test_mode.password', '') === '') {
+        if (! TestModeAccess::isEnabled()) {
             return redirect()->route('home');
         }
 
-        if ((bool) session((string) config('test_mode.session_key', 'test_mode_access_granted'), false)) {
+        if (TestModeAccess::isGranted(session())) {
             return redirect()->intended(route('home'));
         }
 
@@ -32,13 +33,13 @@ class TestModeAccessController extends Controller
         $password = (string) config('test_mode.password', '');
         $inputPassword = (string) $request->input('password');
 
-        if (!hash_equals($password, $inputPassword)) {
+        if (! hash_equals($password, $inputPassword)) {
             return back()
                 ->withErrors(['password' => 'Неверный тестовый пароль.'])
                 ->withInput($request->except('password'));
         }
 
-        $request->session()->put((string) config('test_mode.session_key', 'test_mode_access_granted'), true);
+        TestModeAccess::grant($request->session());
 
         return redirect()->intended(route('home'));
     }
