@@ -1,6 +1,7 @@
 <?php
  
 use App\Http\Middleware\EnsureNotBlocked;
+use App\Http\Middleware\EnsureTestModeAccess;
 use App\Http\Middleware\PvzMiddleware;
 use App\Http\Middleware\SellerMiddleware;
 use App\Http\Middleware\TouchSessionActivity;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\EnsureNotBlocked::class,
             TouchSessionActivity::class,
+            EnsureTestModeAccess::class,
         ]);
          $middleware->alias([
             'seller' => SellerMiddleware::class,

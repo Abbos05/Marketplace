@@ -31,6 +31,7 @@ use App\Http\Controllers\CommissionDocumentController;
 use App\Http\Controllers\PickupCooperateController;
 use App\Http\Controllers\SearchSuggestionController;
 use App\Http\Controllers\SessionHeartbeatController;
+use App\Http\Controllers\TestModeAccessController;
 use App\Http\Controllers\PickupPartnerController;
 use App\Http\Controllers\Pvz\PvzDashboardController;
 use App\Http\Middleware\CheckRole;
@@ -42,6 +43,9 @@ use Inertia\Inertia;
 Route::get('/api/catalog/search-suggestions', SearchSuggestionController::class)
     ->middleware('throttle:90,1')
     ->name('catalog.search-suggestions');
+
+Route::get('/test-access', [TestModeAccessController::class, 'show'])->name('test-mode.access.show');
+Route::post('/test-access', [TestModeAccessController::class, 'store'])->name('test-mode.access.submit');
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/home', [HomeController::class, 'index'])->name('home');

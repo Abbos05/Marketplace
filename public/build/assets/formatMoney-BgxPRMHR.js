@@ -1,0 +1,1 @@
+function i(t,{fractionDigits:r=0}={}){return Number(t).toLocaleString("ru-RU",{maximumFractionDigits:r})+" ₽"}function a(t){return Number(t).toLocaleString("ru-RU",{maximumFractionDigits:0})}export{i as a,a as f};

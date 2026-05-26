@@ -2637,6 +2637,16 @@ main {
     background: transparent;
   }
 
+  .header-search .search-btn--submit {
+    min-width: 0px;
+  }
+  
+  .header-search .search-btn--submit svg {
+    width: 22px;
+    height: 22px;
+    margin-right: 10px;
+  }
+  
   .search-btn svg,
   .header-search-camera-btn svg {
     width: 20px;
