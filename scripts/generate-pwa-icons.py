@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate PWA icons (stdlib only). Run: python3 scripts/generate-pwa-icons.py"""
+"""DEPRECATED: placeholder icons only. Use resize_pwa_icons.py with icon-source.png."""
 
 import struct
 import zlib

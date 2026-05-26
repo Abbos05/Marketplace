@@ -1,5 +1,5 @@
 /* Alvora PWA Service Worker */
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `alvora-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `alvora-runtime-${CACHE_VERSION}`;
 
