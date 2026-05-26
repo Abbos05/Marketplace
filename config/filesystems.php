@@ -84,7 +84,7 @@ return [
 
     'links' => [
         public_path('storage') => storage_path('app/public'),
-        public_path('alvoraplace.ru') => storage_path('public'),
+        base_path('alvoraplace.ru') => base_path('public'),
     ],
 
 ];
