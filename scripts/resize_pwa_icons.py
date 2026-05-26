@@ -27,7 +27,11 @@ def main() -> int:
         return 1
 
     tmp = ICONS / ".pwa-resize-tmp.png"
-    run_sips(["--padToHeightWidth", "512", "512", str(SOURCE), "--out", str(tmp)])
+    run_sips([
+        "--padColor", "FFFFFF",
+        "--padToHeightWidth", "512", "512",
+        str(SOURCE), "--out", str(tmp),
+    ])
 
     for size in SIZES:
         out = ICONS / f"icon-{size}.png"

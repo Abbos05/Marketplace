@@ -50,30 +50,57 @@ export async function promptPwaInstall() {
   return { outcome };
 }
 
+async function clearStalePwaCaches() {
+  if (!('caches' in window)) {
+    return;
+  }
+  const keys = await caches.keys();
+  await Promise.all(
+    keys
+      .filter((key) => key.startsWith('alvora-'))
+      .map((key) => caches.delete(key)),
+  );
+}
+
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) {
     return;
   }
 
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js', { scope: '/' })
-      .then((registration) => {
-        registration.addEventListener('updatefound', () => {
-          const installing = registration.installing;
-          if (!installing) {
-            return;
+  window.addEventListener('load', async () => {
+    await clearStalePwaCaches();
+
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js?v=3', { scope: '/' });
+      await registration.update();
+
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+
+      registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        if (!worker) {
+          return;
+        }
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+            worker.postMessage({ type: 'SKIP_WAITING' });
           }
-          installing.addEventListener('statechange', () => {
-            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-              console.info('[PWA] Доступно обновление. Перезагрузите страницу.');
-            }
-          });
         });
-      })
-      .catch((err) => {
-        console.warn('[PWA] Service Worker не зарегистрирован:', err);
       });
+
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloaded) {
+          return;
+        }
+        reloaded = true;
+        window.location.reload();
+      });
+    } catch (err) {
+      console.warn('[PWA] Service Worker не зарегистрирован:', err);
+    }
   });
 }
 

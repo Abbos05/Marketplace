@@ -1,16 +1,11 @@
-/* Alvora PWA Service Worker */
-const CACHE_VERSION = 'v2';
+/* Alvora PWA Service Worker — v3: иконки и manifest НЕ кэшируются */
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `alvora-static-${CACHE_VERSION}`;
-const RUNTIME_CACHE = `alvora-runtime-${CACHE_VERSION}`;
 
-const PRECACHE_URLS = [
-  '/offline.html',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-];
+const PRECACHE_URLS = ['/offline.html'];
 
-const STATIC_EXTENSIONS = /\.(js|css|png|jpg|jpeg|webp|svg|woff2?|ico)$/i;
+const NEVER_CACHE = /^\/(icons\/|manifest\.json|sw\.js)/;
+const STATIC_EXTENSIONS = /\.(js|css|woff2?)$/i;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -25,16 +20,19 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== STATIC_CACHE && key !== RUNTIME_CACHE)
-            .map((key) => caches.delete(key)),
-        ),
-      )
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+      .then(() => caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE_URLS)))
       .then(() => self.clients.claim()),
   );
 });
+
+function isNeverCache(pathname) {
+  return NEVER_CACHE.test(pathname);
+}
+
+async function networkOnly(request) {
+  return fetch(request);
+}
 
 async function cacheFirst(request) {
   const cached = await caches.match(request);
@@ -44,7 +42,7 @@ async function cacheFirst(request) {
 
   const response = await fetch(request);
   if (response.ok) {
-    const cache = await caches.open(RUNTIME_CACHE);
+    const cache = await caches.open(STATIC_CACHE);
     cache.put(request, response.clone());
   }
   return response;
@@ -52,17 +50,8 @@ async function cacheFirst(request) {
 
 async function networkFirst(request) {
   try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, response.clone());
-    }
-    return response;
+    return await fetch(request);
   } catch {
-    const cached = await caches.match(request);
-    if (cached) {
-      return cached;
-    }
     if (request.mode === 'navigate') {
       const offline = await caches.match('/offline.html');
       if (offline) {
@@ -81,17 +70,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (isNeverCache(url.pathname)) {
+    event.respondWith(networkOnly(request));
+    return;
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request));
     return;
   }
 
-  if (PRECACHE_URLS.includes(url.pathname) || STATIC_EXTENSIONS.test(url.pathname)) {
+  if (STATIC_EXTENSIONS.test(url.pathname)) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
-  event.respondWith(networkFirst(request));
+  event.respondWith(networkOnly(request));
 });
 
 self.addEventListener('message', (event) => {
