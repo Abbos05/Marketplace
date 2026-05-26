@@ -78,9 +78,11 @@ class OrderItem extends Model
     }
     public function review()
     {
+        $userId = auth()->id();
+
         return $this->hasOne(Review::class, 'variant_id', 'variant_id')
-            ->whereColumn('reviews.order_id', 'order_items.order_id')
-            ->where('reviews.user_id', auth()->id());
+            ->when($userId !== null, fn (Builder $q) => $q->where('reviews.user_id', $userId))
+            ->where('reviews.order_id', $this->order_id);
     }
 // В модели OrderItem добавь
 public function getProductAttribute()
