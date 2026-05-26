@@ -9,13 +9,13 @@ use Illuminate\View\View;
 
 class TestModeAccessController extends Controller
 {
-    public function show(): View|RedirectResponse
+    public function show(Request $request): View|RedirectResponse
     {
         if (! TestModeAccess::isEnabled()) {
             return redirect()->route('home');
         }
 
-        if (TestModeAccess::isGranted(session())) {
+        if (TestModeAccess::isGranted($request->session())) {
             return redirect()->intended(route('home'));
         }
 
