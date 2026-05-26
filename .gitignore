@@ -13,6 +13,7 @@
 .env.production
 .phpactor.json
 .phpunit.result.cache
+alvoraplace.ru
 # composer.lock  # если работаете в один а не компанннн
 
 # IDE и редакторы
