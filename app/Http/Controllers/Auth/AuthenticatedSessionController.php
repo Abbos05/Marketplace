@@ -65,12 +65,19 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $sessionKey = (string) config('test_mode.session_key', 'test_mode_access_granted');
+        $testModeGranted = (bool) $request->session()->get($sessionKey, false);
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
 
-        return redirect()->route('profile');
+        if ($testModeGranted && (string) config('test_mode.password', '') !== '') {
+            $request->session()->put($sessionKey, true);
+        }
+
+        return redirect()->route('home');
     }
 }

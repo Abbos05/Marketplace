@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureTestModeAccess
@@ -25,6 +26,13 @@ class EnsureTestModeAccess
             return $next($request);
         }
 
-        return redirect()->route('test-mode.access.show');
+        $url = route('test-mode.access.show');
+
+        // Blade-страница пароля не в Inertia: иначе HTML встраивается внутрь текущего экрана.
+        if ($request->header('X-Inertia')) {
+            return Inertia::location($url);
+        }
+
+        return redirect($url);
     }
 }
