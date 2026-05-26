@@ -6,6 +6,7 @@ import Footer from '@/Components/HeaderFooter/Footer';
 import PhoneAuthModal from '@/Components/PhoneAuthModal';
 import MessagesFloatingWidget from '@/Components/MessagesFloatingWidget';
 import FlashBanner from '@/Components/FlashBanner';
+import PwaInstallButton from '@/Components/PwaInstallButton';
 import { useSessionHeartbeat } from '@/lib/useSessionHeartbeat';
 import '../../css/MainLayout.css';
 import '../../css/messages-widget.css';
@@ -93,6 +94,7 @@ const MainLayout = ({
       </div>
       <Footer />
       {authedUser && <MessagesFloatingWidget />}
+      <PwaInstallButton />
       <button
         type="button"
         className={`scroll-top-btn ${showScrollTop ? 'visible' : ''}`}

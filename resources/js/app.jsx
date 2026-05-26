@@ -1,6 +1,7 @@
 import '../css/app.css';
 import '../css/shared/phone-modal.css';
 import './bootstrap';
+import './pwa';
 
 import { createInertiaApp, router } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';

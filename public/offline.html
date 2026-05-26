@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Нет сети — Alvora</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: "Montserrat", system-ui, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      text-align: center;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 12px; color: #FF2E63; }
+    p { color: #a0a0a0; line-height: 1.5; max-width: 320px; }
+    button {
+      margin-top: 24px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #FF2E63, #d30035);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>Нет подключения</h1>
+    <p>Проверьте интернет и попробуйте снова. Часть страниц может быть доступна из кэша.</p>
+    <button type="button" onclick="location.reload()">Обновить</button>
+  </div>
+</body>
+</html>
