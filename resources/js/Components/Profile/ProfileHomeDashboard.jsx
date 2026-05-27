@@ -24,7 +24,6 @@ function StatCard({ label, value, onClick }) {
 function ActionSlide({ action, onAction }) {
   return (
     <div className={`profile-home-action-card profile-home-action-card--${action.tone}`}>
-      <div className="profile-home-action-icon" aria-hidden>{action.icon}</div>
       <div className="profile-home-action-body">
         <h3>{action.title}</h3>
         <p>{action.text}</p>
@@ -169,7 +168,6 @@ export default function ProfileHomeDashboard({
         <StatCard label="Заказы" value={profileCounts.orders ?? 0} onClick={() => onTabChange?.('orders')} />
         <StatCard label="Избранное" value={profileCounts.favorites ?? 0} onClick={() => onTabChange?.('favorites')} />
         <StatCard label="Отзывы" value={profileCounts.reviews ?? 0} onClick={() => onTabChange?.('reviews')} />
-        <StatCard label="Сообщения" value="→" onClick={() => onTabChange?.('messages')} />
       </section>
 
       <section className="profile-home-actions" aria-label="Что сделать дальше">

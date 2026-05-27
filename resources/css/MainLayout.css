@@ -365,7 +365,7 @@ main {
 }
 
 .header-search .search-btn--submit {
-  min-width: 52px;
+  min-width: 60px;
 }
 
 .header-search .search-btn--submit svg {

@@ -107,8 +107,7 @@
 }
 
 .active path {
-  fill: var(--background);
-  stroke: rgb(255, 255, 255);
+  fill: var(--backgroundBlack);
   stroke-width: 2px;
 }
 

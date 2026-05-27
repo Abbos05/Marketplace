@@ -173,6 +173,9 @@
 
 .shop-sidebar__price-input {
     flex: 1;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
     padding: 10px 12px;
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -843,6 +846,7 @@
     background: #e5e7eb;
     border-radius: 4px;
     margin: 14px 8px;
+    overflow: hidden;
 }
 
 .price-range-filter__fill {
@@ -1206,6 +1210,10 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
+    }
+
+    .price-range-filter__sep {
+        display: none;
     }
 
     .shop-products__empty {

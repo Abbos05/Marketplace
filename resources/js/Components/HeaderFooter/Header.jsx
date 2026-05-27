@@ -78,7 +78,11 @@ const Header = ({ setIsModalOpen }) => {
     router.visit(route('messages.index'));
   };
 
-  const urlSearch = (catalogSearchQuery || filters?.search || pageSearch || '').trim();
+  const hasFiltersSearch = !!filters && Object.prototype.hasOwnProperty.call(filters, 'search');
+  const rawUrlSearch = hasFiltersSearch
+    ? filters?.search
+    : (catalogSearchQuery ?? pageSearch ?? '');
+  const urlSearch = String(rawUrlSearch ?? '').trim();
   const [searchQuery, setSearchQuery] = useState(urlSearch);
 
   useEffect(() => {

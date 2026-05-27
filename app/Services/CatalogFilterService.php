@@ -79,7 +79,7 @@ class CatalogFilterService
         $query = $baseQueryFactory();
         $this->applyFilters($query, $parsed, $context, except: null);
 
-        $total = $this->countListingPositions($query);
+        $total = $this->countListingPositions($query, $parsed);
         $productTotal = (clone $query)->count('products.id');
 
         $perPage = max(1, (int) config('marketplace.catalog_per_page', 24));
@@ -91,7 +91,10 @@ class CatalogFilterService
             ->limit($perPage)
             ->get();
 
-        Product::enrichForCatalog($products);
+        Product::enrichForCatalog($products, [
+            'price_from' => $parsed['price_from'],
+            'price_to' => $parsed['price_to'],
+        ]);
 
         $facets = [
             'price' => $this->buildPriceFacet($baseQueryFactory, $parsed, $context),
@@ -234,12 +237,7 @@ class CatalogFilterService
         }
 
         if (! in_array('price', $skip, true)) {
-            if ($parsed['price_from'] !== null && $parsed['price_from'] !== '') {
-                $query->where('products.min_price', '>=', (float) $parsed['price_from']);
-            }
-            if ($parsed['price_to'] !== null && $parsed['price_to'] !== '') {
-                $query->where('products.min_price', '<=', (float) $parsed['price_to']);
-            }
+            $this->applyVariantPriceFilter($query, $parsed['price_from'], $parsed['price_to']);
         }
 
         if (! empty($parsed['on_promotion']) && ! in_array('on_promotion', $skip, true)) {
@@ -396,7 +394,13 @@ class CatalogFilterService
         $q = $baseQueryFactory();
         $this->applyFilters($q, $parsed, $context, except: ['price', 'sort']);
 
-        $row = $q->selectRaw('MIN(products.min_price) as min_price, MAX(products.min_price) as max_price')->first();
+        $productIds = (clone $q)->select('products.id');
+        $row = DB::table('product_variants as pv')
+            ->whereIn('pv.product_id', $productIds)
+            ->where('pv.is_active', true)
+            ->whereNull('pv.deleted_at')
+            ->selectRaw('MIN(pv.price) as min_price, MAX(pv.price) as max_price')
+            ->first();
 
         return [
             'min' => $row?->min_price !== null ? (float) $row->min_price : null,
@@ -571,9 +575,9 @@ class CatalogFilterService
     /**
      * Количество позиций витрины (варианты; 1 если активных вариантов нет).
      */
-    protected function countListingPositions(Builder $productQuery): int
+    protected function countListingPositions(Builder $productQuery, array $parsed): int
     {
-        $listingCount = $this->listingCountSql('products.id');
+        $listingCount = $this->listingCountSql('products.id', $parsed['price_from'] ?? null, $parsed['price_to'] ?? null);
 
         return (int) ((clone $productQuery)->selectRaw("COALESCE(SUM({$listingCount}), 0) as listing_total")->value('listing_total') ?? 0);
     }
@@ -581,9 +585,37 @@ class CatalogFilterService
     /**
      * @param  string  $productIdColumn  SQL-ссылка на product_id (например products.id или pav.product_id)
      */
-    protected function listingCountSql(string $productIdColumn): string
+    protected function listingCountSql(string $productIdColumn, mixed $priceFrom = null, mixed $priceTo = null): string
     {
-        return "(SELECT CASE WHEN COUNT(*) = 0 THEN 1 ELSE COUNT(*) END FROM product_variants AS pv_lc WHERE pv_lc.product_id = {$productIdColumn} AND pv_lc.is_active = 1 AND pv_lc.deleted_at IS NULL)";
+        $variantWhere = "pv_lc.product_id = {$productIdColumn} AND pv_lc.is_active = 1 AND pv_lc.deleted_at IS NULL";
+        if ($priceFrom !== null && $priceFrom !== '') {
+            $variantWhere .= ' AND pv_lc.price >= '.(float) $priceFrom;
+        }
+        if ($priceTo !== null && $priceTo !== '') {
+            $variantWhere .= ' AND pv_lc.price <= '.(float) $priceTo;
+        }
+
+        return "(SELECT CASE WHEN COUNT(*) = 0 THEN 1 ELSE COUNT(*) END FROM product_variants AS pv_lc WHERE {$variantWhere})";
+    }
+
+    protected function applyVariantPriceFilter(Builder $query, mixed $priceFrom, mixed $priceTo): void
+    {
+        if (($priceFrom === null || $priceFrom === '') && ($priceTo === null || $priceTo === '')) {
+            return;
+        }
+
+        $query->whereHas('variants', function (Builder $variantQuery) use ($priceFrom, $priceTo) {
+            $variantQuery
+                ->where('is_active', true)
+                ->whereNull('deleted_at');
+
+            if ($priceFrom !== null && $priceFrom !== '') {
+                $variantQuery->where('price', '>=', (float) $priceFrom);
+            }
+            if ($priceTo !== null && $priceTo !== '') {
+                $variantQuery->where('price', '<=', (float) $priceTo);
+            }
+        });
     }
 
     /**

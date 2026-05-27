@@ -257,7 +257,7 @@ class Product extends Model
     /**
      * Добавляет к коллекции товаров поля для карточки: картинка, цена варианта, старая цена, остаток, название магазина.
      */
-    public static function enrichForCatalog(Collection $products): void
+    public static function enrichForCatalog(Collection $products, array $variantFilters = []): void
     {
         if ($products->isEmpty()) {
             return;
@@ -265,19 +265,37 @@ class Product extends Model
 
         $ids = $products->pluck('id')->all();
 
+        $priceFrom = $variantFilters['price_from'] ?? null;
+        $priceTo = $variantFilters['price_to'] ?? null;
+
+        $applyVariantPrice = static function (Builder $query) use ($priceFrom, $priceTo): Builder {
+            if ($priceFrom !== null && $priceFrom !== '') {
+                $query->where('price', '>=', (float) $priceFrom);
+            }
+            if ($priceTo !== null && $priceTo !== '') {
+                $query->where('price', '<=', (float) $priceTo);
+            }
+
+            return $query;
+        };
+
         $stockByProduct = ProductVariant::query()
             ->whereIn('product_id', $ids)
             ->where('is_active', true)
+            ->whereNull('deleted_at')
             ->selectRaw('product_id, SUM(stock) as stock_total')
             ->groupBy('product_id')
             ->pluck('stock_total', 'product_id');
 
-        $cheapestByProduct = ProductVariant::query()
+        $cheapestByProductQuery = ProductVariant::query()
             ->whereIn('product_id', $ids)
             ->where('is_active', true)
+            ->whereNull('deleted_at')
             ->with(['images' => fn ($q) => $q->orderByDesc('is_main')->orderBy('sort_order')])
             ->orderBy('product_id')
-            ->orderBy('price')
+            ->orderBy('price');
+
+        $cheapestByProduct = $applyVariantPrice($cheapestByProductQuery)
             ->get()
             ->unique('product_id')
             ->keyBy('product_id');
@@ -311,12 +329,15 @@ class Product extends Model
             $product->setAttribute('seller_verified', (bool) $seller?->sellerProfile);
         }
 
-        $variantsByProduct = ProductVariant::query()
+        $variantsByProductQuery = ProductVariant::query()
             ->whereIn('product_id', $ids)
             ->where('is_active', true)
+            ->whereNull('deleted_at')
             ->with(['images' => fn ($q) => $q->orderByDesc('is_main')->orderBy('sort_order')])
             ->orderBy('product_id')
-            ->orderBy('price')
+            ->orderBy('price');
+
+        $variantsByProduct = $applyVariantPrice($variantsByProductQuery)
             ->get()
             ->groupBy('product_id');
 

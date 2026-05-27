@@ -55,7 +55,6 @@ export default function HeaderSearchWithSuggestions({
   searchQuery,
   setSearchQuery,
   onSearch,
-  onOpenScanner,
   onNavigate,
   filters,
 }) {
@@ -362,17 +361,7 @@ export default function HeaderSearchWithSuggestions({
         spellCheck={false}
       />
 
-      <button
-        type="button"
-        onClick={onOpenScanner}
-        className="search-btn search-btn-camera"
-        aria-label="Сканировать артикул или штрихкод"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.2l1.2-1.8A1.6 1.6 0 0 1 10.2 3.5h3.6a1.6 1.6 0 0 1 1.3.7L16.3 6h1.2A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Z" stroke="currentColor" strokeWidth="2" />
-          <circle cx="12" cy="12.5" r="3.2" stroke="currentColor" strokeWidth="2" />
-        </svg>
-      </button>
+
 
       <button
         type="button"

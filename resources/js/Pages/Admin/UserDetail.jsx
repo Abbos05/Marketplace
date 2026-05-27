@@ -256,6 +256,13 @@ export default function UserDetail({
         });
     };
 
+    const messageUser = () => {
+        router.post(route('messages.open'), {
+            type: 'seller_shop',
+            seller_id: user.id,
+        });
+    };
+
     const changeRole = (role) => {
         setSelectedRole(role);
         router.patch(`/admin/users/${user.id}/role`, { role }, {
@@ -493,6 +500,12 @@ export default function UserDetail({
                                 onClick={blockUser}
                             >
                                 {user.is_blocked ? 'Разблокировать' : 'Заблокировать'}
+                            </button>
+                            <button
+                                className="adm-action-btn adm-btn-view"
+                                onClick={messageUser}
+                            >
+                                Написать
                             </button>
                             <button
                                 className="adm-action-btn adm-btn-reject"

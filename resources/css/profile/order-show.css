@@ -9,7 +9,21 @@
         line-height: 1.45;
         margin-bottom: 10px;
     }
+   .order-back {
+        display: inline-flex;
+        margin-bottom: 12px;
+        font-size: var(--size-m);
 
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 12px;
+        background: #fff;
+        color: #475569;
+        cursor: pointer;
+        font-size: var(--size-m);
+        font-weight: var(--fw-500);
+        font-family: inherit;
+    }
     .back-link {
         display: inline-block;
         margin-bottom: 20px;
@@ -950,11 +964,7 @@
         border-right: 0;
     }
 
-    .order-back {
-        display: inline-flex;
-        margin-bottom: 12px;
-        font-size: var(--size-m);
-    }
+ 
 
     .order-headerShow h1 {
         font-size: var(--size-lg);

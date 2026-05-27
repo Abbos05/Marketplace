@@ -71,7 +71,7 @@ export default function ProductsCatalog({
     }, [filters, dataProduct, sellerId]);
 
     const listingRows = useMemo(
-        () => expandCatalogProductRows(accumulatedProducts, { oneVariantPerProduct: true }),
+        () => expandCatalogProductRows(accumulatedProducts, { oneVariantPerProduct: false }),
         [accumulatedProducts],
     );
 

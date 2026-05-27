@@ -7,6 +7,10 @@ function parseNum(value) {
     return Number.isNaN(n) ? null : n;
 }
 
+function clampPercent(value) {
+    return Math.min(100, Math.max(0, value));
+}
+
 export default function PriceRangeFilter({
     facetMin = null,
     facetMax = null,
@@ -23,6 +27,33 @@ export default function PriceRangeFilter({
     const [dragging, setDragging] = useState(null);
     const trackRef = useRef(null);
 
+    const normalizeRange = useCallback(
+        (fromVal, toVal) => {
+            let nextFrom = fromVal ?? '';
+            let nextTo = toVal ?? '';
+
+            if (!boundsReady) {
+                return { from: nextFrom, to: nextTo };
+            }
+
+            if (nextFrom !== '') {
+                nextFrom = clampPriceValue(nextFrom, minBound, maxBound);
+            }
+            if (nextTo !== '') {
+                nextTo = clampPriceValue(nextTo, minBound, maxBound);
+            }
+
+            const fromN = parseNum(nextFrom);
+            const toN = parseNum(nextTo);
+            if (fromN != null && toN != null && fromN > toN) {
+                nextTo = nextFrom;
+            }
+
+            return { from: nextFrom, to: nextTo };
+        },
+        [boundsReady, minBound, maxBound],
+    );
+
     useEffect(() => {
         setDraftFrom(priceFrom ?? '');
         setDraftTo(priceTo ?? '');
@@ -32,34 +63,32 @@ export default function PriceRangeFilter({
     const toNum = parseNum(draftTo) ?? maxBound;
     const rangeSpan = Math.max(maxBound - minBound, 1);
 
-    const percentFrom = ((Math.min(fromNum, toNum) - minBound) / rangeSpan) * 100;
-    const percentTo = ((Math.max(fromNum, toNum) - minBound) / rangeSpan) * 100;
+    const percentFrom = clampPercent(((Math.min(fromNum, toNum) - minBound) / rangeSpan) * 100);
+    const percentTo = clampPercent(((Math.max(fromNum, toNum) - minBound) / rangeSpan) * 100);
 
     const commitDraft = useCallback(
         (fromVal, toVal) => {
-            let nextFrom = fromVal ?? draftFrom;
-            let nextTo = toVal ?? draftTo;
-
-            if (boundsReady) {
-                if (nextFrom !== '') {
-                    nextFrom = clampPriceValue(nextFrom, minBound, maxBound);
-                }
-                if (nextTo !== '') {
-                    nextTo = clampPriceValue(nextTo, minBound, maxBound);
-                }
-                const fromN = parseNum(nextFrom);
-                const toN = parseNum(nextTo);
-                if (fromN != null && toN != null && fromN > toN) {
-                    nextTo = nextFrom;
-                }
-            }
+            const normalized = normalizeRange(fromVal ?? draftFrom, toVal ?? draftTo);
+            const nextFrom = normalized.from;
+            const nextTo = normalized.to;
 
             setDraftFrom(nextFrom);
             setDraftTo(nextTo);
             onApply?.({ priceFrom: nextFrom, priceTo: nextTo });
         },
-        [boundsReady, draftFrom, draftTo, maxBound, minBound, onApply],
+        [draftFrom, draftTo, normalizeRange, onApply],
     );
+
+    useEffect(() => {
+        if (!boundsReady) return;
+
+        const normalized = normalizeRange(priceFrom ?? '', priceTo ?? '');
+        const fromChanged = String(normalized.from) !== String(priceFrom ?? '');
+        const toChanged = String(normalized.to) !== String(priceTo ?? '');
+        if (fromChanged || toChanged) {
+            onApply?.({ priceFrom: normalized.from, priceTo: normalized.to });
+        }
+    }, [boundsReady, minBound, maxBound, normalizeRange, onApply, priceFrom, priceTo]);
 
     const valueFromPointer = useCallback(
         (clientX) => {

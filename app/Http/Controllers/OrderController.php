@@ -367,7 +367,7 @@ class OrderController extends Controller
                 return null;
             }
 
-            return Carbon::parse($value)->locale('ru')->translatedFormat('d MMMM yyyy, HH:mm');
+            return Carbon::parse($value)->locale('ru')->translatedFormat('d M y, H:m');
         };
 
         $destination = trim((string) ($order->delivery_address ?: '')) ?: 'Адрес доставки уточняется';
