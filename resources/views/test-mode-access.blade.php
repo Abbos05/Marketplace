@@ -7,15 +7,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="manifest" href="/manifest.json?v=3">
+    <meta name="theme-color" content="#FF2E63">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png?v=3">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=3">
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         body{font-family:'Inter',sans-serif;background:#0a0a0a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow-x:hidden;}
-        body::before{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 20% 50%,rgba(255,46,99,0.25),transparent 55%),radial-gradient(circle at 80% 80%,rgba(255,46,99,0.15),transparent 60%),linear-gradient(135deg,#0a0a0a 0%,#14142b 100%);z-index:0;}
+        body::before{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 20% 50%,#d3003572,transparent 55%),radial-gradient(circle at 80% 80%,rgba(234, 0, 58, 0.15),transparent 60%),linear-gradient(135deg,#0a0a0a 0%,#14142b 100%);z-index:0;}
         .glow{position:fixed;width:500px;height:500px;background:radial-gradient(circle,rgba(255,46,99,0.3),transparent 70%);border-radius:50%;filter:blur(60px);pointer-events:none;z-index:0;}
         .glow-1{top:-200px;left:-200px;}.glow-2{bottom:-200px;right:-200px;}.glow-3{top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;opacity:0.2;}
         .container{position:relative;z-index:2;max-width:1300px;width:100%;}
         .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:40px;flex-wrap:wrap;gap:20px;}
-        .logo{display:flex;align-items:center;gap:12px;}
+        .logo{display:flex;align-items:center;gap:12px;}    
         .logo-icon{width:48px;height:48px;background:linear-gradient(135deg,#FF2E63,#FF6B8A);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;box-shadow:0 0 30px rgba(255,46,99,0.5);}
         .logo-text{font-size:32px;font-weight:800;letter-spacing:-1px;background:linear-gradient(135deg,#fff,#FF2E63);-webkit-background-clip:text;background-clip:text;color:transparent;}
         .badge-header{background:rgba(255,46,99,0.2);border:1px solid rgba(255,46,99,0.4);padding:8px 20px;border-radius:40px;font-size:14px;font-weight:500;color:#FF2E63;}
@@ -43,8 +48,14 @@
         .error-message{background:rgba(220,38,38,0.2);border-left:3px solid #FF2E63;padding:12px 16px;border-radius:16px;font-size:13px;color:#ffb3b3;display:none;}
         .btn-test{background:linear-gradient(135deg,#FF2E63,#FF6B8A);border:none;padding:16px 24px;border-radius:60px;font-weight:700;font-size:16px;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.3s;display:flex;align-items:center;justify-content:center;gap:10px;}
         .btn-test:hover{transform:scale(1.02);box-shadow:0 10px 30px rgba(255,46,99,0.5);}
-        .demo-hint{font-size:12px;color:rgba(255,255,255,0.4);text-align:center;margin-top:20px;padding-top:18px;border-top:1px dashed rgba(255,46,99,0.3);}
-        .demo-hint span{color:#FF2E63;font-weight:600;}
+        .test-password-help{margin-top:8px;padding-top:22px;border-top:1px dashed rgba(255,46,99,0.35);text-align:center;}
+        .test-password-help__title{font-size:15px;font-weight:700;color:#fff;margin-bottom:8px;}
+        .test-password-help__text{font-size:13px;line-height:1.5;color:rgba(255,255,255,0.62);margin-bottom:16px;}
+        .telegram-contact-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 22px;border-radius:60px;text-decoration:none;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg,#229ED9,#1a8bc7);border:1px solid rgba(255,255,255,0.2);transition:transform .25s,box-shadow .25s,background .25s;}
+        .telegram-contact-btn i{font-size:20px;}
+        .telegram-contact-btn:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(34,158,217,0.45);background:linear-gradient(135deg,#2aabee,#229ED9);}
+        .telegram-contact-btn__hint{display:block;margin-top:10px;font-size:12px;color:rgba(255,255,255,0.45);}
+        .telegram-contact-btn__hint span{color:#7dd3fc;font-weight:600;}
         .feature-list{display:flex;flex-direction:column;gap:16px;margin-top:20px;}
         .feature-item{display:flex;gap:14px;align-items:center;padding:12px 16px;background:rgba(255,255,255,0.04);border-radius:20px;transition:all 0.3s;}
         .feature-item:hover{background:rgba(255,46,99,0.1);transform:translateX(5px);}
@@ -67,11 +78,47 @@
         .seller-card{background:linear-gradient(135deg,#FF2E63,#FF6B8A);}
         .seller-card h4,.seller-card p,.seller-card a{color:#fff;}
         .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#FF2E63;color:#fff;padding:12px 24px;border-radius:60px;font-weight:500;z-index:1000;opacity:0;transition:opacity 0.3s;pointer-events:none;font-size:14px;}
+        body.pwa-modal-open{overflow:hidden;}
+        .pwa-install-modal{position:fixed;inset:0;z-index:2000;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px 16px;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s;}
+        .pwa-install-modal.is-open{pointer-events:auto;opacity:1;visibility:visible;}
+        .pwa-install-modal__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);}
+        .pwa-install-modal__card{position:relative;z-index:1;width:min(100%,420px);background:linear-gradient(160deg,#1a1a2e 0%,#14142b 100%);border:1px solid rgba(255,46,99,.45);border-radius:24px;padding:28px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 40px rgba(255,46,99,.15);transform:translateY(-16px);transition:transform .35s ease;}
+        .pwa-install-modal.is-open .pwa-install-modal__card{transform:translateY(0);}
+        .pwa-install-modal__icon{width:56px;height:56px;border-radius:16px;margin-bottom:16px;box-shadow:0 8px 24px rgba(255,46,99,.35);}
+        .pwa-install-modal__title{font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;line-height:1.2;}
+        .pwa-install-modal__text{font-size:14px;line-height:1.5;color:rgba(255,255,255,.72);margin-bottom:12px;}
+        .pwa-install-modal__hint{font-size:13px;line-height:1.45;color:rgba(255,255,255,.5);margin-bottom:18px;display:none;}
+        .pwa-install-modal__actions{display:flex;flex-direction:column;gap:10px;}
+        #pwaInstallBtn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px 20px;border:none;border-radius:14px;background:linear-gradient(135deg,#ff2e63,#d30035 55%,#ff5c8a);color:#fff;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:transform .2s,opacity .2s,box-shadow .2s;box-shadow:0 8px 24px rgba(255,46,99,.35);}
+        #pwaInstallBtn:disabled{opacity:.55;cursor:wait;transform:none;box-shadow:none;}
+        #pwaInstallBtn.is-ready:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(255,46,99,.45);}
+        #pwaInstallSkip{width:100%;padding:12px;border:none;border-radius:14px;background:transparent;color:rgba(255,255,255,.55);font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:color .2s,background .2s;}
+        #pwaInstallSkip:hover{color:#fff;background:rgba(255,255,255,.06);}
         @media (max-width:900px){.main-grid{grid-template-columns:1fr;gap:30px;}h1{font-size:42px;}.time-number{font-size:36px;}}
         @media (max-width:550px){h1{font-size:32px;}.time-number{font-size:28px;}.btn-test{padding:14px;}}
     </style>
 </head>
-<body>
+<body data-pwa-test-modal="1">
+<div id="pwaInstallModal" class="pwa-install-modal" aria-hidden="true" role="dialog" aria-labelledby="pwaInstallTitle" aria-modal="true">
+    <div class="pwa-install-modal__backdrop" aria-hidden="true"></div>
+    <div class="pwa-install-modal__card">
+        <img class="pwa-install-modal__icon" src="/icons/icon-192.png?v=3" width="56" height="56" alt="Alvora">
+        <h2 id="pwaInstallTitle" class="pwa-install-modal__title">Установить Alvora</h2>
+        <p class="pwa-install-modal__text">Добавьте приложение на главный экран — быстрый вход в тестовый режим без поиска в браузере.</p>
+        <p id="pwaInstallHint" class="pwa-install-modal__hint" style="display:none;"></p>
+        <div class="pwa-install-modal__actions">
+            <button type="button" id="pwaInstallBtn" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 3v12m0 0l4-4m-4 4L8 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span class="pwa-install-btn__label">Подготовка…</span>
+            </button>
+            <button type="button" id="pwaInstallSkip">Пропустить</button>
+        </div>
+    </div>
+</div>
+
 <div class="glow glow-1"></div>
 <div class="glow glow-2"></div>
 <div class="glow glow-3"></div>
@@ -79,7 +126,6 @@
 <div class="container">
     <div class="header">
         <div class="logo">
-            <div class="logo-icon"><i class="fas fa-crown"></i></div>
             <span class="logo-text">Alvora</span>
         </div>
         <div class="badge-header"><i class="fas fa-flask"></i> Тестовый режим · Премиум маркетплейс</div>
@@ -120,7 +166,20 @@
                 @enderror
                 <div id="clientError" class="error-message" style="display:none;">❌ Неверный пароль. Доступ запрещён.</div>
                 <button type="submit" class="btn-test"><i class="fas fa-unlock-alt"></i> Открыть доступ</button>
-           
+
+                @if(!empty($telegramUrl))
+                <div class="test-password-help">
+                    <p class="test-password-help__title">Нет тестового пароля?</p>
+                    <p class="test-password-help__text">Чтобы получить доступ к демо-режиму, напишите нам в Telegram — ответим и выдадим пароль.</p>
+                    <a href="{{ $telegramUrl }}" class="telegram-contact-btn" target="_blank" rel="noopener noreferrer">
+                        <i class="fab fa-telegram-plane"></i>
+                        Написать в Telegram
+                    </a>
+                    @if(!empty($telegramLabel))
+                        <span class="telegram-contact-btn__hint">Аккаунт: <span>{{ $telegramLabel }}</span></span>
+                    @endif
+                </div>
+                @endif
             </form>
         </div>
     </div>
@@ -233,5 +292,6 @@
         clientErrorDiv.style.display = 'none';
     });
 </script>
+<script src="/js/pwa-standalone.js" defer></script>
 </body>
 </html>

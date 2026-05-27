@@ -2446,6 +2446,9 @@ main {
     padding: 12px;
     font-size: var(--size-base);
   }
+  .light-theme .header-menu-dropdown{
+    display: none !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2541,8 +2544,8 @@ main {
   .header-wallet svg,
   .header-profile-trigger__icon,
   .header-profile-trigger__avatar {
-    width: 22px;
-    height: 22px;
+    width: 25px;
+    height: 25px;
     color: var(--background);
     /* если SVG использует currentColor */
   }
@@ -2832,5 +2835,8 @@ main {
 
   .header-menu-store--mobile p {
     display: none;
+  }
+  .light-theme .header-menu-dropdown{
+    display: none !important;
   }
 }

@@ -19,7 +19,10 @@ class TestModeAccessController extends Controller
             return redirect()->intended(route('home'));
         }
 
-        return view('test-mode-access');
+        return view('test-mode-access', [
+            'telegramUrl' => (string) config('test_mode.telegram_url', ''),
+            'telegramLabel' => (string) config('test_mode.telegram_label', ''),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
