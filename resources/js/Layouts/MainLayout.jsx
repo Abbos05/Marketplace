@@ -94,7 +94,6 @@ const MainLayout = ({
       </div>
       <Footer />
       {authedUser && <MessagesFloatingWidget />}
-      <PwaInstallButton />
       <button
         type="button"
         className={`scroll-top-btn ${showScrollTop ? 'visible' : ''}`}

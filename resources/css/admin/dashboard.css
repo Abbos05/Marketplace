@@ -801,7 +801,7 @@
 }
 
 @media (max-width: 1024px) {
-    .adm-layout {
+    .adm-layout:not(.adm-layout--primary-access) {
         display: none !important;
     }
 

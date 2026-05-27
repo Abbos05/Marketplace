@@ -95,6 +95,7 @@ class HandleInertiaRequests extends Middleware
                 'isAdmin' => $request->user()->isAdmin(),
                 'isModerator' => $request->user()->isModerator(),
                 'canAssignStaffRoles' => $request->user()->canAssignStaffRoles(),
+                'isPrimaryAdmin' => $request->user()->isPrimaryAdmin(),
                 'panelTitle' => $request->user()->isModerator()
                     ? 'Панель модератора'
                     : ($request->user()->isAdmin() ? 'Панель администратора' : null),

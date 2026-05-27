@@ -517,12 +517,14 @@ export default function AdminDashboard({
                 <div className="adm-flash" onClick={() => setMessage(null)}>{message}</div>
             )}
 
-            <div className="adm-mobile-unavailable">
-                <h2>{panelTitle} доступна с компьютера</h2>
-                <p>Для управления пользователями, заказами и отчётами нужен широкий экран. Откройте панель на ноутбуке или ПК.</p>
-            </div>
+            {!staffAccess?.isPrimaryAdmin && (
+                <div className="adm-mobile-unavailable">
+                    <h2>{panelTitle} доступна с компьютера</h2>
+                    <p>Для управления пользователями, заказами и отчётами нужен широкий экран. Откройте панель на ноутбуке или ПК.</p>
+                </div>
+            )}
 
-            <div className="adm-layout">
+            <div className={`adm-layout${staffAccess?.isPrimaryAdmin ? ' adm-layout--primary-access' : ''}`}>
                 {/* Sidebar */}
                 <aside className="adm-sidebar">
                     <div className="adm-sidebar-title">{sidebarTitle}</div>

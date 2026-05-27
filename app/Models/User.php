@@ -168,6 +168,26 @@ class User extends Authenticatable
         return $this->isAdmin();
     }
 
+    /** ID первого пользователя с ролью admin (главный администратор). */
+    public static function primaryAdminId(): ?int
+    {
+        $id = static::query()->where('role', 'admin')->min('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
+    /** Главный администратор — первый admin по ID; без ограничения «только с компьютера». */
+    public function isPrimaryAdmin(): bool
+    {
+        if (! $this->isAdmin()) {
+            return false;
+        }
+
+        $primaryId = static::primaryAdminId();
+
+        return $primaryId !== null && (int) $this->id === $primaryId;
+    }
+
     public function isStaffRole(string $role): bool
     {
         return in_array($role, ['admin', 'moderator'], true);

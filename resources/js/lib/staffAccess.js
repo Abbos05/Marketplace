@@ -2,6 +2,8 @@ export const isStaff = (user) => ['admin', 'moderator'].includes(user?.role);
 
 export const canAssignStaffRoles = (user) => user?.role === 'admin';
 
+export const isPrimaryAdmin = (staffAccess) => staffAccess?.isPrimaryAdmin === true;
+
 export const isStaffAccount = (user) => isStaff(user);
 
 export const ROLE_OPTIONS_ALL = [

@@ -4,6 +4,8 @@ import { resolveAvatarUrl } from '@/lib/avatarUrl';
 import { clearPhoneAuthFlow } from '@/lib/phoneAuthSession';
 
 const PROFILE_MENU_HOVER_KEY = 'headerProfileMenuHover';
+/** Hover-меню только на десктопе; на мобилке — переход на /profile */
+const HEADER_PROFILE_HOVER_MQ = '(min-width: 769px)';
 
 const ProfileIcon = () => (
   <svg className="header-profile-trigger__icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden>
@@ -65,6 +67,9 @@ const HeaderMenu = ({ setIsModalOpen }) => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState('dark');
+  const [hoverMenuEnabled, setHoverMenuEnabled] = useState(
+    () => typeof window === 'undefined' || window.matchMedia(HEADER_PROFILE_HOVER_MQ).matches,
+  );
   const menuRef = useRef(null);
   const pointerInsideRef = useRef(false);
   const closeTimerRef = useRef(null);
@@ -77,6 +82,21 @@ const HeaderMenu = ({ setIsModalOpen }) => {
     const saved = localStorage.getItem('theme') || 'dark';
     setTheme(saved);
     document.documentElement.classList.toggle('light-theme', saved === 'light');
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia(HEADER_PROFILE_HOVER_MQ);
+    const syncHoverMode = () => {
+      const enabled = mq.matches;
+      setHoverMenuEnabled(enabled);
+      if (!enabled) {
+        setIsOpen(false);
+        sessionStorage.removeItem(PROFILE_MENU_HOVER_KEY);
+      }
+    };
+    syncHoverMode();
+    mq.addEventListener('change', syncHoverMode);
+    return () => mq.removeEventListener('change', syncHoverMode);
   }, []);
 
   const toggleTheme = () => {
@@ -123,12 +143,13 @@ const HeaderMenu = ({ setIsModalOpen }) => {
   }, []);
 
   const syncMenuFromPointer = useCallback(() => {
+    if (!hoverMenuEnabled) return;
     if (isPointerOverMenu() || sessionStorage.getItem(PROFILE_MENU_HOVER_KEY) === '1') {
       pointerInsideRef.current = true;
       setIsOpen(true);
       sessionStorage.removeItem(PROFILE_MENU_HOVER_KEY);
     }
-  }, [isPointerOverMenu]);
+  }, [hoverMenuEnabled, isPointerOverMenu]);
 
   const scheduleMenuSync = useCallback(() => {
     syncMenuFromPointer();
@@ -192,6 +213,17 @@ const HeaderMenu = ({ setIsModalOpen }) => {
     e.preventDefault();
     e.stopPropagation();
 
+    if (!hoverMenuEnabled) {
+      setIsOpen(false);
+      sessionStorage.removeItem(PROFILE_MENU_HOVER_KEY);
+      if (isAuthenticated) {
+        router.visit('/profile', { preserveScroll: true });
+      } else {
+        setIsModalOpen(true);
+      }
+      return;
+    }
+
     pointerInsideRef.current = true;
     suppressCloseUntilRef.current = Date.now() + 900;
     sessionStorage.setItem(PROFILE_MENU_HOVER_KEY, '1');
@@ -207,24 +239,32 @@ const HeaderMenu = ({ setIsModalOpen }) => {
     <li
       className="header-menu"
       ref={menuRef}
-      onMouseEnter={() => {
-        if (closeTimerRef.current) {
-          clearTimeout(closeTimerRef.current);
-          closeTimerRef.current = null;
-        }
-        openMenu();
-      }}
-      onMouseLeave={() => {
-        closeTimerRef.current = setTimeout(() => {
-          if (Date.now() < suppressCloseUntilRef.current) return;
-          closeMenu();
-        }, 140);
-      }}
+      onMouseEnter={
+        hoverMenuEnabled
+          ? () => {
+              if (closeTimerRef.current) {
+                clearTimeout(closeTimerRef.current);
+                closeTimerRef.current = null;
+              }
+              openMenu();
+            }
+          : undefined
+      }
+      onMouseLeave={
+        hoverMenuEnabled
+          ? () => {
+              closeTimerRef.current = setTimeout(() => {
+                if (Date.now() < suppressCloseUntilRef.current) return;
+                closeMenu();
+              }, 140);
+            }
+          : undefined
+      }
     >
       <button
         type="button"
         className={`header-profile-trigger${isOpen ? ' is-open' : ''}`}
-        onClick={isAuthenticated ? handleProfileTriggerClick : null}
+        onClick={!hoverMenuEnabled || isAuthenticated ? handleProfileTriggerClick : null}
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
@@ -246,7 +286,7 @@ const HeaderMenu = ({ setIsModalOpen }) => {
         )}
       </button>
 
-      {isOpen && (
+      {hoverMenuEnabled && isOpen && (
         <ul className="header-menu-dropdown" role="menu">
           {isAuthenticated ? (
             <>
