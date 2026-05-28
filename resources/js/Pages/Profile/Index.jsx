@@ -538,6 +538,10 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                             <img
                               src={order.items[0].variant?.product?.image || '/img/products/default.png'}
                               className="order-image"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = '/img/products/default.png';
+                              }}
                             />
                           )}
                           <div className="order-details">

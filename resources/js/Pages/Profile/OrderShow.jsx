@@ -172,6 +172,10 @@ export default function OrderShow({ auth, order, deliveryTrack = null, documents
                                                 className="order-item-image"
                                                 src={item.variant?.product?.image || '/img/products/default.png'}
                                                 alt=""
+                                                onError={(e) => {
+                                                    e.currentTarget.onerror = null;
+                                                    e.currentTarget.src = '/img/products/default.png';
+                                                }}
                                             />
                                             <div className="order-item-info">
                                                 <div className="order-item-title">

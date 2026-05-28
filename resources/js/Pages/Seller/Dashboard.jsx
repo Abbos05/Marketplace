@@ -141,6 +141,10 @@ export default function Dashboard({ stats, recentOrders, popularProducts, salesC
                                 <img
                                     src={product.image || '/img/products/default.png'}
                                     alt={product.title}
+                                    onError={(e) => {
+                                        e.currentTarget.onerror = null;
+                                        e.currentTarget.src = '/img/products/default.png';
+                                    }}
                                 />
                                 <div>
                                     <p>{product.title}</p>

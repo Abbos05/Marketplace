@@ -123,7 +123,12 @@ export default function Index({ products, statusCounts = {}, filters = {} }) {
                                 {/* Image */}
                                 <div className="idx-card-img">
                                     {product.main_image ? (
-                                        <img src={product.main_image} alt={product.title} />
+                                        <img src={product.main_image}
+                                        onError={(e) => {
+                                            e.currentTarget.onerror = null;
+                                            e.currentTarget.src = '/img/products/default.png';
+                                        }}
+                                        alt={product.title} />
                                     ) : (
                                         <div className="idx-card-img-placeholder">Нет фото</div>
                                     )}

@@ -81,19 +81,41 @@ class DemoCatalogSeeder extends Seeder
     private function resolveCatalogImageUrls(int $sellerId, int $seq): array
     {
         $urls = [];
+        $baseImageNumber = (($seq - 1) * 3) + 1;
+
         for ($k = 1; $k <= 3; $k++) {
-            $found = null;
-            foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
-                $rel = "img/catalog/user-{$sellerId}/product-{$seq}/{$k}.{$ext}";
-                if (file_exists(public_path($rel))) {
-                    $found = '/'.$rel;
-                    break;
-                }
-            }
-            $urls[] = $found ?? self::DEFAULT_IMAGE;
+            $imageNumber = $baseImageNumber + ($k - 1);
+            $urls[] = $this->resolveSeedImageUrl($sellerId, $seq, $k, $imageNumber);
         }
 
         return $urls;
+    }
+
+    private function resolveSeedImageUrl(int $sellerId, int $seq, int $k, int $imageNumber): string
+    {
+        $exts = ['jpg', 'jpeg', 'png', 'webp'];
+        $relativePatterns = [
+            // Preferred location: public/img/products/{user_id}/img_{i}.{ext}
+            "img/products/{$sellerId}/img_{$imageNumber}.%s",
+            // Fallback for per-product numbering from 1.
+            "img/products/{$sellerId}/img_{$k}.%s",
+            // Defensive fallback for typo-ed folder in existing projects.
+            "img/prodducts/{$sellerId}/img_{$imageNumber}.%s",
+            "img/prodducts/{$sellerId}/img_{$k}.%s",
+        ];
+
+        foreach ($relativePatterns as $pattern) {
+            foreach ($exts as $ext) {
+                $rel = sprintf($pattern, $ext);
+                if (file_exists(public_path($rel))) {
+                    return '/'.$rel;
+                }
+            }
+        }
+
+        // Keep a stable "future" path so adding files later starts working
+        // without reseeding. Frontend falls back to default image on 404.
+        return "/img/products/{$sellerId}/img_{$imageNumber}.jpg";
     }
 
     private function seedAttributes(Product $product, int $categoryId, array $attrs): void

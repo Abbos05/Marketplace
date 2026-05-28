@@ -153,9 +153,13 @@ export default function ProductCard({ product, hideFooter = false }) {
                     role="presentation"
                 >
                     <img
-                        src={imgSrc}
+                        src={imgSrc} 
                         alt={product.title ?? 'Товар'}
                         className="products__image"
+                        onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/img/products/default.png';
+                        }}
                     />
                     {showPromoBadges && (
                         <div className="product__img-stock">

@@ -1375,6 +1375,10 @@ export default function UserDetail({
                                         src={p.image || '/img/products/default.png'}
                                         className="adm-product-admin-img"
                                         alt={p.name}
+                                        onError={(e) => {
+                                            e.currentTarget.onerror = null;
+                                            e.currentTarget.src = '/img/products/default.png';
+                                        }}
                                     />
                                     <div className="adm-product-admin-info">
                                         <div className="adm-product-name">

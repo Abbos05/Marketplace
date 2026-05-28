@@ -191,9 +191,13 @@ export default function AdminProducts({ auth, products = [], pagination = {}, se
                                 return (
                                 <div key={p.id} className="adm-product-admin-card">
                                     <img
-                                        src={p.image || '/img/products/default.png'}
+                                        src={p.image }
                                         className="adm-product-admin-img"
                                         alt={p.title}
+                                        onError={(e) => {
+                                            e.currentTarget.onerror = null;
+                                            e.currentTarget.src = '/img/products/default.png';
+                                        }}
                                     />
                                     <div className="adm-product-admin-info">
                                         <div className="adm-product-name">

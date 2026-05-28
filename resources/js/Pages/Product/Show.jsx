@@ -96,6 +96,11 @@ function formatReviewsCountRu(n) {
   return `${num} отзывов`;
 }
 
+function setDefaultProductImage(event) {
+  event.currentTarget.onerror = null;
+  event.currentTarget.src = '/img/products/default.png';
+}
+
 export default function ProductShow({
   auth,
   product,
@@ -405,7 +410,7 @@ export default function ProductShow({
             <div className="product-page__main">
               <div className="product-page__gallery">
                 <div className="product-page__main-image">
-                  <img src={activeImage} alt={product.title} />
+                  <img src={activeImage} alt={product.title} onError={setDefaultProductImage} />
                 </div>
               </div>
 
@@ -439,6 +444,7 @@ export default function ProductShow({
                             : 'product-page__thumb'
                         }
                         onClick={() => setActiveImage(src)}
+                        onError={setDefaultProductImage}
                       />
                     ))}
                   </div>
@@ -465,6 +471,7 @@ export default function ProductShow({
                               className="product-page__variant-chip-image"
                               src={row.image || '/img/products/default.png'}
                               alt=""
+                              onError={setDefaultProductImage}
                             />
                             <span className="product-page__variant-chip-meta">
                               <span className="product-page__variant-chip-label">{row.label}</span>
@@ -721,7 +728,12 @@ export default function ProductShow({
 
               <div className="product-page__seller">
                 <div className="product-page__seller-header">
-                  <img src={sellerAvatar} alt="" />
+                  <img src={sellerAvatar} 
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/img/profiles/profile.png';
+                  }}
+                  alt="" />
                   <h2 className="product-page__seller-name">
                   {seller?.name?.split(' ')[0] || 'Продавец'}
                   {seller?.verified ? (
