@@ -240,9 +240,9 @@ function RevenueExportBar() {
             <button type="button" onClick={downloadCsv} className="adm-action-btn adm-btn-approve adm-btn-big">
                 Скачать CSV
             </button>
-            <button type="button" onClick={downloadPng} className="adm-action-btn adm-btn-view adm-btn-big" disabled={pngLoading}>
+            {/* <button type="button" onClick={downloadPng} className="adm-action-btn adm-btn-view adm-btn-big" disabled={pngLoading}>
                 {pngLoading ? 'График…' : 'Скачать график (PNG)'}
-            </button>
+            </button> */}
             <button type="button" onClick={downloadPdf} className="adm-action-btn adm-btn-big">
                 Скачать PDF
             </button>
