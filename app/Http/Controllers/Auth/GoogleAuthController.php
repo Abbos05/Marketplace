@@ -58,7 +58,7 @@ class GoogleAuthController extends Controller
                 $user = User::create($userData);
             }
 
-            Auth::login($user);
+            Auth::login($user, true);
             $request->session()->regenerate();
             app(LoginHistoryRecorder::class)->record($request, $user, 'google');
             return redirect('/profile')->with('success', 'Успешный вход через Google');

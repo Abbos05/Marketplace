@@ -13,6 +13,7 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
   const [phoneError, setPhoneError] = useState('');
   const [phoneInfo, setPhoneInfo] = useState('');
   const [phoneProcessing, setPhoneProcessing] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const { data, setData, post, processing, errors, reset } = useForm({
     name:      auth?.user?.name      || '',
@@ -33,7 +34,16 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
     setPhoneStep('phone');
     setPhoneError('');
     setPhoneInfo('');
+    setResendCooldown(0);
   }, [isOpen, auth?.user?.name, auth?.user?.last_name, auth?.user?.email]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const timer = window.setTimeout(() => {
+      setResendCooldown((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
 
   const csrf = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 
@@ -94,6 +104,11 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
   };
 
   const sendPhoneCode = async () => {
+    if (resendCooldown > 0) {
+      setPhoneInfo(`Повторная отправка будет доступна через ${resendCooldown} с.`);
+      return false;
+    }
+
     const normalized = normalizePhone(phone);
     if (!/^7\d{10}$/.test(normalized)) {
       setPhoneError('Введите полный номер телефона в формате +7 XXX XXX XX XX');
@@ -105,9 +120,11 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
     setPhoneInfo('');
 
     try {
-      await apiPost('/profile/phone/send-code', { phone: normalized });
+      const payload = await apiPost('/profile/phone/send-code', { phone: normalized });
       setPhoneStep('code');
-      setPhoneInfo('Код отправлен в уведомления. Откройте «Сообщения» → «Уведомления».');
+      const cooldownSeconds = Number(payload?.cooldown_seconds || 60);
+      setResendCooldown(cooldownSeconds);
+      setPhoneInfo(payload?.message || `Код отправлен. Повторная отправка будет доступна через ${cooldownSeconds} секунд.`);
       return true;
     } catch (error) {
       setPhoneError(error?.errors?.phone?.[0] || error?.message || 'Не удалось отправить код.');
@@ -242,8 +259,13 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
                     className="phone-modal-input phone-auth-code-input"
                     maxLength={6}
                   />
-                  <button type="button" className="phone-auth-resend" onClick={sendPhoneCode} disabled={phoneProcessing}>
-                    Отправить код ещё раз
+                  <button
+                    type="button"
+                    className={`phone-auth-resend${resendCooldown > 0 ? ' is-waiting' : ''}`}
+                    onClick={sendPhoneCode}
+                    disabled={phoneProcessing || resendCooldown > 0}
+                  >
+                    {resendCooldown > 0 ? `Отправить повторно через ${resendCooldown} с` : 'Отправить код ещё раз'}
                   </button>
                 </div>
               )}

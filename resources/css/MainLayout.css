@@ -2021,14 +2021,15 @@ main {
 .phone-auth-back {
   background: none;
   border: none;
-  color: #64748b;
-  font-size: var(--size-l);
+  color: var(--background);
+  font-size: var(--size-m);
   font-weight: var(--fw-600);
   cursor: pointer;
   padding: 0 0 16px;
   display: block;
   transition: color 0.2s;
   font-family: inherit;
+  text-align: left;
 }
 
 .phone-auth-back:hover {
@@ -2084,7 +2085,7 @@ main {
 
 /* Поле ввода кода — крупный центрированный шрифт */
 .phone-auth-code-input {
-  font-size: 28px !important;
+  font-size: 24px !important;
   font-weight: 700 !important;
   letter-spacing: 12px !important;
   text-align: center !important;

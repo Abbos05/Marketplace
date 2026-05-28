@@ -338,7 +338,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
   };
 
   const handleResendSms = async () => {
-    if (resendCooldown > 0 || loading) return;
+    if ((smsFallbackActive && resendCooldown > 0) || loading) return;
     setLoading(true);
     setError('');
     setActionMessage('');
@@ -350,7 +350,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
         setSmsFallbackActive(true);
         setCode('');
         setActionMessage(
-          `Код отправлен по SMS на ${data.masked_phone || formatPhone(phone)}. Тестовый код: 000000`
+          `Код отправлен по SMS на ${data.masked_phone || formatPhone(phone)}.`
         );
         startCooldown(data.cooldown_seconds ?? 60);
         persistFlow({
@@ -398,14 +398,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
   const showSmsFallbackButton =
     !phoneVerified
     && deliveryChannel === 'notification'
-    && !smsFallbackActive
-    && resendCooldown === 0;
-
-  const showSmsCooldownHint =
-    !phoneVerified
-    && deliveryChannel === 'notification'
-    && !smsFallbackActive
-    && resendCooldown > 0;
+    && !smsFallbackActive;
 
   const smsFallbackButtonLabel = () => {
     if (loading) return 'Отправляем SMS...';
@@ -640,12 +633,6 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
                   >
                     {smsFallbackButtonLabel()}
                   </button>
-                )}
-
-                {smsFallbackActive && resendCooldown > 0 && (
-                  <p className="phone-auth-wait-hint">
-                    SMS уже отправлено. Повторная отправка через {resendCooldown} с
-                  </p>
                 )}
 
                 <button

@@ -60,7 +60,7 @@ export default function Partner({ auth, pendingApplication = null, needsVerifica
 
                 {auth?.user && roleBlocked && role !== 'user' && !needsVerification && (
                     <div className="pickup-cooperate__card pickup-cooperate__card--pending">
-                        <h2>Другая роль на аккаунте</h2>
+                        <h3>Другая роль на аккаунте</h3>
                         <p>
                             {role === 'seller' && 'Вы уже зарегистрированы как продавец. Продавец и оператор ПВЗ — разные роли: завершите работу компании или используйте отдельный аккаунт.'}
                             {role === 'pvz' && 'У вас уже открыт пункт выдачи. Управление — в панели ПВЗ.'}

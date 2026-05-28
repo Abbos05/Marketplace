@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Illuminate\Support\Facades\Auth;
 use Closure;
-use Inertia\Inertia;
 use Illuminate\Http\Request;
 
 class CheckRole
@@ -22,7 +21,7 @@ class CheckRole
                 return $next($request);
             }
 
-            return Inertia::render('errors.403');
+            abort(403);
         }
 
         return $next($request);

@@ -9,7 +9,6 @@ export default function ProfileEditModal({ auth, isOpen, onClose }) {
   const { data, setData, post, processing, errors, reset } = useForm({
     name: '',
     email: '',
-    description: '',
     phone: null,
     avatar: null,
     current_password: '',
@@ -22,7 +21,6 @@ export default function ProfileEditModal({ auth, isOpen, onClose }) {
     setData({
       name: auth.user.name || '',
       email: auth.user.email || '',
-      description: auth.user.description || '',
       phone: auth.user.phone || null,
       current_password: '',
       password: '',
@@ -47,7 +45,6 @@ export default function ProfileEditModal({ auth, isOpen, onClose }) {
     const formData = new FormData();
     formData.append('name', data.name);
     formData.append('email', data.email);
-    formData.append('description', data.description || '');
 
     // Отправляем телефон ТОЛЬКО если пользователь его трогал
     if (phoneTouched && data.phone) {
@@ -219,22 +216,6 @@ export default function ProfileEditModal({ auth, isOpen, onClose }) {
                 className="profile-modal-input"
                 placeholder="••••••••"
               />
-            </div>
-
-            {/* Описание */}
-            <div className="profile-modal-form-item">
-              <label className="profile-modal-label">
-                Описание <span className="profile-modal-hint">({data.description?.length || 0}/175)</span>
-              </label>
-              <textarea
-                rows="4"
-                value={data.description}
-                onChange={(e) => setData('description', e.target.value.slice(0, 175))}
-                className="profile-modal-input"
-                placeholder="Расскажите о себе..."
-                maxLength={175}
-              />
-              {errors.description && <p className="profile-modal-error">{errors.description}</p>}
             </div>
 
             {/* Кнопка */}

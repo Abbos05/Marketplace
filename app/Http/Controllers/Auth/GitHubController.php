@@ -53,7 +53,7 @@ class GitHubController extends Controller
             $user = User::create($userData);
         }
 
-        Auth::login($user);
+        Auth::login($user, true);
         $request->session()->regenerate();
         app(LoginHistoryRecorder::class)->record($request, $user, 'github');
 

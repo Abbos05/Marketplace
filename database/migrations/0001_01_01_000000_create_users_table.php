@@ -20,7 +20,6 @@ return new class extends Migration
             $table->string('password', 255);
             $table->string('name', 80)->nullable();
             $table->string('last_name', 80)->nullable();
-            $table->text('description')->nullable();
             $table->enum('role', ['user', 'seller', 'admin', 'moderator', 'pvz'])->default('user');
             $table->string('avatar', 255)->nullable();
             $table->boolean('is_active')->default(true);
@@ -29,6 +28,7 @@ return new class extends Migration
             $table->date('daily_pickup_code_date')->nullable();
             $table->boolean('newPassw')->default(false);
             $table->timestamp('email_verified_at')->nullable();
+            $table->rememberToken();
             $table->softDeletes();
             $table->timestamps();
 
@@ -68,7 +68,6 @@ return new class extends Migration
             'password' => Hash::make('admin'),
             'name' => 'Администратор',
             'last_name' => 'главный',
-            'description' => 'Главный администратор проекта',
             'role' => 'admin',
             'phone' => '79959460905',
             'avatar' => null,

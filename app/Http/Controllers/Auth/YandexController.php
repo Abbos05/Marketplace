@@ -64,7 +64,7 @@ class YandexController extends Controller
             $user->update(['phone' => $phone]);
         }
 
-        Auth::login($user);
+        Auth::login($user, true);
         $request->session()->regenerate();
         app(LoginHistoryRecorder::class)->record($request, $user, 'yandex');
 

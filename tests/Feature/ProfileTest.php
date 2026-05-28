@@ -105,7 +105,6 @@ class ProfileTest extends TestCase
 
         $profileData = [
             'name' => 'Updated Name',
-            'description' => 'Updated description',
             'email' => $user->email
         ];
 
@@ -116,7 +115,7 @@ class ProfileTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
             'name' => 'Updated Name',
-            'description' => 'Updated description'
+            'email' => $user->email,
         ]);
     }
 

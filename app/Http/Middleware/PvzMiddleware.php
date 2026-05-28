@@ -14,8 +14,6 @@ use Closure;
 
 use Illuminate\Http\Request;
 
-use Inertia\Inertia;
-
 use Symfony\Component\HttpFoundation\Response;
 
 
@@ -48,7 +46,7 @@ class PvzMiddleware
 
         if (! $user) {
 
-            return Inertia::render('errors.403');
+            abort(403);
 
         }
 
@@ -72,7 +70,7 @@ class PvzMiddleware
 
 
 
-            return Inertia::render('errors.403');
+            abort(403);
 
         }
 
@@ -80,7 +78,7 @@ class PvzMiddleware
 
         if ($user->role !== 'pvz' && ! $blockedOperator) {
 
-            return Inertia::render('errors.403');
+            abort(403);
 
         }
 

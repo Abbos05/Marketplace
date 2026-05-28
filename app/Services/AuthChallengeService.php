@@ -101,19 +101,28 @@ class AuthChallengeService
      */
     public function resendSmsWithCooldown(Request $request, LoginChallenge $challenge): array
     {
-        $remaining = $this->getCooldownRemaining($request);
-        if ($remaining > 0) {
-            return [
-                'error' => true,
-                'message' => "Подождите {$remaining} с перед повторной отправкой",
-                'cooldown_seconds' => $remaining,
-            ];
+        // Первый переход с уведомлений на SMS — без ожидания (кулдаун после уведомления на это не распространяется).
+        $isFirstSmsFallback = $challenge->channel === LoginChallenge::CHANNEL_NOTIFICATION;
+
+        if (! $isFirstSmsFallback) {
+            $remaining = $this->getCooldownRemaining($request);
+            if ($remaining > 0) {
+                return [
+                    'error' => true,
+                    'message' => "Подождите {$remaining} с перед повторной отправкой",
+                    'cooldown_seconds' => $remaining,
+                ];
+            }
         }
 
         $this->resendViaSms($challenge);
 
-        $strikes = $this->incrementSendStrike($request);
-        $cooldownSec = $this->cooldownSecondsForStrike($strikes);
+        if ($isFirstSmsFallback) {
+            $cooldownSec = (int) config('marketplace.auth.resend_cooldown_seconds', 60);
+        } else {
+            $strikes = $this->incrementSendStrike($request);
+            $cooldownSec = $this->cooldownSecondsForStrike($strikes);
+        }
         $this->applyCooldown($request, $cooldownSec);
 
         return [
@@ -270,7 +279,7 @@ class AuthChallengeService
 
         $challenge->delete();
         $this->clearPhoneAuthSession($request);
-        Auth::login($user);
+        Auth::login($user, true);
         $request->session()->regenerate();
 
         $method = $challenge->channel === LoginChallenge::CHANNEL_NOTIFICATION
@@ -408,7 +417,7 @@ class AuthChallengeService
 
         $challenge->delete();
         $this->clearPhoneAuthSession($request);
-        Auth::login($user);
+        Auth::login($user, true);
         $request->session()->regenerate();
         app(LoginHistoryRecorder::class)->record($request, $user, 'phone_password_reset');
 

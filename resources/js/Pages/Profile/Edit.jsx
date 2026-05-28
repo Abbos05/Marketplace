@@ -24,7 +24,6 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
     profession: user.profession || '',
     country: user.country || '',
     city: user.city || '',
-    description: user.description || '',
     img: null,
   });
 
@@ -51,7 +50,6 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
     formData.append('profession', profileData.profession);
     formData.append('country', profileData.country);
     formData.append('city', profileData.city);
-    formData.append('description', profileData.description);
     if (profileData.img) {
       formData.append('img', profileData.img); 
     }
@@ -333,21 +331,6 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
                           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                         />
                         {profileErrors.city && <p className="text-red-600 text-sm mt-2">{profileErrors.city}</p>}
-                      </div>
-
-                      <div>
-                        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                          Описание
-                        </label>
-                        <textarea
-                          name="description"
-                          id="description"
-                          rows="4"
-                          value={profileData.description}
-                          onChange={(e) => setProfileData('description', e.target.value)}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                        ></textarea>
-                        {profileErrors.description && <p className="text-red-600 text-sm mt-2">{profileErrors.description}</p>}
                       </div>
 
                       <div className="btn">

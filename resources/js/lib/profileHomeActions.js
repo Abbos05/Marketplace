@@ -1,10 +1,6 @@
 /**
  * Собирает подсказки для главной профиля — по приоритету, выполненные не показываются.
  */
-function hasPlainText(value) {
-  if (!value) return false;
-  return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length > 0;
-}
 
 export function buildProfileHomeActions(ctx) {
   const actions = [];
@@ -129,19 +125,6 @@ export function buildProfileHomeActions(ctx) {
       text: 'Откройте пункт выдачи ALVORA — принимайте заказы покупателей и получайте вознаграждение за выдачу.',
       cta: 'Узнать условия',
       action: { type: 'tab', tab: 'pvz' },
-    });
-  }
-
-  if (!needsProfileVerification && !hasPlainText(auth.user.description)) {
-    actions.push({
-      id: 'profile-about',
-      priority: 35,
-      tone: 'soft',
-      icon: '✏️',
-      title: 'Расскажите о себе',
-      text: 'Добавьте короткое описание в профиль — продавцы и поддержка смогут обращаться к вам по имени.',
-      cta: 'Заполнить',
-      action: { type: 'settings', section: 'personal' },
     });
   }
 

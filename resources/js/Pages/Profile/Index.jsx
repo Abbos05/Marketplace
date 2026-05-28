@@ -12,7 +12,6 @@ import DeleteAccountModal from '@/Components/Profile/DeleteAccountModal';
 import ProfileSidebar from '@/Components/Profile/ProfileSidebar';
 import ProfileHelpPanel from '@/Components/Profile/ProfileHelpPanel';
 import ProfileHomeDashboard from '@/Components/Profile/ProfileHomeDashboard';
-import RichTextEditor from '@/Components/Profile/RichTextEditor';
 import { compressAvatarImage, formatFileSize } from '@/lib/compressAvatarImage';
 import { MESSAGES_FAQ, PICKUP_FAQ, COMPANY_FAQ, PVZ_PARTNER_FAQ } from '@/lib/profileFaqContent';
 import { profileMobileTitle } from '@/lib/profileTabLabels';
@@ -129,7 +128,6 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
   const { data: profileData, setData: setProfileData, post: postProfile, processing: profileProcessing, errors: profileErrors, reset: resetProfile } = useForm({
     name:        auth.user.name        || '',
     last_name:   auth.user.last_name   || '',
-    description: auth.user.description || '',
     avatar: null,
   });
 
@@ -162,7 +160,6 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
     const formData = new FormData();
     formData.append('name',        profileData.name);
     formData.append('last_name',   profileData.last_name);
-    formData.append('description', profileData.description || '');
     if (profileData.avatar) formData.append('avatar', profileData.avatar);
     postProfile('/profile/update', {
       data: formData, forceFormData: true, preserveState: true, preserveScroll: true,
@@ -174,7 +171,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
         setMessage('Личные данные обновлены!');
       },
       onError: (errors) => {
-        const first = errors.avatar || errors.description || errors.name || errors.last_name;
+        const first = errors.avatar || errors.name || errors.last_name;
         if (first) setMessage(Array.isArray(first) ? first[0] : first);
       },
     });
@@ -255,7 +252,6 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
     if (section === 'personal') {
       setProfileData('name', auth.user.name || '');
       setProfileData('last_name', auth.user.last_name || '');
-      setProfileData('description', auth.user.description || '');
       setAvatarPreview(resolveAvatarUrl(auth.user.avatar) || '/img/profiles/profile.png');
     }
     if (section === 'contacts') {
@@ -1059,7 +1055,6 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                     <button className="settings-edit-btn" onClick={() => {
                       setProfileData('name',        auth.user.name        || '');
                       setProfileData('last_name',   auth.user.last_name   || '');
-                      setProfileData('description', auth.user.description || '');
                       setAvatarPreview(resolveAvatarUrl(auth.user.avatar) || '/img/profiles/profile.png');
                       setEditingCard('personal');
                     }}>Изменить</button>
@@ -1109,15 +1104,6 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                         />
                         {profileErrors.last_name && <p className="settings-error">{profileErrors.last_name}</p>}
                       </div>
-                    </div>
-                    <div className="settings-field">
-                      <label className="settings-label">О себе</label>
-                      <RichTextEditor
-                        value={profileData.description}
-                        onChange={(html) => setProfileData('description', html)}
-                        placeholder="Расскажите о себе: опыт, интересы, чем занимаетесь..."
-                        error={profileErrors.description}
-                      />
                     </div>
                     <div className="settings-card-actions">
                       <button type="submit" className="settings-save-btn" disabled={profileProcessing}>

@@ -377,7 +377,6 @@ class ProfileController extends Controller
             'name'      => 'nullable|string|max:50',
             'last_name' => 'nullable|string|max:50',
             'email'     => 'nullable|email|max:255|unique:users,email,' . $user->id,
-            'description' => 'nullable|string|max:4000',
             'avatar' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
             'current_password' => 'nullable|string',
             'password' => 'nullable|string|min:4|confirmed',
@@ -392,9 +391,6 @@ class ProfileController extends Controller
             'email.max' => 'Email не должен превышать 255 символов.',
             'email.unique' => 'Пользователь с таким email уже существует.',
 
-            'description.string' => 'Описание должно быть текстом.',
-            'description.max' => 'Описание слишком длинное.',
-
             'avatar.image' => 'Аватар должен быть изображением (JPG, PNG, WEBP).',
             'avatar.mimes' => 'Поддерживаются форматы JPG, PNG, WEBP и GIF.',
             'avatar.max' => 'Размер аватара не должен превышать 10 МБ.',
@@ -406,17 +402,6 @@ class ProfileController extends Controller
             'password.confirmed' => 'Подтверждение нового пароля не совпадает.',
 
         ]);
-
-        if ($request->filled('description')) {
-            try {
-                $validated['description'] = $this->sanitizeProfileDescription($request->input('description'));
-            } catch (\InvalidArgumentException $e) {
-                return back()->withErrors(['description' => $e->getMessage()]);
-            }
-        } else {
-            $validated['description'] = null;
-        }
-
     // Аватар — напрямую в public/img/avatars (не storage)
     if ($request->hasFile('avatar')) {
         $this->deleteUserAvatar($user->avatar);
@@ -486,21 +471,15 @@ class ProfileController extends Controller
             'phone.unique' => 'Этот номер телефона уже привязан к другому аккаунту.',
         ]);
 
-        $otp = app(OtpCodeGenerator::class)->real();
+        $otp = app(OtpCodeGenerator::class)->forSms();
         $request->session()->put('profile_phone_pending', $validated['phone']);
         $request->session()->put('profile_phone_otp_hash', Hash::make($otp));
         $request->session()->put('profile_phone_otp_expires', now()->addMinutes(10)->timestamp);
 
-        $request->user()->notify(new MarketplaceAlert(
-            'Код подтверждения телефона',
-            "Код для привязки номера: {$otp}. Код отображается в этом уведомлении.",
-            null,
-            NotificationCategory::AuthProfilePhone,
-        ));
-
         return response()->json([
             'success' => true,
-            'message' => 'Код отправлен в уведомления и на почту.',
+            'message' => 'Код отправлен. Повторная отправка будет доступна через 60 секунд.',
+            'cooldown_seconds' => 60,
         ]);
     }
 
@@ -728,23 +707,6 @@ class ProfileController extends Controller
         }
 
         return $phone;
-    }
-
-    private function sanitizeProfileDescription(?string $html): ?string
-    {
-        if ($html === null || trim($html) === '') {
-            return null;
-        }
-
-        $allowed = '<p><br><strong><b><em><i><u><ul><ol><li><div><span>';
-        $clean = strip_tags($html, $allowed);
-        $plain = trim(preg_replace('/\s+/u', ' ', strip_tags($clean)) ?? '');
-
-        if (mb_strlen($plain) > 500) {
-            throw new \InvalidArgumentException('Описание не должно превышать 500 символов.');
-        }
-
-        return $clean !== '' ? $clean : null;
     }
 
     private function deleteUserAvatar(?string $avatarPath): void
