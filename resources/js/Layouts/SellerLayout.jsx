@@ -26,9 +26,6 @@ function navItemActive(url, href) {
     if (href === '/seller/promocodes') {
         return url.startsWith('/seller/promocodes');
     }
-    if (href === '/seller/promotions') {
-        return url.startsWith('/seller/promotions');
-    }
     if (href === '/seller/settings') {
         return url.startsWith('/seller/settings');
     }
@@ -63,7 +60,6 @@ export default function SellerLayout({ children, title, sellerProfile = null }) 
         { label: 'Заказы', href: '/seller/orders', icon: 'orders' },
         { label: 'Статистика', href: '/seller/statistics', icon: 'statistics' },
         { label: 'Промокоды', href: '/seller/promocodes', icon: 'promocodes' },
-        { label: 'Акции', href: '/seller/promotions', icon: 'promocodes' },
         { label: 'Настройки', href: '/seller/settings', icon: 'settings' },
     ];
 

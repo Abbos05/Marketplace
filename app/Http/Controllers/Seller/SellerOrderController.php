@@ -145,7 +145,7 @@ class SellerOrderController extends Controller
             'items'         => $sellerItems->map(fn($item) => $this->formatItem($item)),
             'nextStatuses'  => array_map(
                 fn($s) => ['value' => $s, 'label' => self::STATUS_LABELS[$s] ?? $s],
-                $nextStatuses
+                $nextStatuses   
             ),
             'statusLabels'  => self::STATUS_LABELS,
         ]);
@@ -242,9 +242,12 @@ class SellerOrderController extends Controller
             }
         }
 
+        if ($request->input('format') === 'xlsx') {
+            return app(\App\Services\Excel\SellerOrdersExcelExporter::class)->download($rows);
+        }
+
         $filename = 'orders_' . now()->format('Y-m-d_H-i') . '.csv';
         $handle = fopen('php://temp', 'r+');
-        // BOM for Excel UTF-8 recognition
         fwrite($handle, "\xEF\xBB\xBF");
         foreach ($rows as $row) {
             fputcsv($handle, $row, ';');

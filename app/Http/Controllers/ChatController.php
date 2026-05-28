@@ -375,6 +375,7 @@ class ChatController extends Controller
             'seller_id'  => 'nullable|integer|exists:users,id',
             'product_id' => 'nullable|integer|exists:products,id',
             'order_id'   => 'nullable|integer|exists:orders,id',
+            'draft'      => 'nullable|string|max:500',
             'embed'      => 'nullable|boolean',
         ]);
 
@@ -402,11 +403,16 @@ class ChatController extends Controller
 
         $conversation = $this->chat->openOrCreate($payload, $user);
 
-        if ($request->boolean('embed')) {
-            return redirect()->route('messages.embed', ['conversation' => $conversation->id]);
+        $routeParams = ['conversation' => $conversation->id];
+        if (! empty($data['draft'])) {
+            $routeParams['draft'] = trim((string) $data['draft']);
         }
 
-        return redirect()->route('messages.index', ['conversation' => $conversation->id]);
+        if ($request->boolean('embed')) {
+            return redirect()->route('messages.embed', $routeParams);
+        }
+
+        return redirect()->route('messages.index', $routeParams);
     }
 
     public function storeMessage(Request $request, Conversation $conversation)
@@ -559,11 +565,22 @@ class ChatController extends Controller
     {
         $conversation->refresh()->load(['buyer', 'seller', 'product', 'order', 'latestMessage']);
 
+        $supportFilter = $this->chat->normalizeSupportFilter(
+            $request->input('filter', $request->query('filter'))
+        );
+        $adminQueueOnly = $request->boolean('admin_queue_only') && $user->isStaff();
+        $merged = $request->boolean('merged') && $user->isStaff();
         $adminQueue = $user->isStaff()
             && $conversation->type === Conversation::TYPE_SUPPORT
             && (int) $conversation->buyer_id !== (int) $user->id;
 
-        $threads = $this->chat->threadsForStaffInbox($user, $adminQueue);
+        if ($user->isStaff() && $adminQueueOnly) {
+            $threads = $this->chat->threadsFor($user, true, $supportFilter);
+        } elseif ($user->isStaff() && $merged) {
+            $threads = $this->chat->threadsForStaffMergedInbox($user, $supportFilter);
+        } else {
+            $threads = $this->chat->threadsForStaffInbox($user, $adminQueue, $supportFilter);
+        }
         $active = $this->chat->serializeThread($conversation, $user, $adminQueue);
         $messages = $this->chat->messagesPayload($conversation, $user);
 
@@ -571,6 +588,7 @@ class ChatController extends Controller
             'threads' => $threads->values()->all(),
             'activeConversation' => $active,
             'messages' => $messages,
+            'supportFilter' => $supportFilter,
             'chatUnreadCount' => $this->chat->unreadCountFor($user),
             'supportInboxUnreadCount' => $this->chat->supportInboxUnreadFor($user),
             'notificationsFeed' => $this->notificationFeed->feedFor($user),

@@ -62,6 +62,10 @@ return [
         'active_session_threshold_minutes' => (int) env('AUTH_ACTIVE_SESSION_THRESHOLD_MINUTES', 30),
         'dev_otp' => env('AUTH_DEV_OTP', '000000'),
         'resend_cooldown_seconds' => (int) env('AUTH_RESEND_COOLDOWN_SECONDS', 60),
+        // Имя провайдера (sms.ru, twilio, …). Пока пусто — SMS не уходит, вход по телефону без кода (кроме 2FA и уведомлений).
+        'sms_provider' => env('AUTH_SMS_PROVIDER'),
+        // Принудительно требовать OTP при входе по SMS даже без провайдера (для отладки).
+        'sms_login_otp_required' => filter_var(env('AUTH_SMS_LOGIN_OTP_REQUIRED', false), FILTER_VALIDATE_BOOL),
     ],
 
     'support' => [

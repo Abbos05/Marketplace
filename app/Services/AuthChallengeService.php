@@ -151,6 +151,57 @@ class AuthChallengeService
     }
 
     /**
+     * Нужен ли шаг ввода OTP при входе.
+     * Только если код уходит в уведомления (сессия на другом устройстве) или включён SMS-провайдер.
+     * 2FA (пароль) — отдельный шаг, без подтверждения номера по SMS.
+     */
+    public function requiresLoginOtp(User $user, string $channel): bool
+    {
+        if ($channel === LoginChallenge::CHANNEL_NOTIFICATION) {
+            return true;
+        }
+
+        return $this->isSmsLoginOtpEnforced();
+    }
+
+    public function isSmsLoginOtpEnforced(): bool
+    {
+        if (filter_var(config('marketplace.auth.sms_login_otp_required', false), FILTER_VALIDATE_BOOL)) {
+            return true;
+        }
+
+        return filled(config('marketplace.auth.sms_provider'));
+    }
+
+    /**
+     * Пропуск OTP: сразу вход или только пароль (2FA). Номер подтверждается позже в профиле.
+     *
+     * @return array{success: bool, requires_password?: bool, challenge_id?: string, message?: string, redirect?: string}|null
+     */
+    public function tryLoginWithoutOtp(Request $request, LoginChallenge $challenge): ?array
+    {
+        $user = $challenge->user;
+
+        if ($this->requiresLoginOtp($user, $challenge->channel)) {
+            return null;
+        }
+
+        $challenge->update(['phone_verified_at' => now()]);
+
+        if (! $user->newPassw) {
+            return [
+                'success' => true,
+                'requires_password' => true,
+                'challenge_id' => $challenge->id,
+            ];
+        }
+
+        $request->attributes->set('phone_login_method', 'phone_without_otp');
+
+        return $this->completeLogin($request, $challenge->fresh());
+    }
+
+    /**
      * @return array{challenge: LoginChallenge, code: string}
      */
     public function createLoginChallenge(User $user, string $phone, ?string $forceChannel = null): array
@@ -158,6 +209,7 @@ class AuthChallengeService
         $this->invalidateActiveChallenges($user, LoginChallenge::PURPOSE_LOGIN);
 
         $channel = $forceChannel ?? $this->detectDeliveryChannel($user);
+        $requiresOtp = $this->requiresLoginOtp($user, $channel);
         $code = $channel === LoginChallenge::CHANNEL_NOTIFICATION
             ? $this->otp->real()
             : $this->otp->forSms();
@@ -172,7 +224,9 @@ class AuthChallengeService
             'expires_at' => now()->addMinutes($ttl),
         ]);
 
-        $this->deliverCode($user, $phone, $code, $channel);
+        if ($requiresOtp) {
+            $this->deliverCode($user, $phone, $code, $channel);
+        }
 
         return ['challenge' => $challenge, 'code' => $code];
     }
@@ -282,12 +336,17 @@ class AuthChallengeService
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        $method = $challenge->channel === LoginChallenge::CHANNEL_NOTIFICATION
-            ? 'phone_otp_notification'
-            : 'phone_otp';
+        $method = $request->attributes->get('phone_login_method');
+        if (! is_string($method) || $method === '') {
+            $method = $challenge->channel === LoginChallenge::CHANNEL_NOTIFICATION
+                ? 'phone_otp_notification'
+                : 'phone_otp';
 
-        if (! $user->newPassw) {
-            $method = 'phone_otp_2fa';
+            if (! $user->newPassw) {
+                $method = $challenge->channel === LoginChallenge::CHANNEL_NOTIFICATION
+                    ? 'phone_otp_2fa'
+                    : 'phone_password_2fa';
+            }
         }
 
         app(LoginHistoryRecorder::class)->record($request, $user, $method);

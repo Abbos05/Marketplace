@@ -26,7 +26,6 @@ export default function Create({ categories }) {
     const [step, setStep] = useState(1);
     const [selectedParent, setSelectedParent] = useState(null);
     const [selectedCategory, setSelectedCategory] = useState(null);
-    const [galleryPreview, setGalleryPreview] = useState([]);
     const [errors, setErrors] = useState({});
     const [shake, setShake] = useState(false);
     const [showError, setShowError] = useState(false);
@@ -44,11 +43,11 @@ export default function Create({ categories }) {
                 options: {},
                 price: '',
                 stock: '',
-                image: null,
-                imagePreview: null,
+                galleryImages: [],
+                galleryPreviews: [],
+                mainImageIndex: 0,
             },
         ],
-        images: [],
     });
 
     /* Multipart: variants/attributes уходят JSON-строками. transform регистрируем один раз при монтировании. */
@@ -59,18 +58,24 @@ export default function Create({ categories }) {
                 category_id: d.category_id === '' || d.category_id == null ? '' : String(d.category_id),
                 short_description: d.short_description,
                 description: d.description,
-                // image / imagePreview не входят в JSON — они идут как отдельные файлы
                 variants_json: JSON.stringify(
-                    d.variants.map(({ image, imagePreview, ...v }) => v),
+                    d.variants.map(
+                        ({
+                            galleryImages,
+                            galleryPreviews,
+                            ...v
+                        }) => ({
+                            ...v,
+                            main_image_key: `new:${v.mainImageIndex ?? 0}`,
+                        }),
+                    ),
                 ),
                 attributes_json: JSON.stringify(d.attributes ?? {}),
-                images: d.images ?? [],
             };
-            // Фото вариантов — отдельные поля variant_image_0, variant_image_1, ...
             d.variants.forEach((v, i) => {
-                if (v.image) {
-                    payload[`variant_image_${i}`] = v.image;
-                }
+                (v.galleryImages ?? []).forEach((img, imgIndex) => {
+                    payload[`variant_gallery_${i}_${imgIndex}`] = img;
+                });
             });
             return payload;
         });
@@ -147,9 +152,9 @@ export default function Create({ categories }) {
                             `Выберите «${attr.name}» для варианта ${idx + 1}`;
                     }
                 });
-                if (!variant.image) {
+                if ((variant.galleryImages ?? []).length < 1) {
                     newErrors[`variant_${idx}_image`] =
-                        `Загрузите фото ${hasVariants ? `варианта ${idx + 1}` : 'товара'}`;
+                        `Загрузите фото для ${hasVariants ? `варианта ${idx + 1}` : 'товара'}`;
                 }
             });
         }
@@ -199,8 +204,9 @@ export default function Create({ categories }) {
                 options: {},
                 price: '',
                 stock: '',
-                image: null,
-                imagePreview: null,
+                galleryImages: [],
+                galleryPreviews: [],
+                mainImageIndex: 0,
             },
         ]);
         setErrors((e) => ({ ...e, category: undefined }));
@@ -225,8 +231,9 @@ export default function Create({ categories }) {
                 options: {},
                 price: '',
                 stock: '',
-                image: null,
-                imagePreview: null,
+                galleryImages: [],
+                galleryPreviews: [],
+                mainImageIndex: 0,
             },
         ]);
     };
@@ -242,11 +249,13 @@ export default function Create({ categories }) {
     const updateVariant = (index, field, value) => {
         const variants = data.variants.map((v, i) => {
             if (i !== index) return v;
-            if (field === 'image') {
+            if (field === 'galleryImages') {
+                const files = Array.from(value || []).slice(0, 10);
                 return {
                     ...v,
-                    image: value,
-                    imagePreview: value ? URL.createObjectURL(value) : null,
+                    galleryImages: files,
+                    galleryPreviews: files.map((file) => URL.createObjectURL(file)),
+                    mainImageIndex: Math.min(v.mainImageIndex ?? 0, Math.max(files.length - 1, 0)),
                 };
             }
             return { ...v, [field]: value };
@@ -268,12 +277,6 @@ export default function Create({ categories }) {
             };
         });
         setData('variants', variants);
-    };
-
-    const setGalleryImages = (files) => {
-        const list = Array.from(files || []).slice(0, 10);
-        setData('images', list);
-        setGalleryPreview(list.map((image) => URL.createObjectURL(image)));
     };
 
     const flattenServerErrors = (err) => {
@@ -671,27 +674,46 @@ export default function Create({ categories }) {
 
                                     <div className="form-group">
                                         <label>
-                                            Фото {hasVariants ? 'этого варианта' : 'товара'}{' '}
-                                            <span className="required">*</span>
+                                            Фото варианта (до 10) <span className="required">*</span>
                                         </label>
                                         <input
                                             type="file"
+                                            multiple
                                             accept="image/*"
                                             onChange={(e) =>
-                                                updateVariant(index, 'image', e.target.files?.[0] ?? null)
+                                                updateVariant(
+                                                    index,
+                                                    'galleryImages',
+                                                    e.target.files ?? [],
+                                                )
                                             }
                                         />
+                                        <p className="builder-hint">Выберите главное фото кликом по превью.</p>
                                         {errors[`variant_${index}_image`] && (
                                             <div className="error-message">
                                                 {errors[`variant_${index}_image`]}
                                             </div>
                                         )}
-                                        {variant.imagePreview && (
-                                            <img
-                                                src={variant.imagePreview}
-                                                className="variant-img-preview"
-                                                alt=""
-                                            />
+                                        {(variant.galleryPreviews ?? []).length > 0 && (
+                                            <div className="gallery-preview">
+                                                {(variant.galleryPreviews ?? []).map((src, imgIndex) => (
+                                                    <img
+                                                        key={src}
+                                                        src={src}
+                                                        alt=""
+                                                        onClick={() =>
+                                                            updateVariant(index, 'mainImageIndex', imgIndex)
+                                                        }
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            outline:
+                                                                (variant.mainImageIndex ?? 0) === imgIndex
+                                                                    ? '3px solid #4f46e5'
+                                                                    : 'none',
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
 
@@ -785,9 +807,9 @@ export default function Create({ categories }) {
                                         : 'Категория не выбрана'}
                                 </h2>
                             </div>
-                            <h2>Дополнительные фото (необязательно)</h2>
+                            <h2>Проверьте варианты и сохраните товар</h2>
                             <p className="builder-hint">
-                                Основное фото задаётся у каждого варианта на предыдущем шаге. Здесь можно добавить общую галерею для карточки.
+                                Основные и дополнительные фото теперь задаются отдельно у каждого варианта на предыдущем шаге.
                             </p>
 
                             {hasBannerErrors && (
@@ -806,21 +828,6 @@ export default function Create({ categories }) {
                                     </ul>
                                 </div>
                             )}
-
-                            <div className="image-box">
-                                <label>Дополнительные фото (до 10 шт)</label>
-                                <input
-                                    type="file"
-                                    multiple
-                                    accept="image/*"
-                                    onChange={(e) => setGalleryImages(e.target.files)}
-                                />
-                                <div className="gallery-preview">
-                                    {galleryPreview.map((src, i) => (
-                                        <img key={src} src={src} alt={`Превью ${i + 1}`} />
-                                    ))}
-                                </div>
-                            </div>
 
                             <button type="submit" className="submit-btn" disabled={processing}>
                                 {processing ? 'Создание...' : 'Создать товар'}

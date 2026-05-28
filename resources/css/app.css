@@ -54,6 +54,10 @@
 
   --trans-2: 0.2s;
   --trans-3: 0.3s;
+
+  --select-chevron-size: 12px;
+  --select-chevron-offset: 14px;
+  --select-chevron-color: #64748b;
 }
 
 html {
@@ -98,6 +102,26 @@ textarea {
   line-height: normal !important;
   font-feature-settings: normal !important;
   font-variation-settings: normal !important;
+}
+
+/* Все нативные select: своя стрелка, чуть отступ от правого края */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  padding-right: calc(var(--select-chevron-offset) + var(--select-chevron-size) + 10px) !important;
+  background-repeat: no-repeat;
+  background-position: right var(--select-chevron-offset) center;
+  background-size: var(--select-chevron-size);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+select{
+  transition: all 0.3s;
+}
+select:hover {
+  background-color: #f5f7fa;
 }
 
 img,

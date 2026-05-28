@@ -375,7 +375,7 @@
     white-space: nowrap;
 }
 .adm-action-btn:hover { opacity: 0.82; }
-.adm-btn-view    { background: rgba(99,102,241,0.12); color: var(--background); }
+.adm-btn-view    { background: rgba(239,68,68,0.1); color: var(--background); }
 .adm-btn-approve { background: rgba(34,197,94,0.12);  color: #16a34a; }
 .adm-btn-reject  { background: rgba(239,68,68,0.1);   color: #dc2626; border: 1px solid rgba(239,68,68,0.25); }
 .adm-btn-block   { background: rgba(239,68,68,0.1);   color: #dc2626; }
@@ -1066,7 +1066,28 @@
 }
 
 /* Chart card */
+.adm-chart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.adm-chart-period {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.adm-chart-card--loading {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
 .adm-chart-card {
+    margin-top: 20px;
     background: rgba(255,255,255,0.9);
     border-radius: 16px;
     border: 1px solid var(--border, #e2e8f0);

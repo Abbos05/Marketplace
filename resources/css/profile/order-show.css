@@ -280,6 +280,7 @@
         background: #fef2f2;
         color: #b91c1c;
         border: 1px solid #fecaca;
+        margin-bottom: 35px;
     }
 
     .pickup-code {
@@ -1081,12 +1082,15 @@
     background: #fef2f2;
     border: 1px solid #fca5a5;
     color: #b91c1c;
+    margin-bottom: 35px;
+
 }
 
 .order-item-review {
     margin-top: 14px;
     padding-top: 14px;
     border-top: 1px dashed #e2e8f0;
+    width: 100%;
 }
 
 .order-item-review__hint {

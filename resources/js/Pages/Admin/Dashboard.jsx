@@ -53,7 +53,20 @@ function timeAgo(iso) {
     return `${Math.floor(diff / 86400)} д назад`;
 }
 
-function RevenueChart({ data = [], chartId = 'adm-revenue-chart-svg' }) {
+function formatChartTick(d, granularity = 'day') {
+    if (d.label) return d.label;
+    if (!d.date) return '';
+    const date = new Date(`${d.date}T12:00:00`);
+    if (Number.isNaN(date.getTime())) return d.date;
+    if (granularity === 'year') return String(date.getFullYear());
+    if (granularity === 'month') {
+        const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+        return `${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+    return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+}
+
+function RevenueChart({ data = [], chartId = 'adm-revenue-chart-svg', rangeLabel = '', periodLabel = '', granularity = 'day' }) {
     const width  = 720;
     const height = 220;
     const padL   = 50;
@@ -74,13 +87,16 @@ function RevenueChart({ data = [], chartId = 'adm-revenue-chart-svg' }) {
 
     const total = data.reduce((acc, d) => acc + Number(d.revenue || 0), 0);
     const orders = data.reduce((acc, d) => acc + Number(d.count || 0), 0);
+    const revenueCaption = rangeLabel
+        ? `Выручка · ${rangeLabel}${periodLabel ? ` (${periodLabel})` : ''}`
+        : 'Выручка за период';
 
     return (
         <div className="adm-chart-wrap">
             <div className="adm-chart-summary">
                 <div className="adm-chart-summary-block">
                     <div className="adm-chart-summary-value">{total.toLocaleString('ru-RU')} ₽</div>
-                    <div className="adm-chart-summary-label">Выручка за 30 дней</div>
+                    <div className="adm-chart-summary-label">{revenueCaption}</div>
                 </div>
                 <div className="adm-chart-summary-block">
                     <div className="adm-chart-summary-value">{orders.toLocaleString('ru-RU')}</div>
@@ -94,7 +110,6 @@ function RevenueChart({ data = [], chartId = 'adm-revenue-chart-svg' }) {
                 </div>
             </div>
             <svg id={chartId} className="adm-chart-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
-                {/* Y axis grid + labels */}
                 {yLabels.map((v, i) => {
                     const y = padT + innerH - (innerH * i) / yTicks;
                     return (
@@ -107,16 +122,14 @@ function RevenueChart({ data = [], chartId = 'adm-revenue-chart-svg' }) {
                     );
                 })}
 
-                {/* Bars */}
                 {data.map((d, i) => {
                     const v = Number(d.revenue) || 0;
                     const h = (v / maxRevenue) * innerH;
                     const x = padL + i * barW + 1.5;
                     const y = padT + innerH - h;
-                    const date = new Date(d.date);
-                    const label = `${date.getDate().toString().padStart(2,'0')}.${(date.getMonth()+1).toString().padStart(2,'0')}`;
+                    const label = formatChartTick(d, granularity);
                     return (
-                        <g key={d.date}>
+                        <g key={`${d.date}-${i}`}>
                             <rect
                                 x={x}
                                 y={y}
@@ -143,110 +156,126 @@ function RevenueChart({ data = [], chartId = 'adm-revenue-chart-svg' }) {
     );
 }
 
-function drawChartToCanvas(data) {
-    const width = 900;
-    const height = 320;
-    const padL = 56;
-    const padR = 16;
-    const padT = 24;
-    const padB = 40;
-    const innerW = width - padL - padR;
-    const innerH = height - padT - padB;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-    if (!data.length) return canvas;
+const CHART_PRESETS = [
+    { key: '7d', label: '7 дн.' },
+    { key: '30d', label: '30 дн.' },
+    { key: 'month', label: 'Месяц' },
+    { key: 'year', label: 'Год' },
+    { key: 'all', label: 'Всё время' },
+];
 
-    const maxRevenue = Math.max(1, ...data.map((d) => Number(d.revenue) || 0));
-    const barW = innerW / data.length;
-    ctx.strokeStyle = '#e5e7eb';
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '12px sans-serif';
-    for (let i = 0; i <= 4; i++) {
-        const y = padT + innerH - (innerH * i) / 4;
-        ctx.beginPath();
-        ctx.moveTo(padL, y);
-        ctx.lineTo(width - padR, y);
-        ctx.stroke();
-    }
-    data.forEach((d, i) => {
-        const v = Number(d.revenue) || 0;
-        const h = (v / maxRevenue) * innerH;
-        const x = padL + i * barW + 2;
-        const y = padT + innerH - h;
-        ctx.fillStyle = '#2563eb';
-        ctx.fillRect(x, y, Math.max(2, barW - 4), h);
-    });
-    return canvas;
-}
-
-function RevenueExportBar() {
+function OverviewRevenueSection({ initialChart = [] }) {
     const today = new Date().toISOString().slice(0, 10);
     const monthAgo = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
-    const [from, setFrom]   = useState(monthAgo);
-    const [to, setTo]       = useState(today);
+    const [from, setFrom] = useState(monthAgo);
+    const [to, setTo] = useState(today);
     const [status, setStatus] = useState('paid');
-    const [pngLoading, setPngLoading] = useState(false);
+    const [period, setPeriod] = useState('30d');
+    const [chartData, setChartData] = useState(initialChart);
+    const [chartMeta, setChartMeta] = useState({ range_label: '30 дней', period_label: 'по дням', granularity: 'day' });
+    const [chartLoading, setChartLoading] = useState(false);
 
-    const query = () => new URLSearchParams({ from, to, status }).toString();
-
-    const downloadCsv = () => {
-        window.location.href = `/admin/reports/revenue?${query()}`;
+    const exportQuery = () => {
+        const params = new URLSearchParams({ from, to, status });
+        if (period) params.set('period', period);
+        return params.toString();
     };
 
-    const downloadPdf = () => {
-        window.location.href = `/admin/reports/revenue/pdf?${query()}`;
-    };
-
-    const downloadPng = async () => {
-        setPngLoading(true);
+    const loadChart = useCallback(async () => {
+        setChartLoading(true);
         try {
-            const res = await fetch(`/admin/reports/revenue/chart?from=${from}&to=${to}`, {
+            const params = new URLSearchParams();
+            if (period) {
+                params.set('period', period);
+            } else {
+                params.set('from', from);
+                params.set('to', to);
+            }
+            const res = await fetch(`/admin/reports/revenue/chart?${params}`, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
             const json = await res.json();
-            const canvas = drawChartToCanvas(json.data ?? []);
-            const url = canvas.toDataURL('image/png');
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `revenue_chart_${from}_${to}.png`;
-            a.click();
+            setChartData(json.data ?? []);
+            setChartMeta({
+                range_label: json.range_label ?? '',
+                period_label: json.period_label ?? '',
+                granularity: json.granularity ?? 'day',
+            });
+            if (json.from) setFrom(json.from);
+            if (json.to) setTo(json.to);
         } catch {
-            alert('Не удалось сформировать график');
+            setChartData([]);
         } finally {
-            setPngLoading(false);
+            setChartLoading(false);
         }
-    };
+    }, [from, to, period]);
+
+    useEffect(() => {
+        loadChart();
+    }, [loadChart]);
+
+    const applyPreset = (key) => setPeriod(key);
+    const onFromChange = (value) => { setPeriod(''); setFrom(value); };
+    const onToChange = (value) => { setPeriod(''); setTo(value); };
 
     return (
-        <div className="adm-export-bar">
-            <label className="adm-export-field">
-                <span>С</span>
-                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="adm-date-input" />
-            </label>
-            <label className="adm-export-field">
-                <span>По</span>
-                <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="adm-date-input" />
-            </label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="adm-status-select">
-                <option value="paid">Успешные заказы</option>
-                <option value="all">Все заказы</option>
-                <option value="CANCELED">Только отменённые</option>
-                <option value="REFUSED">Только отказы от получения</option>
-            </select>
-            <button type="button" onClick={downloadCsv} className="adm-action-btn adm-btn-approve adm-btn-big">
-                Скачать CSV
-            </button>
-            {/* <button type="button" onClick={downloadPng} className="adm-action-btn adm-btn-view adm-btn-big" disabled={pngLoading}>
-                {pngLoading ? 'График…' : 'Скачать график (PNG)'}
-            </button> */}
-            <button type="button" onClick={downloadPdf} className="adm-action-btn adm-btn-big">
-                Скачать PDF
-            </button>
-        </div>
+        <>
+            <div className="adm-export-bar">
+                <label className="adm-export-field">
+                    <span>С</span>
+                    <input type="date" value={from} onChange={(e) => onFromChange(e.target.value)} className="adm-date-input" />
+                </label>
+                <label className="adm-export-field">
+                    <span>По</span>
+                    <input type="date" value={to} onChange={(e) => onToChange(e.target.value)} className="adm-date-input" />
+                </label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className="adm-status-select">
+                    <option value="paid">Успешные заказы</option>
+                    <option value="all">Все заказы</option>
+                    <option value="CANCELED">Только отменённые</option>
+                    <option value="REFUSED">Только отказы от получения</option>
+                </select>
+                <button
+                    type="button"
+                    onClick={() => { window.location.href = `/admin/reports/revenue?${exportQuery()}&format=xlsx`; }}
+                    className="adm-action-btn adm-btn-approve adm-btn-big"
+                >
+                    Excel с графиком
+                </button>
+                <button type="button" onClick={() => { window.location.href = `/admin/reports/revenue?${exportQuery()}`; }} className="adm-action-btn adm-btn-view adm-btn-big">
+                    CSV
+                </button>
+                <button type="button" onClick={() => { window.location.href = `/admin/reports/revenue/pdf?${exportQuery()}`; }} className="adm-action-btn adm-btn-big">
+                    PDF
+                </button>
+            </div>
+
+            <div className={`adm-chart-card${chartLoading ? ' adm-chart-card--loading' : ''}`}>
+                <div className="adm-chart-head">
+                    <div className="adm-chart-title">
+                        График выручки{chartMeta.range_label ? ` · ${chartMeta.range_label}` : ''}
+                    </div>
+                    <div className="adm-chart-period">
+                        {CHART_PRESETS.map((p) => (
+                            <button
+                                key={p.key}
+                                type="button"
+                                className={`adm-filter-pill${period === p.key ? ' active' : ''}`}
+                                onClick={() => applyPreset(p.key)}
+                            >
+                                {p.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <RevenueChart
+                    data={chartData}
+                    rangeLabel={chartMeta.range_label}
+                    periodLabel={chartMeta.period_label}
+                    granularity={chartMeta.granularity}
+                />
+            </div>
+        </>
     );
 }
 
@@ -439,12 +468,13 @@ export default function AdminDashboard({
         reloadUsers({ page: 1, search: userQuery.trim() });
     };
 
-    const exportAllUsers = () => {
+    const exportAllUsers = (format = 'xlsx') => {
         const params = new URLSearchParams({
             users_filter: userFilter,
             users_search: userQuery.trim(),
             users_sort: userSort,
             users_dir: userDir,
+            format,
         });
         window.location.href = `/admin/reports/users?${params}`;
     };
@@ -550,13 +580,9 @@ export default function AdminDashboard({
                         <div>
                             <div className="adm-overview-head">
                                 <h1 className="adm-title">{panelTitle}</h1>
-                                <RevenueExportBar />
                             </div>
 
-                            <div className="adm-chart-card">
-                                <div className="adm-chart-title">График выручки · последние 30 дней</div>
-                                <RevenueChart data={revenueChart} />
-                            </div>
+                            <OverviewRevenueSection initialChart={revenueChart} />
 
                             <div className="adm-stats-row">
                                 <div className="adm-stat-card adm-stat-success" onClick={() => setActiveSection('sessions')} style={{ cursor: 'pointer' }}>
@@ -909,8 +935,11 @@ export default function AdminDashboard({
                                     <option value="role:asc">Роль: админ → пользователь</option>
                                     <option value="role:desc">Роль: пользователь → админ</option>
                                 </select>
-                                <button type="button" className="adm-action-btn adm-btn-view" onClick={exportAllUsers}>
-                                    Скачать отчёт (CSV)
+                                <button type="button" className="adm-action-btn adm-btn-approve" onClick={() => exportAllUsers('xlsx')}>
+                                    Excel
+                                </button>
+                                <button type="button" className="adm-action-btn adm-btn-view" onClick={() => exportAllUsers('csv')}>
+                                    CSV
                                 </button>
                             </div>
 

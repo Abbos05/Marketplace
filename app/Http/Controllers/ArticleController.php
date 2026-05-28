@@ -10,15 +10,16 @@ class ArticleController extends Controller
 {
     public function show(string $sku, ArticleNumberService $articles): RedirectResponse
     {
-        if (! $articles->isStrictArticleQuery($sku)) {
-            abort(404);
+        $normalizedSku = trim($sku);
+        if (! $articles->isStrictArticleQuery($normalizedSku)) {
+            return redirect()->route('home', ['search' => $normalizedSku]);
         }
 
-        $variant = $articles->findVariantForArticleSearch($sku)
-            ?? ProductVariant::query()->where('sku', trim($sku))->first();
+        $variant = $articles->findVariantForArticleSearch($normalizedSku)
+            ?? ProductVariant::query()->where('sku', $normalizedSku)->first();
 
         if (! $variant?->product) {
-            abort(404);
+            return redirect()->route('home', ['search' => $normalizedSku]);
         }
 
         return redirect()->route('product.show', [

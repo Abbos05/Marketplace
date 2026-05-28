@@ -114,6 +114,17 @@
 }
 .ord-export-btn:hover { background: #e2e8f0; color: #1e293b; }
 
+.ord-export-btn--primary {
+    background: var(--background, #ff2e63);
+    border-color: var(--background, #ff2e63);
+    color: #fff;
+}
+.ord-export-btn--primary:hover {
+    background: var(--backgroundBlack, #d30035);
+    border-color: var(--backgroundBlack, #d30035);
+    color: #fff;
+}
+
 /* ---------- Status tabs ---------- */
 .ord-tabs {
     display: flex;

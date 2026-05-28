@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import React, { useEffect, useMemo } from 'react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import SellerLayout from '@/Layouts/SellerLayout';
 import '../../../../css/seller/create-product.css';
 
@@ -21,28 +21,57 @@ function attrScope(attr) {
     return attr.applies_to ?? 'product';
 }
 
-export default function Edit({ product, leafCategory, parentCategory, initial, existingImages }) {
-    const [galleryPreview, setGalleryPreview] = useState([]);
+const NEW_PRODUCT_DAYS = 30;
 
+function variantsHaveDiscount(variants, initialVariants) {
+    return variants.some((v, i) => {
+        const price = parseFloat(v.price);
+        if (Number.isNaN(price) || price <= 0) return false;
+        const init = initialVariants[i];
+        const oldFromInit = init?.old_price ? parseFloat(init.old_price) : null;
+        if (oldFromInit && oldFromInit > price) return true;
+        const initPrice = init?.price ? parseFloat(init.price) : null;
+        if (initPrice && initPrice > price) return true;
+        return false;
+    });
+}
+
+function isNewProduct(createdAtIso) {
+    if (!createdAtIso) return false;
+    const created = new Date(createdAtIso);
+    const limit = new Date();
+    limit.setDate(limit.getDate() - NEW_PRODUCT_DAYS);
+    return created >= limit;
+}
+
+export default function Edit({ product, leafCategory, parentCategory, initial }) {
     const { data, setData, post, processing, errors, transform } = useForm({
         title: initial.title,
         short_description: initial.short_description,
         description: initial.description,
         attributes: { ...initial.attributes },
+        promotion: {
+            enabled: initial.promotion?.enabled ?? false,
+            badge_key: initial.promotion?.badge_key ?? '',
+            ends_at: initial.promotion?.ends_at ?? '',
+        },
         variants: initial.variants.map((v) => ({
             id: v.id,
             options: { ...(v.options || {}) },
             price: v.price,
             stock: v.stock,
-            // текущее фото варианта (только для отображения, в JSON не идёт)
-            image_url: v.image_url ?? null,
-            image_id: v.image_id ?? null,
-            // новое загруженное фото (File object)
-            newImage: null,
-            newImagePreview: null,
+            existingImages: (v.images ?? []).map((img) => ({
+                ...img,
+                key: `existing:${img.id}`,
+            })),
+            newImages: [],
+            newImagePreviews: [],
+            remove_image_ids: [],
+            main_image_key: (() => {
+                const main = (v.images ?? []).find((img) => img.is_main) ?? (v.images ?? [])[0];
+                return main ? `existing:${main.id}` : 'new:0';
+            })(),
         })),
-        images: [],
-        remove_image_ids: [],
     });
 
     /* Multipart + вложенные объекты: JSON-строки; маршрут — POST (см. web.php). */
@@ -52,18 +81,23 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                 title: d.title,
                 short_description: d.short_description,
                 description: d.description,
-                // image_url / image_id / newImage / newImagePreview — не в JSON
                 variants_json: JSON.stringify(
-                    d.variants.map(({ newImage, newImagePreview, image_url, image_id, ...v }) => v),
+                    d.variants.map(
+                        ({
+                            newImages,
+                            newImagePreviews,
+                            existingImages,
+                            ...v
+                        }) => v,
+                    ),
                 ),
                 attributes_json: JSON.stringify(d.attributes ?? {}),
-                remove_image_ids_json: JSON.stringify(d.remove_image_ids ?? []),
-                images: d.images ?? [],
+                promotion_json: JSON.stringify(d.promotion ?? {}),
             };
             d.variants.forEach((v, i) => {
-                if (v.newImage) {
-                    payload[`variant_image_${i}`] = v.newImage;
-                }
+                (v.newImages ?? []).forEach((img, imgIndex) => {
+                    payload[`variant_gallery_${i}_${imgIndex}`] = img;
+                });
             });
             return payload;
         });
@@ -81,7 +115,56 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
 
     const hasVariants = variantAttrs.length > 0;
 
-    const galleryExisting = existingImages ?? [];
+    const eligibleBadges = useMemo(() => {
+        const list = [];
+        if (variantsHaveDiscount(data.variants, initial.variants)) {
+            list.push({ key: 'sale', label: 'Распродажа' });
+        }
+        if (isNewProduct(product?.created_at)) {
+            list.push({ key: 'new', label: 'Новинка' });
+        }
+        return list;
+    }, [data.variants, initial.variants, product?.created_at]);
+
+    useEffect(() => {
+        if (!data.promotion.enabled) return;
+        const keys = eligibleBadges.map((b) => b.key);
+        if (data.promotion.badge_key && !keys.includes(data.promotion.badge_key)) {
+            setData('promotion', {
+                ...data.promotion,
+                badge_key: keys[0] ?? '',
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [eligibleBadges, data.promotion.enabled]);
+
+    const updatePromotion = (field, value) => {
+        setData('promotion', { ...data.promotion, [field]: value });
+    };
+
+    const handleAddPromotion = () => {
+        setData('promotion', {
+            enabled: true,
+            badge_key: data.promotion.badge_key || eligibleBadges[0]?.key || '',
+            ends_at: data.promotion.ends_at || '',
+        });
+    };
+
+    const handleRemovePromotion = () => {
+        setData('promotion', {
+            enabled: false,
+            badge_key: '',
+            ends_at: '',
+        });
+    };
+
+    const selectedPromoLabel =
+        eligibleBadges.find((b) => b.key === data.promotion.badge_key)?.label ?? null;
+
+    const priceChangeEnablesSale = useMemo(
+        () => variantsHaveDiscount(data.variants, initial.variants),
+        [data.variants, initial.variants],
+    );
 
     const updateAttribute = (id, value) => {
         setData('attributes', {
@@ -98,10 +181,11 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                 options: {},
                 price: '',
                 stock: '',
-                image_url: null,
-                image_id: null,
-                newImage: null,
-                newImagePreview: null,
+                existingImages: [],
+                newImages: [],
+                newImagePreviews: [],
+                remove_image_ids: [],
+                main_image_key: 'new:0',
             },
         ]);
     };
@@ -117,11 +201,12 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
     const updateVariantField = (index, field, value) => {
         const variants = data.variants.map((v, i) => {
             if (i !== index) return v;
-            if (field === 'newImage') {
+            if (field === 'newImages') {
+                const files = Array.from(value || []).slice(0, 10);
                 return {
                     ...v,
-                    newImage: value,
-                    newImagePreview: value ? URL.createObjectURL(value) : null,
+                    newImages: files,
+                    newImagePreviews: files.map((file) => URL.createObjectURL(file)),
                 };
             }
             return { ...v, [field]: value };
@@ -140,32 +225,26 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
         setData('variants', variants);
     };
 
-    const toggleRemoveImage = (imageId) => {
-        const next = data.remove_image_ids.includes(imageId)
-            ? data.remove_image_ids.filter((x) => x !== imageId)
-            : [...data.remove_image_ids, imageId];
-        setData('remove_image_ids', next);
-    };
-
-    const setGalleryImages = (files) => {
-        const incoming = Array.from(files || []);
-        // Добавляем к уже выбранным, не заменяем
-        const combined = [...(data.images || []), ...incoming].slice(0, 10);
-        setData('images', combined);
-        setGalleryPreview(combined.map((f) => URL.createObjectURL(f)));
-    };
-
-    const removeGalleryImage = (index) => {
-        const combined = data.images.filter((_, i) => i !== index);
-        setData('images', combined);
-        setGalleryPreview(combined.map((f) => URL.createObjectURL(f)));
+    const toggleRemoveVariantImage = (variantIndex, imageId) => {
+        const variants = data.variants.map((v, i) => {
+            if (i !== variantIndex) return v;
+            const removeIds = v.remove_image_ids.includes(imageId)
+                ? v.remove_image_ids.filter((x) => x !== imageId)
+                : [...v.remove_image_ids, imageId];
+            const removedMain = v.main_image_key === `existing:${imageId}` && removeIds.includes(imageId);
+            return {
+                ...v,
+                remove_image_ids: removeIds,
+                main_image_key: removedMain ? (v.newImages?.length ? 'new:0' : v.main_image_key) : v.main_image_key,
+            };
+        });
+        setData('variants', variants);
     };
 
     const submit = (e) => {
         e.preventDefault();
         post(route('seller.products.update', product.id), {
             forceFormData: true,
-            preserveScroll: true,
         });
     };
 
@@ -448,28 +527,111 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                         )}
 
                         <div className="form-group">
-                                <label>
-                                    Фото {hasVariants ? 'варианта' : 'товара'}{' '}
-                                    <span className="required">*</span>
-                                </label>
-                                {variant.newImagePreview ? (
-                                    <img src={variant.newImagePreview} className="variant-img-preview" alt="" />
-                                ) : variant.image_url ? (
-                                    <img src={variant.image_url} className="variant-img-preview" alt="" />
-                                ) : null}
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) =>
-                                        updateVariantField(index, 'newImage', e.target.files?.[0] ?? null)
-                                    }
-                                />
-                                {variant.image_url && !variant.newImagePreview && (
-                                    <p className="builder-hint" style={{ marginTop: '4px' }}>
-                                        Загрузите новое фото, чтобы заменить текущее.
-                                    </p>
-                                )}
-                            </div>
+                            <label>
+                                Фото варианта (до 10) <span className="required">*</span>
+                            </label>
+                            {variant.existingImages?.length > 0 && (
+                                <div className="seller-existing-images">
+                                    {variant.existingImages.map((img) => {
+                                        const isRemoving = variant.remove_image_ids.includes(img.id);
+                                        const key = `existing:${img.id}`;
+                                        const isMain = variant.main_image_key === key;
+                                        return (
+                                            <div
+                                                key={img.id}
+                                                className={`seller-img-tile ${isRemoving ? 'seller-img-tile--drop' : ''}`}
+                                                style={{
+                                                    outline: isMain ? '3px solid #4f46e5' : '1px solid #e5e7eb',
+
+                                                }}
+                                            >
+                                                <img
+                                                    src={img.url}
+                                                    alt=""
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                        outline: isMain ? '3px solid #4f46e5' : '1px solid #e5e7eb',
+                                                        outlineOffset: '2px',
+                                                        borderRadius: '10px',
+                                                        boxShadow: isMain
+                                                            ? '0 0 0 4px rgba(79,70,229,0.18)'
+                                                            : '0 2px 8px rgba(15,23,42,0.08)',
+                                                    }}
+                                                    onClick={() =>
+                                                        updateVariantField(index, 'main_image_key', key)
+                                                    }
+                                                />
+                                                <div className="seller-img-actions">
+                                                    <label className="seller-img-remove">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isRemoving}
+                                                            onChange={() =>
+                                                                toggleRemoveVariantImage(index, img.id)
+                                                            }
+                                                        />
+                                                        Удалить
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                onChange={(e) =>
+                                    updateVariantField(index, 'newImages', e.target.files ?? [])
+                                }
+                            />
+                            <p className="builder-hint">Клик по фото выбирает главное.</p>
+                            {(variant.newImagePreviews ?? []).length > 0 && (
+                                <div className="gallery-preview">
+                                    {(variant.newImagePreviews ?? []).map((src, i) => (
+                                        <div key={src} className="gallery-preview-item">
+                                            <img
+                                                src={src}
+                                                alt=""
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    outline:
+                                                        variant.main_image_key === `new:${i}`
+                                                            ? '3px solid #4f46e5'
+                                                            : '1px solid #e5e7eb',
+                                                    outlineOffset: '2px',
+                                                    borderRadius: '10px',
+                                                    boxShadow:
+                                                        variant.main_image_key === `new:${i}`
+                                                            ? '0 0 0 4px rgba(79,70,229,0.18)'
+                                                            : '0 2px 8px rgba(15,23,42,0.08)',
+                                                }}
+                                                onClick={() =>
+                                                    updateVariantField(index, 'main_image_key', `new:${i}`)
+                                                }
+                                            />
+                                            <button
+                                                type="button"
+                                                className="gallery-preview-remove"
+                                                onClick={() =>
+                                                    updateVariantField(
+                                                        index,
+                                                        'newImages',
+                                                        (variant.newImages ?? []).filter(
+                                                            (_, fileIndex) => fileIndex !== i,
+                                                        ),
+                                                    )
+                                                }
+                                                title="Убрать"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
                         <div className="variant-pricing-grid">
                             <div className="form-group">
@@ -494,6 +656,13 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                                 {initial.variants[index]?.old_price && (
                                     <p className="builder-hint" style={{ marginTop: '4px' }}>
                                         Старая цена: <s>{initial.variants[index].old_price} ₽</s>
+                                    </p>
+                                )}
+                                {initial.variants[index]?.price &&
+                                    parseFloat(variant.price) > 0 &&
+                                    parseFloat(variant.price) < parseFloat(initial.variants[index].price) && (
+                                    <p className="builder-hint builder-hint--promo">
+                                        При сохранении появится скидка — ниже можно добавить акцию «Распродажа».
                                     </p>
                                 )}
                             </div>
@@ -527,78 +696,88 @@ export default function Edit({ product, leafCategory, parentCategory, initial, e
                     </button>
                 )}
 
-                <h2 className="builder-section-title seller-edit-mt">Дополнительная галерея</h2>
-                <p className="builder-hint">
-                    Основное фото — у каждого варианта выше. Здесь только общие дополнительные снимки для карточки.
-                </p>
+                <section className="product-promo-section">
+                    <h3 className="product-promo-section__title">Акции</h3>
+                    <p className="product-promo-section__lead">
+                        Дополнительная метка на карточке в каталоге. Плашка «Скидка» появляется автоматически при
+                        снижении цены.
+                    </p>
 
-                {/* Существующие фото */}
-                {existingImages?.length > 0 && (
-                    <div className="seller-existing-images">
-                        {existingImages.map((img) => {
-                            const isRemoving = data.remove_image_ids.includes(img.id);
-                            return (
-                                <div
-                                    key={img.id}
-                                    className={`seller-img-tile ${isRemoving ? 'seller-img-tile--drop' : ''}`}
+                    {eligibleBadges.length === 0 ? (
+                        <p className="builder-hint builder-hint--warn">
+                            Сейчас нет доступных акций. Снизьте цену варианта (появится скидка) или добавьте товар
+                            недавно — тогда откроется акция «Новинка».
+                        </p>
+                    ) : !data.promotion.enabled ? (
+                        <div className="product-promo-section__idle">
+                            <p className="product-promo-section__available">
+                                У вас доступны акции:{' '}
+                                <strong>{eligibleBadges.map((b) => b.label).join(', ')}</strong>
+                            </p>
+                            {priceChangeEnablesSale && (
+                                <p className="builder-hint builder-hint--promo">
+                                    После сохранения скидки можно выбрать акцию «Распродажа».
+                                </p>
+                            )}
+                            <button
+                                type="button"
+                                className="product-promo-add-btn"
+                                onClick={handleAddPromotion}
+                            >
+                                + Добавить акцию
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="product-promo-section__fields">
+                            {selectedPromoLabel && (
+                                <p className="product-promo-section__active">
+                                    Акция: <strong>{selectedPromoLabel}</strong>
+                                </p>
+                            )}
+                            <div className="form-group">
+                                <label>Тип акции</label>
+                                <select
+                                    value={data.promotion.badge_key}
+                                    onChange={(e) => updatePromotion('badge_key', e.target.value)}
+                                    required
                                 >
-                                    <img src={img.url} alt="" />
-                                    <div className="seller-img-actions">
-                                        <label className="seller-img-remove">
-                                            <input
-                                                type="checkbox"
-                                                checked={isRemoving}
-                                                onChange={() => toggleRemoveImage(img.id)}
-                                            />
-                                            Удалить
-                                        </label>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                <div className="image-box">
-                    <label>Добавить фото в галерею</label>
-                    <div className="file-upload-zone">
-                        <input
-                            type="file"
-                            multiple
-                            accept="image/jpeg,image/png,image/webp,image/gif"
-                            onChange={(e) => setGalleryImages(e.target.files)}
-                        />
-                    </div>
-                    {galleryPreview.length > 0 && (
-                        <div className="gallery-preview">
-                            {galleryPreview.map((src, i) => (
-                                <div key={src} className="gallery-preview-item">
-                                    <img src={src} alt="" />
-                                    <button
-                                        type="button"
-                                        className="gallery-preview-remove"
-                                        onClick={() => removeGalleryImage(i)}
-                                        title="Убрать"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            ))}
+                                    <option value="">Выберите акцию…</option>
+                                    {eligibleBadges.map((b) => (
+                                        <option key={b.key} value={b.key}>
+                                            {b.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Акция действует до</label>
+                                <input
+                                    type="datetime-local"
+                                    value={data.promotion.ends_at}
+                                    onChange={(e) => updatePromotion('ends_at', e.target.value)}
+                                    required
+                                />
+                                <p className="builder-hint">
+                                    Начало — с момента сохранения. Укажите, когда акция должна исчезнуть с карточки.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                className="product-promo-remove-btn"
+                                onClick={handleRemovePromotion}
+                            >
+                                Убрать акцию
+                            </button>
                         </div>
                     )}
-                    {data.images.length > 0 && (
-                        <p className="builder-hint" style={{ marginTop: 6 }}>
-                            Выбрано {data.images.length} фото для добавления
-                        </p>
-                    )}
-                </div>
+                </section>
 
                 {errors.error && (
                     <div className="alert-banner alert-banner--error">{errors.error}</div>
                 )}
 
                 <button type="submit" className="submit-btn" disabled={processing}>
-                    {processing ? 'Сохранение…' : 'Сохранить и отправить на модерацию'}
+                    {processing ? 'Сохранение…' : 'Сохранить изменения'}
                 </button>
             </form>
         </SellerLayout>

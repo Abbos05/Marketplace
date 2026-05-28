@@ -60,6 +60,32 @@ class PhoneAuthController extends Controller
 
         $challenge = $result['challenge'];
 
+        $withoutOtp = $this->challenges->tryLoginWithoutOtp($request, $challenge);
+        if ($withoutOtp !== null) {
+            if (! ($withoutOtp['success'] ?? false)) {
+                return response()->json($withoutOtp, 422);
+            }
+
+            if ($withoutOtp['requires_password'] ?? false) {
+                return response()->json([
+                    'success'           => true,
+                    'skip_otp'          => true,
+                    'requires_password' => true,
+                    'challenge_id'      => $withoutOtp['challenge_id'] ?? $challenge->id,
+                    'is_new'            => $isNew,
+                    'has_email'         => (bool) $user->email,
+                ]);
+            }
+
+            return response()->json([
+                'success'           => true,
+                'skip_otp'          => true,
+                'is_new'            => $isNew,
+                'redirect'          => $withoutOtp['redirect'] ?? route('profile'),
+                'requires_password' => false,
+            ]);
+        }
+
         return response()->json([
             'success'            => true,
             'is_new'             => $isNew,
@@ -67,6 +93,7 @@ class PhoneAuthController extends Controller
             'delivery_channel'   => $challenge->channel,
             'masked_phone'       => $this->challenges->maskPhone($phone),
             'requires_password'  => ! $user->newPassw,
+            'requires_otp'       => true,
             'has_email'          => (bool) $user->email,
             'support_email'      => $this->challenges->supportEmail(),
             'reused'             => $result['reused'],
@@ -167,11 +194,38 @@ class PhoneAuthController extends Controller
             ], 429);
         }
 
+        $challenge->refresh();
+
+        $withoutOtp = $this->challenges->tryLoginWithoutOtp($request, $challenge);
+        if ($withoutOtp !== null) {
+            if (! ($withoutOtp['success'] ?? false)) {
+                return response()->json($withoutOtp, 422);
+            }
+
+            if ($withoutOtp['requires_password'] ?? false) {
+                return response()->json([
+                    'success'           => true,
+                    'skip_otp'          => true,
+                    'requires_password' => true,
+                    'challenge_id'      => $withoutOtp['challenge_id'] ?? $challenge->id,
+                    'cooldown_seconds'  => $result['cooldown_seconds'],
+                ]);
+            }
+
+            return response()->json([
+                'success'          => true,
+                'skip_otp'         => true,
+                'redirect'         => $withoutOtp['redirect'] ?? route('profile'),
+                'cooldown_seconds' => $result['cooldown_seconds'],
+            ]);
+        }
+
         return response()->json([
             'success'          => true,
             'delivery_channel' => LoginChallenge::CHANNEL_SMS,
             'masked_phone'     => $this->challenges->maskPhone($challenge->phone),
             'cooldown_seconds' => $result['cooldown_seconds'],
+            'requires_otp'     => true,
         ]);
     }
 
@@ -197,13 +251,16 @@ class PhoneAuthController extends Controller
             ? $this->maskEmail($user->email)
             : null;
 
+        $message = $masked
+            ? "Код отправлен на {$masked}. Проверьте входящие и папку «Спам»."
+            : 'Код отправлен на привязанную почту. Проверьте входящие и папку «Спам».';
+
         return response()->json([
             'success'         => true,
             'reset_channel'   => 'email',
             'masked_target'   => $masked,
             'delivery_method' => $result['delivery_method'],
-            'test_mode'       => $result['delivery_method'] === 'test',
-            'message'         => 'Код отправлен на почту. Тестовый код: 000000',
+            'message'         => $message,
         ]);
     }
 
@@ -287,17 +344,45 @@ class PhoneAuthController extends Controller
 
     private function maskEmail(string $email): string
     {
+        $email = trim($email);
         $parts = explode('@', $email, 2);
-        if (count($parts) !== 2) {
-            return '***';
+        if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
+            return '***@***';
         }
 
-        $local = $parts[0];
-        $masked = strlen($local) > 2
-            ? substr($local, 0, 2) . '***'
-            : '***';
+        [$local, $domain] = $parts;
+        $len = strlen($local);
 
-        return $masked . '@' . $parts[1];
+        if ($len === 1) {
+            $maskedLocal = '*';
+        } elseif ($len === 2) {
+            $maskedLocal = $local[0] . '*';
+        } elseif ($len <= 4) {
+            $maskedLocal = substr($local, 0, 1) . '***' . substr($local, -1);
+        } else {
+            $start = min(2, (int) floor($len / 4));
+            $end = min(2, (int) floor($len / 4));
+            $maskedLocal = substr($local, 0, $start) . '***' . substr($local, -$end);
+        }
+
+        $domainParts = explode('.', $domain);
+        if (count($domainParts) >= 2) {
+            $tld = array_pop($domainParts);
+            $host = implode('.', $domainParts);
+            if (strlen($host) <= 2) {
+                $maskedDomain = $host . '.' . $tld;
+            } elseif (strlen($host) <= 5) {
+                $maskedDomain = substr($host, 0, 1) . '***.' . $tld;
+            } else {
+                $maskedDomain = substr($host, 0, 2) . '***' . substr($host, -1) . '.' . $tld;
+            }
+        } else {
+            $maskedDomain = strlen($domain) > 3
+                ? substr($domain, 0, 2) . '***'
+                : '***';
+        }
+
+        return $maskedLocal . '@' . $maskedDomain;
     }
 
     private function duplicatePhoneResponse(): JsonResponse

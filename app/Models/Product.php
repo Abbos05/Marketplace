@@ -163,7 +163,7 @@ class Product extends Model
     }
 
     /**
-     * URL для карточки витрины: фото активного варианта (дешевле), иначе галерея товара.
+     * URL для карточки витрины: главное фото активного варианта.
      */
     public function resolveListingImageUrl(): ?string
     {
@@ -173,18 +173,10 @@ class Product extends Model
             ->orderBy('price')
             ->first();
 
-        $variantUrl = $variant?->images->first()?->url;
-        if ($variantUrl) {
-            return self::normalizeListingUrl($variantUrl);
-        }
+        $variantUrl = $variant?->images->firstWhere('is_main', true)?->url
+            ?? $variant?->images->first()?->url;
 
-        $gallery = $this->relationLoaded('images')
-            ? $this->images->whereNull('variant_id')
-            : $this->images()->whereNull('variant_id')->orderBy('sort_order')->get();
-
-        $productUrl = $gallery->first()?->url;
-
-        return $productUrl ? self::normalizeListingUrl($productUrl) : null;
+        return $variantUrl ? self::normalizeListingUrl($variantUrl) : null;
     }
 
     protected static function booted(): void
@@ -236,7 +228,6 @@ class Product extends Model
         return $query->with([
             'seller.sellerProfile',
             'category',
-            'images' => fn ($q) => $q->whereNull('variant_id')->orderByDesc('is_main')->orderBy('sort_order'),
         ])
             ->withCount(['reviews as reviews_count' => fn ($q) => $q->where('is_moderated', true)])
             ->withAvg(['reviews as reviews_avg_rating' => fn ($q) => $q->where('is_moderated', true)], 'rating');
@@ -317,10 +308,7 @@ class Product extends Model
             $product->setAttribute('stock_total', (int) ($stockByProduct[$product->id] ?? 0));
 
             $variantUrl = $variant?->images->first()?->url;
-            $galleryUrl = $product->relationLoaded('images')
-                ? $product->images->whereNull('variant_id')->first()?->url
-                : null;
-            $url = self::normalizeListingUrl($variantUrl ?? $galleryUrl);
+            $url = self::normalizeListingUrl($variantUrl);
             $product->setAttribute('image', $url);
 
             $seller = $product->seller ?? $product->user;

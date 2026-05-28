@@ -167,13 +167,23 @@ class ChatService
     protected function applySupportInboxFilter(Builder $q, User $staff, string $filter): void
     {
         match ($this->normalizeSupportFilter($filter)) {
-            'new' => $q->whereNull('assigned_staff_id'),
+            'new' => $q->whereNull('assigned_staff_id')
+                ->whereExists(fn ($sq) => $this->unreadBuyerSupportMessageSubquery($sq)),
             'mine' => $q->where('assigned_staff_id', $staff->id),
             'transferred' => $q->whereNotNull('assigned_staff_id')
                 ->where('assigned_staff_id', '!=', $staff->id)
                 ->whereExists(fn ($sq) => $this->staffMessagedSubquery($sq, $staff->id)),
             default => $this->applySupportVisibilityFilter($q, $staff),
         };
+    }
+
+    protected function unreadBuyerSupportMessageSubquery($sub): void
+    {
+        $sub->select(DB::raw(1))
+            ->from('messages')
+            ->whereColumn('messages.conversation_id', 'conversations.id')
+            ->whereColumn('messages.sender_id', 'conversations.buyer_id')
+            ->where('messages.is_read', false);
     }
 
     protected function staffMessagedSubquery($sub, int $staffId): void
@@ -376,6 +386,11 @@ class ChatService
     /** Очередь поддержки (с фильтром) + личные чаты продавца/покупателя. */
     public function threadsForStaffMergedInbox(User $user, string $supportFilter = 'all'): \Illuminate\Support\Collection
     {
+        $supportFilter = $this->normalizeSupportFilter($supportFilter);
+        if ($supportFilter !== 'all') {
+            return $this->threadsFor($user, true, $supportFilter);
+        }
+
         return $this->threadsFor($user, true, $supportFilter)
             ->concat($this->threadsFor($user, false))
             ->unique(fn (array $row) => $row['id'])
@@ -528,15 +543,7 @@ class ChatService
         $isStaff = $sender->isStaff();
 
         if ($isStaff) {
-            if ($viewer && ! $viewer->isStaff()) {
-                $display = $name !== '' ? $name : 'Сотрудник поддержки';
-            } else {
-                $display = match ($role) {
-                    'admin'     => 'Администратор',
-                    'moderator' => 'Модератор',
-                    default     => 'Поддержка',
-                };
-            }
+            $display = 'Поддержка';
         } else {
             $display = $name !== '' ? $name : 'Пользователь';
         }
@@ -597,12 +604,7 @@ class ChatService
     {
         return match ($c->type) {
             Conversation::TYPE_SUPPORT => $this->supportThreadTitle($c, $viewer, $adminSupportQueue),
-            Conversation::TYPE_SELLER_PRODUCT => $this->sellerProductThreadTitle($c, $viewer),
-            Conversation::TYPE_SELLER_SHOP => $this->sellerShopThreadTitle($c, $viewer),
-            Conversation::TYPE_ORDER => 'Заказ #'.($c->order?->number ?? $c->order_id),
-            default => $c->seller_id === $viewer->id
-                ? ('Чат с покупателем')
-                : ($c->seller?->name ?? 'Магазин'),
+            default => ($this->counterpart($c, $viewer, $adminSupportQueue)['short'] ?? 'Собеседник'),
         };
     }
 
@@ -1005,6 +1007,11 @@ class ChatService
             abort(422, 'Нельзя написать самому себе');
         }
 
+        $existing = $this->findDirectConversationByPair($user->id, $sellerId);
+        if ($existing) {
+            return $existing;
+        }
+
         return Conversation::firstOrCreate(
             [
                 'buyer_id'   => $user->id,
@@ -1028,19 +1035,20 @@ class ChatService
             abort(422, 'Нельзя написать самому себе');
         }
 
-        return Conversation::firstOrCreate(
-            [
-                'buyer_id'   => $user->id,
-                'seller_id'  => $sellerId,
-                'product_id' => $productId,
-                'type'       => Conversation::TYPE_SELLER_PRODUCT,
-            ],
-            [
-                'order_id'        => null,
-                'subject'         => $product->title,
-                'last_message_at' => null,
-            ]
-        );
+        $existing = $this->findDirectConversationByPair($user->id, $sellerId);
+        if ($existing) {
+            return $existing;
+        }
+
+        return Conversation::create([
+            'buyer_id'        => $user->id,
+            'seller_id'       => $sellerId,
+            'type'            => Conversation::TYPE_SELLER_SHOP,
+            'product_id'      => null,
+            'order_id'        => null,
+            'subject'         => null,
+            'last_message_at' => null,
+        ]);
     }
 
     protected function openOrder(User $user, int $orderId): Conversation
@@ -1057,18 +1065,50 @@ class ChatService
             ->filter()
             ->first();
 
+        if ($sellerId) {
+            $existing = $this->findDirectConversationByPair($user->id, (int) $sellerId);
+            if ($existing) {
+                return $existing;
+            }
+
+            return Conversation::create([
+                'buyer_id'        => $user->id,
+                'seller_id'       => (int) $sellerId,
+                'type'            => Conversation::TYPE_SELLER_SHOP,
+                'product_id'      => null,
+                'order_id'        => null,
+                'subject'         => null,
+                'last_message_at' => null,
+            ]);
+        }
+
         return Conversation::firstOrCreate(
             [
-                'buyer_id'  => $user->id,
-                'order_id'  => $order->id,
-                'type'      => Conversation::TYPE_ORDER,
+                'buyer_id' => $user->id,
+                'order_id' => $order->id,
+                'type'     => Conversation::TYPE_ORDER,
             ],
             [
-                'seller_id'       => $sellerId ? (int) $sellerId : null,
+                'seller_id'       => null,
                 'product_id'      => null,
-                'subject'         => 'Заказ #'.($order->number ?? $order->id),
+                'subject'         => null,
                 'last_message_at' => null,
             ]
         );
+    }
+
+    protected function findDirectConversationByPair(int $buyerId, int $sellerId): ?Conversation
+    {
+        return Conversation::query()
+            ->where('buyer_id', $buyerId)
+            ->where('seller_id', $sellerId)
+            ->whereIn('type', [
+                Conversation::TYPE_SELLER_SHOP,
+                Conversation::TYPE_SELLER_PRODUCT,
+                Conversation::TYPE_ORDER,
+            ])
+            ->orderByDesc(DB::raw('COALESCE(last_message_at, conversations.updated_at)'))
+            ->orderByDesc('id')
+            ->first();
     }
 }

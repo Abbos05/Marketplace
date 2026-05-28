@@ -124,6 +124,18 @@ export default function Manage({ product, variants }) {
                     <p className="manage-meta">
                         Добавлен: <strong>{product.created_at}</strong>
                     </p>
+                    {product.promotion && (
+                        <p className="manage-meta manage-meta--promo">
+                            Акция: <strong>{product.promotion.badge_label}</strong>
+                            {product.promotion.ends_at && (
+                                <> · до {product.promotion.ends_at}</>
+                            )}
+                            {' · '}
+                            <Link href={route('seller.products.edit', product.id)} className="manage-promo-link">
+                                изменить
+                            </Link>
+                        </p>
+                    )}
                     {product.moderation_comment && (
                         <div className="manage-moderation-banner" role="alert">
                             <strong>Комментарий модератора</strong>

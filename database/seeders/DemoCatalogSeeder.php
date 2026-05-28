@@ -9,14 +9,15 @@ use App\Models\ProductAttributeValue;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Support\CatalogProductSeedData;
+use App\Support\CatalogSeedImagePool;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
 class DemoCatalogSeeder extends Seeder
 {
-    private const DEFAULT_IMAGE = '/img/products/default.png';
-
     private const PRODUCTS_PER_CATEGORY = 4;
+
+    private const SELLER_IDS = [6, 7];
 
     public function run(): void
     {
@@ -28,8 +29,12 @@ class DemoCatalogSeeder extends Seeder
             ->orderBy('id')
             ->get();
 
-        $expectedSlugs = $leaves->pluck('slug')->filter()->values()->all();
-        CatalogProductSeedData::assertCoverage($expectedSlugs, self::PRODUCTS_PER_CATEGORY, 3);
+        $categorySlugs = $leaves->pluck('slug')->filter()->values()->all();
+        CatalogProductSeedData::assertCoverage($categorySlugs, self::PRODUCTS_PER_CATEGORY, 3);
+
+        $imagePool = new CatalogSeedImagePool;
+        $imagePool->prepareSellers(self::SELLER_IDS);
+        $imagePool->registerSeedPlan($categorySlugs, self::PRODUCTS_PER_CATEGORY);
 
         $now = Carbon::now();
         $globalSeq = 0;
@@ -37,7 +42,7 @@ class DemoCatalogSeeder extends Seeder
         foreach ($leaves as $leaf) {
             $templates = CatalogProductSeedData::forCategorySlug((string) $leaf->slug);
 
-            foreach ($templates as $template) {
+            foreach ($templates as $productIndexInCategory => $template) {
                 $globalSeq++;
                 $sellerId = ($globalSeq % 2 === 1) ? 6 : 7;
 
@@ -63,10 +68,20 @@ class DemoCatalogSeeder extends Seeder
                 $variantRows = is_array($template['variants'] ?? null)
                     ? $template['variants']
                     : [];
-                $variantIds = $this->seedVariants($product, $variantRows);
 
-                $imageUrls = $this->resolveCatalogImageUrls($sellerId, $globalSeq);
-                $this->seedImages($product, $imageUrls, $variantIds);
+                $productVariantSources = $imagePool->resolveProductVariants(
+                    $sellerId,
+                    (string) $leaf->slug,
+                    $productIndexInCategory,
+                );
+
+                $this->seedVariants(
+                    $product,
+                    $variantRows,
+                    $sellerId,
+                    $imagePool,
+                    $productVariantSources,
+                );
 
                 $minPrice = ProductVariant::query()
                     ->where('product_id', $product->id)
@@ -75,47 +90,6 @@ class DemoCatalogSeeder extends Seeder
                 $product->update(['min_price' => $minPrice]);
             }
         }
-    }
-
-    /** @return list<string> */
-    private function resolveCatalogImageUrls(int $sellerId, int $seq): array
-    {
-        $urls = [];
-        $baseImageNumber = (($seq - 1) * 3) + 1;
-
-        for ($k = 1; $k <= 3; $k++) {
-            $imageNumber = $baseImageNumber + ($k - 1);
-            $urls[] = $this->resolveSeedImageUrl($sellerId, $seq, $k, $imageNumber);
-        }
-
-        return $urls;
-    }
-
-    private function resolveSeedImageUrl(int $sellerId, int $seq, int $k, int $imageNumber): string
-    {
-        $exts = ['jpg', 'jpeg', 'png', 'webp'];
-        $relativePatterns = [
-            // Preferred location: public/img/products/{user_id}/img_{i}.{ext}
-            "img/products/{$sellerId}/img_{$imageNumber}.%s",
-            // Fallback for per-product numbering from 1.
-            "img/products/{$sellerId}/img_{$k}.%s",
-            // Defensive fallback for typo-ed folder in existing projects.
-            "img/prodducts/{$sellerId}/img_{$imageNumber}.%s",
-            "img/prodducts/{$sellerId}/img_{$k}.%s",
-        ];
-
-        foreach ($relativePatterns as $pattern) {
-            foreach ($exts as $ext) {
-                $rel = sprintf($pattern, $ext);
-                if (file_exists(public_path($rel))) {
-                    return '/'.$rel;
-                }
-            }
-        }
-
-        // Keep a stable "future" path so adding files later starts working
-        // without reseeding. Frontend falls back to default image on 404.
-        return "/img/products/{$sellerId}/img_{$imageNumber}.jpg";
     }
 
     private function seedAttributes(Product $product, int $categoryId, array $attrs): void
@@ -173,13 +147,16 @@ class DemoCatalogSeeder extends Seeder
 
     /**
      * @param  list<array{options?: array<string, string>, price: float|int, old_price?: float|int|null, stock?: int}>  $variants
-     * @return list<int>
+     * @param  list<array{main: string, extras: list<string>}>|null  $productVariantSources
      */
-    private function seedVariants(Product $product, array $variants): array
-    {
-        $ids = [];
-
-        foreach ($variants as $v) {
+    private function seedVariants(
+        Product $product,
+        array $variants,
+        int $sellerId,
+        CatalogSeedImagePool $imagePool,
+        ?array $productVariantSources,
+    ): void {
+        foreach ($variants as $vi => $v) {
             $price = (float) $v['price'];
             $oldPrice = isset($v['old_price']) ? (float) $v['old_price'] : null;
             $discount = ($oldPrice && $oldPrice > $price)
@@ -198,44 +175,15 @@ class DemoCatalogSeeder extends Seeder
                 'is_active' => true,
             ]);
 
-            $ids[] = $variant->id;
-        }
+            $sources = $productVariantSources[$vi] ?? $productVariantSources[0] ?? ['main' => '', 'extras' => []];
 
-        return $ids;
-    }
-
-    /** @param list<int> $variantIds */
-    private function seedImages(Product $product, array $imageUrls, array $variantIds): void
-    {
-        $urls = array_values(array_filter($imageUrls, fn ($u) => is_string($u) && $u !== ''));
-        if ($urls === []) {
-            $urls = [self::DEFAULT_IMAGE];
-        }
-
-        $productUrls = array_slice($urls, 0, 3);
-        while (count($productUrls) < 3) {
-            $productUrls[] = $productUrls[0];
-        }
-
-        foreach ($productUrls as $i => $url) {
-            ProductImage::query()->create([
-                'product_id' => $product->id,
-                'variant_id' => null,
-                'url' => $url,
-                'sort_order' => $i,
-                'is_main' => $i === 0,
-            ]);
-        }
-
-        foreach ($variantIds as $vi => $variantId) {
-            for ($imgIdx = 0; $imgIdx < 2; $imgIdx++) {
-                $preview = $urls[($vi + $imgIdx) % count($urls)];
+            foreach ($imagePool->materializeVariantImages($sellerId, $variant->id, $sources) as $row) {
                 ProductImage::query()->create([
                     'product_id' => $product->id,
-                    'variant_id' => $variantId,
-                    'url' => $preview,
-                    'sort_order' => 100 + ($vi * 10) + $imgIdx,
-                    'is_main' => $imgIdx === 0,
+                    'variant_id' => $variant->id,
+                    'url' => $row['url'],
+                    'sort_order' => $row['sort_order'],
+                    'is_main' => $row['is_main'],
                 ]);
             }
         }

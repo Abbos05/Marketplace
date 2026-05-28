@@ -30,6 +30,55 @@ function timeInBubble(iso) {
   return format(new Date(iso), 'HH:mm', { locale: ru });
 }
 
+function buildOrderLink(orderId, userRole) {
+  if (!orderId) return null;
+  if (userRole === 'seller') return route('seller.orders.show', orderId);
+  return route('order.show', orderId);
+}
+
+function renderRichMessageText(text, userRole) {
+  if (!text) return null;
+  const chunks = [];
+  const pattern = /(Заказ\s*#\s*(\d+)|Артикул\s*#?\s*(\d+))/gi;
+  let cursor = 0;
+  let match = pattern.exec(text);
+
+  while (match) {
+    const full = match[0];
+    const orderId = match[2] ? Number(match[2]) : null;
+    const sku = match[3] ? Number(match[3]) : null;
+
+    if (match.index > cursor) {
+      chunks.push(text.slice(cursor, match.index));
+    }
+
+    if (orderId) {
+      chunks.push(
+        <a key={`ord-${match.index}-${orderId}`} href={buildOrderLink(orderId, userRole)} className="msg-inline-link">
+          {full}
+        </a>,
+      );
+    } else if (sku) {
+      chunks.push(
+        <a key={`sku-${match.index}-${sku}`} href={route('article.show', sku)} className="msg-inline-link">
+          {full}
+        </a>,
+      );
+    } else {
+      chunks.push(full);
+    }
+
+    cursor = match.index + full.length;
+    match = pattern.exec(text);
+  }
+
+  if (cursor < text.length) {
+    chunks.push(text.slice(cursor));
+  }
+
+  return chunks.length > 0 ? chunks : text;
+}
+
 /** Окно редактирования / удаления своего сообщения (1 мин 30 с), как на сервере. */
 const MESSAGE_MUTATE_MS = 900 * 1000;
 
@@ -40,6 +89,8 @@ function messageCanMutate(createdIso) {
 
 function MessageBubbleContent({ message: m }) {
   const hasText = !!(m.body && String(m.body).trim());
+  const page = usePage();
+  const userRole = page?.props?.auth?.user?.role || 'user';
   return (
     <>
       {m.attachment_url && m.is_attachment_image && (
@@ -55,7 +106,7 @@ function MessageBubbleContent({ message: m }) {
           <span className="msg-attachment-file-name">{m.attachment_name || 'Скачать файл'}</span>
         </a>
       )}
-      {hasText && <div className="msg-bubble-text">{m.body}</div>}
+      {hasText && <div className="msg-bubble-text">{renderRichMessageText(String(m.body), userRole)}</div>}
     </>
   );
 }
@@ -129,7 +180,7 @@ function MessageSenderLabel({ message, profileDisabled = false }) {
   const isStaff = Boolean(message.sender_is_staff);
   const displayName = message.sender_display_name || message.sender_name?.trim() || 'Пользователь';
   const realName = (message.sender_name || '').trim();
-  const showSubtitle = isStaff && realName && realName !== displayName;
+  const showSubtitle = false;
   const profileKind = message.sender_profile_kind;
   const profileUserId = message.sender_profile_user_id;
   const profileClickable =
@@ -227,6 +278,15 @@ export default function Index() {
   const [pendingFile, setPendingFile] = useState(null);
   const [transferStaffId, setTransferStaffId] = useState('');
   const supportFilter = initialSupportFilter || 'all';
+  const activeDraft = useMemo(() => {
+    try {
+      const query = page?.url?.split('?')[1] || '';
+      const params = new URLSearchParams(query);
+      return (params.get('draft') || '').trim();
+    } catch {
+      return '';
+    }
+  }, [page?.url]);
 
   const SUPPORT_FILTERS = [
     { id: 'all', label: 'Все' },
@@ -260,6 +320,13 @@ export default function Index() {
   }, [activeId]);
 
   const form = useForm({ message: '' });
+
+  useEffect(() => {
+    if (!activeId) return;
+    if (!activeDraft) return;
+    if (form.data.message && String(form.data.message).trim() !== '') return;
+    form.setData('message', activeDraft);
+  }, [activeId, activeDraft]);
 
   const showNotifView = Boolean(showNotifications);
 
@@ -496,6 +563,9 @@ export default function Index() {
     const fd = new FormData();
     fd.append('message', form.data.message.trim());
     fd.append('_token', token);
+    if (isAdminSupport) fd.append('admin_queue_only', '1');
+    if (isStaff && !isAdminSupport) fd.append('merged', '1');
+    if (showSupportFilters) fd.append('filter', supportFilter);
     if (pendingFile) fd.append('attachment', pendingFile);
     try {
       const res = await fetch(route('messages.messages.store', activeId), {
@@ -560,6 +630,10 @@ export default function Index() {
     setEditBusy(true);
     setEditError('');
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const body = { message: text };
+    if (isAdminSupport) body.admin_queue_only = 1;
+    if (isStaff && !isAdminSupport) body.merged = 1;
+    if (showSupportFilters) body.filter = supportFilter;
     try {
       const res = await fetch(route('messages.messages.update', { conversation: activeId, message: editingId }), {
         method: 'PATCH',
@@ -570,7 +644,7 @@ export default function Index() {
           'X-Requested-With': 'XMLHttpRequest',
           'X-CSRF-TOKEN': token,
         },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify(body),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -592,8 +666,15 @@ export default function Index() {
     if (!activeId || !found || !messageCanMutate(found.created_at)) return;
     if (!window.confirm('Удалить это сообщение?')) return;
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const delParams = new URLSearchParams();
+    if (isAdminSupport) delParams.set('admin_queue_only', '1');
+    if (isStaff && !isAdminSupport) delParams.set('merged', '1');
+    if (showSupportFilters) delParams.set('filter', supportFilter);
+    const delQuery = delParams.toString();
     try {
-      const res = await fetch(route('messages.messages.destroy', { conversation: activeId, message: mid }), {
+      const res = await fetch(
+        `${route('messages.messages.destroy', { conversation: activeId, message: mid })}${delQuery ? `?${delQuery}` : ''}`,
+        {
         method: 'DELETE',
         credentials: 'same-origin',
         headers: {
@@ -601,7 +682,8 @@ export default function Index() {
           'X-Requested-With': 'XMLHttpRequest',
           'X-CSRF-TOKEN': token,
         },
-      });
+      },
+      );
       const j = await res.json().catch(() => ({}));
       if (!res.ok) {
         const err = typeof j.message === 'string' ? j.message : 'Не удалось удалить';

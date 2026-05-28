@@ -262,6 +262,23 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
     try {
       const data = await apiPost('/auth/phone/send-code', { phone, force_resend: false });
       if (data.success) {
+        if (data.skip_otp) {
+          if (data.requires_password) {
+            setChallengeId(data.challenge_id);
+            setRequiresPassword(true);
+            setPhoneVerified(true);
+            setStep(STEPS.PASSWORD);
+            persistFlow({
+              challengeId: data.challenge_id,
+              phoneVerified: true,
+              step: STEPS.PASSWORD,
+              requiresPassword: true,
+            });
+            return;
+          }
+          goToLoginSuccess(data);
+          return;
+        }
         setChallengeId(data.challenge_id);
         setDeliveryChannel(data.delivery_channel);
         setMaskedPhone(data.masked_phone);
@@ -345,6 +362,17 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
     try {
       const data = await apiPost('/auth/phone/resend-sms', { challenge_id: challengeId });
       if (data.success) {
+        if (data.skip_otp) {
+          if (data.requires_password) {
+            setChallengeId(data.challenge_id ?? challengeId);
+            setRequiresPassword(true);
+            setPhoneVerified(true);
+            setStep(STEPS.PASSWORD);
+            return;
+          }
+          goToLoginSuccess(data);
+          return;
+        }
         setDeliveryChannel('sms');
         setMaskedPhone(data.masked_phone);
         setSmsFallbackActive(true);
@@ -448,11 +476,11 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
         challenge_id: challengeId,
       });
       if (data.success) {
-        const target = data.masked_target
-          ? `на ${data.masked_target}`
-          : 'на привязанную почту';
         setResetDeliveryHint(
-          data.message || `Код отправлен ${target}. Тестовый код: 000000`
+          data.message
+            || (data.masked_target
+              ? `Код отправлен на ${data.masked_target}. Проверьте входящие и папку «Спам».`
+              : 'Код отправлен на привязанную почту. Проверьте входящие и папку «Спам».')
         );
         setCode('');
         setStep(STEPS.FORGOT_CODE);
@@ -554,7 +582,9 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
         {step === STEPS.PHONE && (
           <form onSubmit={handleSendPhone} className="modal-form">
             <h2 className="phone-auth-title">Войти или зарегистрироваться</h2>
-            <p className="phone-auth-subtitle">Введите номер телефона — мы пришлём код для входа</p>
+            <p className="phone-auth-subtitle">
+              Введите номер. Если аккаунт открыт на другом устройстве — код придёт в уведомления на сайте.
+            </p>
 
             <div className="modal-form-group">
               <label className="phone-auth-label">Номер телефона</label>
@@ -717,7 +747,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
             </button>
             <h2 className="phone-auth-title">Код для сброса</h2>
             <p className="phone-auth-subtitle">
-              {resetDeliveryHint || 'Код отправлен на почту. Тестовый код: 000000'}
+              {resetDeliveryHint || 'Код отправлен на привязанную почту.'}
             </p>
 
             <div className="modal-form-group">
@@ -726,7 +756,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
                 type="text"
                 value={code}
                 onChange={(e) => handleCodeChange(e, handleForgotVerifyCode)}
-                placeholder="000000"
+                placeholder="6 цифр из письма"
                 className="modal-input phone-auth-code-input"
                 inputMode="numeric"
                 maxLength={6}

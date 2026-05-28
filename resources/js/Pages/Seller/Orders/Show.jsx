@@ -278,7 +278,7 @@ export default function Show({ order, items, nextStatuses, statusLabels }) {
                                             disabled={submitting}
                                             onClick={() => handleStatusUpdate(s.value)}
                                         >
-                                            → {s.label}
+                                            {s.label == 'Отменён' ? 'Отменить заказ' : s.label}
                                         </button>
                                     ))}
                                 </div>

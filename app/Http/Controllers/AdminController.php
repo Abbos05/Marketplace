@@ -23,6 +23,10 @@ use App\Services\PvzAdminOverviewService;
 use App\Services\PvzNotificationService;
 use App\Services\SellerProfileModerationService;
 use App\Services\UserRestrictionService;
+use App\Services\RevenueChartQueryService;
+use App\Services\Excel\AdminRevenueExcelExporter;
+use App\Services\Excel\AdminUsersExcelExporter;
+use App\Services\Excel\AdminUserReportExcelExporter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -121,26 +125,9 @@ class AdminController extends Controller
         $sessionsPayload = $this->dashboardSessionsPayload($request, $onlineThreshold);
         $loginHistoryPayload = $this->dashboardLoginHistoryPayload($request);
 
-        // Revenue chart — последние 30 дней
-        $chartFrom = Carbon::today()->subDays(29);
-        $rows = Order::whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_REFUSED])
-            ->where('created_at', '>=', $chartFrom)
-            ->selectRaw('DATE(created_at) as day, SUM(total) as revenue, COUNT(*) as orders_count')
-            ->groupBy('day')
-            ->orderBy('day')
-            ->get()
-            ->keyBy('day');
-
-        $revenueChart = [];
-        for ($i = 0; $i < 30; $i++) {
-            $day = $chartFrom->copy()->addDays($i)->toDateString();
-            $row = $rows->get($day);
-            $revenueChart[] = [
-                'date'    => $day,
-                'revenue' => (float) ($row->revenue ?? 0),
-                'count'   => (int)   ($row->orders_count ?? 0),
-            ];
-        }
+        $chartService = app(RevenueChartQueryService::class);
+        [$chartFrom, $chartTo] = $chartService->resolveRange(new Request(['period' => '30d']));
+        $revenueChart = $chartService->getChartPayload($chartFrom, $chartTo, '30d')['data'];
 
         return Inertia::render('Admin/Dashboard', [
             'stats'            => $stats,
@@ -502,6 +489,10 @@ class AdminController extends Controller
         $query = $this->buildDashboardUsersQuery($request);
         $users = $query->get();
 
+        if ($request->input('format') === 'xlsx') {
+            return app(AdminUsersExcelExporter::class)->download($users);
+        }
+
         $filename = 'users_'.now()->format('Y-m-d_His').'.csv';
         $headers = ['ID', 'Имя', 'Фамилия', 'Email', 'Телефон', 'Роль', 'Зарегистрирован', 'Заблокирован', 'Удалён'];
         $rows = $users->map(fn (User $u) => [
@@ -521,42 +512,27 @@ class AdminController extends Controller
 
     public function revenueChartData(Request $request)
     {
-        [$from, $to] = $this->parseDateRange($request);
-        $chartFrom = $from ?? Carbon::today()->subDays(29);
-        $chartTo = $to ?? Carbon::today();
-        if ($chartFrom->gt($chartTo)) {
-            [$chartFrom, $chartTo] = [$chartTo, $chartFrom];
-        }
+        $chartService = app(RevenueChartQueryService::class);
+        [$from, $to, $rangeLabel] = $chartService->resolveRange($request);
+        $period = $request->input('period');
+        $payload = $chartService->getChartPayload($from, $to, $period);
 
-        $rows = Order::whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_REFUSED])
-            ->where('created_at', '>=', $chartFrom->copy()->startOfDay())
-            ->where('created_at', '<=', $chartTo->copy()->endOfDay())
-            ->selectRaw('DATE(created_at) as day, SUM(total) as revenue, COUNT(*) as orders_count')
-            ->groupBy('day')
-            ->orderBy('day')
-            ->get()
-            ->keyBy('day');
-
-        $data = [];
-        $cursor = $chartFrom->copy()->startOfDay();
-        $end = $chartTo->copy()->startOfDay();
-        while ($cursor->lte($end)) {
-            $day = $cursor->toDateString();
-            $row = $rows->get($day);
-            $data[] = [
-                'date' => $day,
-                'revenue' => (float) ($row->revenue ?? 0),
-                'count' => (int) ($row->orders_count ?? 0),
-            ];
-            $cursor->addDay();
-        }
-
-        return response()->json(['data' => $data]);
+        return response()->json([
+            'data' => $payload['data'],
+            'granularity' => $payload['granularity'],
+            'period_label' => $payload['period_label'],
+            'range_label' => $rangeLabel,
+            'period' => $period,
+            'from' => $from->format('Y-m-d'),
+            'to' => $to->format('Y-m-d'),
+        ]);
     }
 
     public function exportRevenuePdf(Request $request)
     {
-        [$from, $to] = $this->parseDateRange($request);
+        [$from, $to] = $request->filled('period')
+            ? array_slice(app(RevenueChartQueryService::class)->resolveRange($request), 0, 2)
+            : $this->parseDateRange($request);
         $status = $request->input('status', 'paid');
 
         $q = Order::query();
@@ -577,10 +553,10 @@ class AdminController extends Controller
         $chartFrom = $from ?? Carbon::today()->subDays(29);
         $chartTo = $to ?? Carbon::today();
 
-        $chartResponse = $this->revenueChartData(new Request([
-            'from' => $chartFrom->format('Y-m-d'),
-            'to' => $chartTo->format('Y-m-d'),
-        ]));
+        $chartRequest = new Request($request->filled('period')
+            ? ['period' => $request->input('period')]
+            : ['from' => $chartFrom->format('Y-m-d'), 'to' => $chartTo->format('Y-m-d')]);
+        $chartResponse = $this->revenueChartData($chartRequest);
         $chartData = $chartResponse->getData(true)['data'] ?? [];
 
         $pdf = Pdf::loadView('reports.revenue', [
@@ -936,7 +912,13 @@ class AdminController extends Controller
 
     public function exportRevenue(Request $request): StreamedResponse
     {
-        [$from, $to] = $this->parseDateRange($request);
+        if ($request->input('format') === 'xlsx') {
+            return app(AdminRevenueExcelExporter::class)->download($request);
+        }
+
+        [$from, $to] = $request->filled('period')
+            ? array_slice(app(RevenueChartQueryService::class)->resolveRange($request), 0, 2)
+            : $this->parseDateRange($request);
         $minTotal = $request->input('min_total');
         $maxTotal = $request->input('max_total');
         $status   = $request->input('status', 'paid'); // по умолчанию только успешные
@@ -988,6 +970,24 @@ class AdminController extends Controller
     {
         $user = User::withTrashed()->findOrFail($userId);
         [$from, $to] = $this->parseDateRange($request);
+
+        if ($request->input('format') === 'xlsx') {
+            $buyerOrders = Order::with('items.variant.product')
+                ->where('buyer_id', $user->id)
+                ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
+                ->when($to, fn ($q) => $q->where('created_at', '<=', $to))
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $sellerItems = OrderItem::with(['order', 'variant.product'])
+                ->where('seller_id', $user->id)
+                ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
+                ->when($to, fn ($q) => $q->where('created_at', '<=', $to))
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $rangeLabel = ($from ? $from->format('Y-m-d') : 'all').'_'.($to ? $to->format('Y-m-d') : 'all');
+
+            return app(AdminUserReportExcelExporter::class)->download($user, $buyerOrders, $sellerItems, $rangeLabel);
+        }
 
         // Покупки
         $buyerOrders = Order::with('items.variant.product')

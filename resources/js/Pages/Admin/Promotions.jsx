@@ -4,13 +4,9 @@ import MainLayout from '@/Layouts/MainLayout';
 import '../../../css/admin/dashboard.css';
 
 const INITIAL = {
-    title: '',
     badge_label: '',
-    description: '',
-    starts_at: '',
     ends_at: '',
     product_ids: [],
-    is_featured: true,
 };
 
 export default function Promotions({ promotions = [], products = [] }) {
@@ -30,15 +26,16 @@ export default function Promotions({ promotions = [], products = [] }) {
             <Head title="Акции" />
             <div className="adm-page">
                 <h1>Маркетинговые акции</h1>
-                <p className="adm-muted">Отдельно от скидки на цене и промокодов. Товары с бейджем акции и фильтром «По акции» в каталоге.</p>
+                <p className="adm-muted">
+                    Текст на карточке товара в каталоге. Отдельно от скидки по цене и промокодов.
+                </p>
 
                 <table className="adm-table adm-mb">
                     <thead>
                         <tr>
-                            <th>Название</th>
-                            <th>Бейдж</th>
+                            <th>Текст на карточке</th>
                             <th>Товаров</th>
-                            <th>На главной</th>
+                            <th>До</th>
                             <th>Статус</th>
                             <th />
                         </tr>
@@ -46,14 +43,35 @@ export default function Promotions({ promotions = [], products = [] }) {
                     <tbody>
                         {promotions.map((p) => (
                             <tr key={p.id}>
-                                <td>{p.title}</td>
                                 <td>{p.badge_label}</td>
                                 <td>{p.products_count}</td>
-                                <td>{p.is_featured ? 'Да' : '—'}</td>
+                                <td>{p.ends_at ?? '—'}</td>
                                 <td>{p.is_active_now ? 'Активна' : p.status}</td>
                                 <td>
-                                    <button type="button" className="adm-action-btn" onClick={() => router.post(route('admin.promotions.toggle', p.id), {}, { preserveScroll: true })}>Переключить</button>
-                                    <button type="button" className="adm-action-btn adm-btn-reject" onClick={() => { if (confirm('Удалить?')) router.delete(route('admin.promotions.destroy', p.id), { preserveScroll: true }); }}>Удалить</button>
+                                    <button
+                                        type="button"
+                                        className="adm-action-btn"
+                                        onClick={() =>
+                                            router.post(route('admin.promotions.toggle', p.id), {}, {
+                                                preserveScroll: true,
+                                            })
+                                        }
+                                    >
+                                        Переключить
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="adm-action-btn adm-btn-reject"
+                                        onClick={() => {
+                                            if (confirm('Удалить?')) {
+                                                router.delete(route('admin.promotions.destroy', p.id), {
+                                                    preserveScroll: true,
+                                                });
+                                            }
+                                        }}
+                                    >
+                                        Удалить
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -64,22 +82,44 @@ export default function Promotions({ promotions = [], products = [] }) {
                     className="adm-form-block"
                     onSubmit={(e) => {
                         e.preventDefault();
-                        router.post(route('admin.promotions.store'), form, { preserveScroll: true, onSuccess: () => setForm(INITIAL) });
+                        router.post(route('admin.promotions.store'), form, {
+                            preserveScroll: true,
+                            onSuccess: () => setForm(INITIAL),
+                        });
                     }}
                 >
                     <h2>Новая акция</h2>
-                    <input className="admin-search-input adm-mb" placeholder="Название" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-                    <input className="admin-search-input adm-mb" placeholder="Бейдж на карточке" value={form.badge_label} onChange={(e) => setForm({ ...form, badge_label: e.target.value })} required />
-                    <textarea className="admin-search-input adm-mb" placeholder="Описание" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                    <input
+                        className="admin-search-input adm-mb"
+                        placeholder="Текст на карточке (например: Хит)"
+                        value={form.badge_label}
+                        onChange={(e) => setForm({ ...form, badge_label: e.target.value })}
+                        required
+                    />
+                    <label className="adm-muted adm-mb" style={{ display: 'block' }}>
+                        Действует до (необязательно)
+                    </label>
+                    <input
+                        type="datetime-local"
+                        className="admin-search-input adm-mb"
+                        value={form.ends_at}
+                        onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
+                    />
                     <div className="adm-products-pick adm-mb" style={{ maxHeight: 200, overflow: 'auto' }}>
                         {products.map((pr) => (
                             <label key={pr.id} style={{ display: 'block' }}>
-                                <input type="checkbox" checked={form.product_ids.includes(pr.id)} onChange={() => toggleProduct(pr.id)} />
+                                <input
+                                    type="checkbox"
+                                    checked={form.product_ids.includes(pr.id)}
+                                    onChange={() => toggleProduct(pr.id)}
+                                />
                                 {pr.title}
                             </label>
                         ))}
                     </div>
-                    <button type="submit" className="adm-action-btn adm-btn-approve">Создать</button>
+                    <button type="submit" className="adm-action-btn adm-btn-approve">
+                        Создать
+                    </button>
                 </form>
             </div>
         </MainLayout>

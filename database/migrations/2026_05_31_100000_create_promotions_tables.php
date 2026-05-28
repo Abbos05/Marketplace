@@ -10,16 +10,12 @@ return new class extends Migration
     {
         Schema::create('promotions', function (Blueprint $table) {
             $table->id();
-            $table->string('title');
-            $table->string('slug')->unique();
             $table->string('badge_label', 64);
-            $table->text('description')->nullable();
             $table->timestamp('starts_at')->nullable();
             $table->timestamp('ends_at')->nullable();
             $table->enum('status', ['draft', 'active', 'ended'])->default('draft');
             $table->enum('created_by', ['admin', 'seller'])->default('seller');
             $table->foreignId('seller_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->boolean('is_featured')->default(false);
             $table->timestamps();
 
             $table->index(['status', 'starts_at', 'ends_at']);

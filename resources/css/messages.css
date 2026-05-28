@@ -13,7 +13,7 @@
   margin-bottom: 0.65rem;
   padding: 0.65rem 0.9rem;
   border-radius: 12px;
-  background: #1e3a5f;
+  background: var(--background);
   color: #e0f2fe;
   font-size: 0.9rem;
 }
@@ -120,7 +120,7 @@
 }
 
 .msg-thread:hover {
-  background: #c9c9c9;
+  background: #c7d8e3 ;
 }
 
 .msg-thread--active {
@@ -677,6 +677,16 @@
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.msg-inline-link {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.msg-inline-link:hover {
+  color: #1d4ed8;
 }
 
 .msg-bubble-meta {

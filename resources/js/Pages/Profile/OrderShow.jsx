@@ -109,7 +109,13 @@ export default function OrderShow({ auth, order, deliveryTrack = null, documents
                             type="button"
                             className="order-back"
                             style={{ marginTop: 8, border: '1px solid #cbd5e1', borderRadius: 8, padding: '6px 12px', background: '#fff', cursor: 'pointer' }}
-                            onClick={() => router.post(route('messages.open'), { type: 'order', order_id: order.id })}
+                            onClick={() =>
+                                router.post(route('messages.open'), {
+                                    type: 'order',
+                                    order_id: order.id,
+                                    draft: `Заказ #${order.id}`,
+                                })
+                            }
                         >
                             Чат по заказу
                         </button>

@@ -20,16 +20,12 @@ class Promotion extends Model
     public const CREATED_BY_SELLER = 'seller';
 
     protected $fillable = [
-        'title',
-        'slug',
         'badge_label',
-        'description',
         'starts_at',
         'ends_at',
         'status',
         'created_by',
         'seller_id',
-        'is_featured',
     ];
 
     protected function casts(): array
@@ -37,7 +33,6 @@ class Promotion extends Model
         return [
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
-            'is_featured' => 'boolean',
         ];
     }
 
@@ -63,11 +58,6 @@ class Promotion extends Model
             ->where(function (Builder $q) use ($now) {
                 $q->whereNull('ends_at')->orWhere('ends_at', '>=', $now);
             });
-    }
-
-    public function scopeFeatured(Builder $query): Builder
-    {
-        return $query->where('is_featured', true);
     }
 
     public function isCurrentlyActive(): bool

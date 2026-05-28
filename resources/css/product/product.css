@@ -1,6 +1,7 @@
-.Category_product{
+.Category_product {
   margin-bottom: 15px;
 }
+
 .products {
   margin: 0 auto;
   width: 100%;
@@ -113,7 +114,7 @@
 
 /* Навешиваемся на контейнер, а не на path */
 .active:hover path {
-opacity: 0.8;
+  opacity: 0.8;
 }
 
 .product__img-stock {
@@ -136,7 +137,18 @@ opacity: 0.8;
 }
 
 .product__stock__item--promo {
-  background-color: #7c3aed;
+  background-color: greenyellow;
+  color: black;
+  max-width: 100%;
+  overflow: hidden;
+
+}
+
+.product__stock__item--promo p {
+  width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .products__image {
@@ -254,7 +266,7 @@ opacity: 0.8;
   font-size: var(--size-xl);
   color: black;
   margin-bottom: 15px;
-  
+
 }
 
 .products__ratin-stars {
@@ -517,4 +529,3 @@ opacity: 0.8;
   cursor: pointer;
 
 }
-

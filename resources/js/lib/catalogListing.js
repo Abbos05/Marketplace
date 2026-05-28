@@ -52,7 +52,7 @@ export function expandCatalogProductRows(products, options = {}) {
             ...p,
             listing_key: `${p.id}-${v.id}`,
             listing_variant_id: v.id,
-            image: v.image ?? p.image,
+            image: v.image,
             price: v.price,
             old_price: v.old_price,
             discount_percent: v.discount_percent,

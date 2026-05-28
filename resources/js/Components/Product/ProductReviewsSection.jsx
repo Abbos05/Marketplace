@@ -48,7 +48,10 @@ function ReviewLightbox({ images, index, onClose, onNavigate }) {
             ‹
           </button>
         )}
-        <img src={current.url} alt="" className="product-reviews-lightbox__img" />
+       <div className="product-reviews-lightbox__img-container">
+       <img src={current.url} alt="" className="product-reviews-lightbox__img" />
+       </div>
+
         {images.length > 1 && (
           <button
             type="button"

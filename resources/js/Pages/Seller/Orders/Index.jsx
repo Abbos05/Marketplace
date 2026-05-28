@@ -57,12 +57,13 @@ export default function Index({ orders, stats, statusCounts, statusLabels, filte
 
     const totalCount = Object.values(statusCounts).reduce((a, b) => a + Number(b), 0);
 
-    const exportUrl = () => {
+    const exportUrl = (format = 'xlsx') => {
         const params = new URLSearchParams({
             status:    currentStatus !== 'all' ? currentStatus : '',
             search:    searchRef.current?.value ?? filters.search ?? '',
             date_from: dateFromRef.current?.value ?? filters.date_from ?? '',
             date_to:   dateToRef.current?.value   ?? filters.date_to   ?? '',
+            format,
         });
         return route('seller.orders.export') + '?' + params.toString();
     };
@@ -139,8 +140,11 @@ export default function Index({ orders, stats, statusCounts, statusLabels, filte
                         <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                 </select>
-                <a className="ord-export-btn" href={exportUrl()}>
-                    ↓ CSV
+                <a className="ord-export-btn ord-export-btn--primary" href={exportUrl('xlsx')}>
+                    ↓ Excel
+                </a>
+                <a className="ord-export-btn" href={exportUrl('csv')}>
+                    CSV
                 </a>
             </div>
 

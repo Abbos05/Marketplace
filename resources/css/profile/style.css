@@ -1693,7 +1693,7 @@
     border: none;
     background: none;
     padding: 0;
-    color: #2563eb;
+    color: var(--background);
     font-size: var(--size-m);
     font-weight: var(--fw-600);
     cursor: pointer;

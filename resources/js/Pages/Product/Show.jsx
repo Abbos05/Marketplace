@@ -760,6 +760,7 @@ export default function ProductShow({
                       router.post(route('messages.open'), {
                         type: 'seller_product',
                         product_id: product.id,
+                        draft: product?.sku ? `Артикул ${product.sku}` : undefined,
                       });
                     }}
                   >

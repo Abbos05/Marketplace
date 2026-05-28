@@ -1,20 +1,11 @@
-Демо-картинки для массового каталога (опционально)
-==============================================
+Демо-картинки каталога
+======================
 
-Сидер `DemoCatalogSeeder` для каждого товара ищет файлы по шаблону:
+Инструкция: ../products/README.txt
 
-  public/img/catalog/user-{seller_id}/product-{seq}/{1|2|3}.{jpg|jpeg|png|webp}
+Кратко:
+- Только public/img/products/6/ и 7/
+- Номер в имени: 001_timestamp_v0_g0_….webp
+- Таблица номеров: database/data/catalog_seed_image_order.md
 
-где:
-  seller_id — 6 или 7 (чередование по товарам);
-  seq — глобальный номер товара от 1 до N (порядок создания: обход всех подкатегорий × 4 товара).
-
-Пример для первого товара продавца 6:
-
-  public/img/catalog/user-6/product-1/1.jpg
-  public/img/catalog/user-6/product-1/2.jpg
-  public/img/catalog/user-6/product-1/3.jpg
-
-Если файла нет, подставляется `/img/products/default.png`.
-
-После добавления своих файлов перезапустите сидер каталога или `php artisan migrate:fresh --seed`.
+php artisan migrate:fresh --seed

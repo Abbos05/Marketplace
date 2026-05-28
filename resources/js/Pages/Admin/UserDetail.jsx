@@ -95,8 +95,8 @@ function UserReportBar({ userId }) {
     const [from, setFrom] = useState(monthAgo);
     const [to, setTo]     = useState(today);
 
-    const download = () => {
-        const p = new URLSearchParams({ from, to }).toString();
+    const download = (format = 'xlsx') => {
+        const p = new URLSearchParams({ from, to, format }).toString();
         window.location.href = `/admin/reports/user/${userId}?${p}`;
     };
 
@@ -123,8 +123,11 @@ function UserReportBar({ userId }) {
                     <button type="button" className="adm-filter-pill" onClick={() => quick(90)}>90д</button>
                     <button type="button" className="adm-filter-pill" onClick={() => { setFrom(''); setTo(''); }}>Всё</button>
                 </div>
-                <button onClick={download} className="adm-action-btn adm-btn-approve adm-btn-big">
-                    Скачать отчет
+                <button type="button" onClick={() => download('xlsx')} className="adm-action-btn adm-btn-approve adm-btn-big">
+                    Excel
+                </button>
+                <button type="button" onClick={() => download('csv')} className="adm-action-btn adm-btn-view adm-btn-big">
+                    CSV
                 </button>
             </div>
         </div>
@@ -670,11 +673,11 @@ export default function UserDetail({
                             <span>Снято с витрины: {sellerHistory.products_off_catalog}</span>
                             <span>Продано ед.: {sellerHistory.sales_units}</span>
                             <a
-                                href={route('admin.reports.user', user.id)}
+                                href={`${route('admin.reports.user', user.id)}?format=xlsx`}
                                 className="adm-action-btn adm-btn-view"
                                 style={{ marginLeft: 'auto' }}
                             >
-                                Скачать отчёт CSV
+                                Скачать Excel
                             </a>
                         </div>
                     )}

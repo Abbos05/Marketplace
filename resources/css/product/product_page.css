@@ -60,27 +60,39 @@
   box-sizing: border-box;
   display: flex;
   overflow: hidden;
-  justify-content: space-around;
-  gap: 20px;
+  justify-content: start;
+  gap: 25px;
   flex-direction: row;
 }
 
 
+.product-page__gallery {
+  flex: 0 0 auto;
+  width: min(520px, 100%);
+  min-width: 0;
+  
+}
+
 .product-page__main-image {
-  width: 560px;
-  max-height: 600px;
-  height: 100%;
-  border-radius: 12px;
+  width: 100%;
+  height: max-content;
   overflow: hidden;
-  background-color: #f8f8f8;
+  background-color: #e0e0e097;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
 }
 
 .product-page__main-image img {
-  max-width:560px;
-  width: 100%;
-  height: 100%;
-  min-height: 550px;
-  object-fit: cover;
+  max-width: 100%;
+  
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+  display: block;
 }
 
 .product-page__thumbnails {
@@ -98,7 +110,7 @@
   width: 80px;
   height: 80px;
   border-radius: 8px;
-  object-fit: cover;
+  object-fit: contain;
   cursor: pointer;
   border: 1px solid #e0e0e0;
   transition: opacity 0.2s;
@@ -401,7 +413,7 @@
 
 .product-page__promo-badge {
   display: inline-block;
-  background: #7c3aed;
+  background: var(--background);
   color: #fff;
   font-size: 0.8rem;
   font-weight: 600;
@@ -1193,9 +1205,20 @@
   max-height: 90vh;
 }
 
+.product-reviews-lightbox__img-container {
+  position: relative;
+  width: 400px;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  background-color: #f5f5f57a;
+  justify-content: center;
+  border-radius: 8px;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+}
 .product-reviews-lightbox__img {
-  max-width: 100%;
-  max-height: 85vh;
+  width: max-content;
+  height: max-content;
   object-fit: contain;
   border-radius: 8px;
   display: block;
@@ -1204,13 +1227,14 @@
 
 .product-reviews-lightbox__close {
   position: absolute;
-  top: -40px;
-  right: 0;
+  top: 10px;
+  right: 10px;
   width: 36px;
   height: 36px;
   border: none;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  background: rgba(211, 211, 211, 0.551);
+  color: #000000;
+  z-index: 10;
   font-size: 1.5rem;
   border-radius: 50%;
   cursor: pointer;
@@ -1568,9 +1592,10 @@
   }
 
   .product-page__main-image img {
-    max-width: none;
-    min-height: 0;
-    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
   }
 
   .product-page__info {

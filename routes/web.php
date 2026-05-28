@@ -16,7 +16,6 @@ use App\Http\Controllers\Seller\DashboardController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerStatisticsController;
 use App\Http\Controllers\Seller\SellerPromocodesController;
-use App\Http\Controllers\Seller\SellerPromotionController;
 use App\Http\Controllers\Admin\AdminPromotionController;
 use App\Http\Controllers\Seller\SellerSettingsController;
 use App\Http\Controllers\PromocodeController;
@@ -263,11 +262,6 @@ Route::middleware(['auth', 'seller'])->group(function () {
     Route::post('/seller/promocodes', [SellerPromocodesController::class, 'store'])->name('seller.promocodes.store');
     Route::post('/seller/promocodes/{promo}/toggle', [SellerPromocodesController::class, 'toggle'])->name('seller.promocodes.toggle');
     Route::delete('/seller/promocodes/{promo}', [SellerPromocodesController::class, 'destroy'])->name('seller.promocodes.destroy');
-
-    Route::get('/seller/promotions', [SellerPromotionController::class, 'index'])->name('seller.promotions');
-    Route::post('/seller/promotions', [SellerPromotionController::class, 'store'])->name('seller.promotions.store');
-    Route::post('/seller/promotions/{promotion}/toggle', [SellerPromotionController::class, 'toggle'])->name('seller.promotions.toggle');
-    Route::delete('/seller/promotions/{promotion}', [SellerPromotionController::class, 'destroy'])->name('seller.promotions.destroy');
 });
 
 Route::middleware(['auth', 'pvz'])->group(function () {

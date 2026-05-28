@@ -29,19 +29,54 @@ const SORT_OPTIONS = [
     { value: 'title',      label: 'По названию'       },
 ];
 
-export default function Index({ products, statusCounts = {}, filters = {} }) {
+export default function Index({ products, statusCounts = {}, filters = {}, highlightVariantId = null }) {
     const currentStatus = filters.status ?? 'all';
     const currentSort   = filters.sort   ?? 'newest';
+    const currentSearch = filters.search ?? '';
+    const [search, setSearch] = React.useState(currentSearch);
 
+    React.useEffect(() => {
+        setSearch(currentSearch);
+    }, [currentSearch]);
+
+    React.useEffect(() => {
+        if (!highlightVariantId) return undefined;
+        const timer = window.setTimeout(() => {
+            document
+                .getElementById(`seller-variant-card-${highlightVariantId}`)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 250);
+        return () => window.clearTimeout(timer);
+    }, [highlightVariantId]);
 
     const totalCount = Object.values(statusCounts).reduce((a, b) => a + Number(b), 0);
+    const items = products?.data ?? [];
+    const currentPage = products?.current_page ?? 1;
+    const lastPage = products?.last_page ?? 1;
+    const totalItems = products?.total ?? items.length;
 
     const applyFilter = (status) => {
-        router.get(route('seller.products'), { status, sort: currentSort }, { preserveState: true });
+        router.get(route('seller.products'), { status, sort: currentSort, search: currentSearch, page: 1 }, { preserveState: true });
     };
 
     const applySort = (sort) => {
-        router.get(route('seller.products'), { status: currentStatus, sort }, { preserveState: true });
+        router.get(route('seller.products'), { status: currentStatus, sort, search: currentSearch, page: 1 }, { preserveState: true });
+    };
+
+    const applySearch = (e) => {
+        e.preventDefault();
+        router.get(route('seller.products'), { status: currentStatus, sort: currentSort, search: search.trim(), page: 1 }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const goToPage = (page) => {
+        if (page < 1 || page > lastPage) return;
+        router.get(route('seller.products'), { status: currentStatus, sort: currentSort, search: currentSearch, page }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const handleVisibilityToggle = (productId) => {
@@ -59,9 +94,19 @@ export default function Index({ products, statusCounts = {}, filters = {} }) {
             {/* Toolbar */}
             <div className="idx-toolbar">
                 <div className="idx-toolbar-left">
-                    <span className="idx-count">Всего: {totalCount}</span>
+                    <span className="idx-count">Всего вариантов: {totalCount}</span>
                 </div>
                 <div className="idx-toolbar-right">
+                    <form className="idx-search-form" onSubmit={applySearch}>
+                        <input
+                            type="text"
+                            className="idx-search-input"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Поиск по названию товара"
+                        />
+                        <button type="submit" className="idx-search-btn">Найти</button>
+                    </form>
                     <select
                         className="idx-sort-select"
                         value={currentSort}
@@ -98,12 +143,12 @@ export default function Index({ products, statusCounts = {}, filters = {} }) {
             </div>
 
             {/* Empty state */}
-            {products.length === 0 ? (
+            {items.length === 0 ? (
                 <div className="idx-empty">
                     <p>
                         {currentStatus === 'all'
-                            ? 'Пока нет товаров — добавьте первый!'
-                            : `Нет товаров со статусом «${STATUS_META[currentStatus]?.label}»`}
+                            ? 'Ничего не найдено — попробуйте изменить фильтры или поиск.'
+                            : `Нет вариантов со статусом «${STATUS_META[currentStatus]?.label}»`}
                     </p>
                     {currentStatus === 'all' && (
                         <Link href={route('seller.products.create')} className="idx-add-btn">
@@ -112,14 +157,22 @@ export default function Index({ products, statusCounts = {}, filters = {} }) {
                     )}
                 </div>
             ) : (
+                <>
                 <div className="idx-grid">
-                    {products.map((product) => {
+                    {items.map((product) => {
                         const statusMeta = BADGE_META[product.status] ?? { label: product.status, cls: 'draft' };
                         const canToggle  = product.status === 'approved' || product.status === 'hidden';
                         const stockWarn  = product.total_stock === 0 && product.status === 'approved';
+                        const productId = product.product_id ?? product.id;
+
+                        const isHighlighted = highlightVariantId === product.id;
 
                         return (
-                            <div key={product.id} className="idx-card">
+                            <div
+                                key={product.id}
+                                id={`seller-variant-card-${product.id}`}
+                                className={`idx-card${isHighlighted ? ' idx-card--highlighted' : ''}`}
+                            >
                                 {/* Image */}
                                 <div className="idx-card-img">
                                     {product.main_image ? (
@@ -135,6 +188,14 @@ export default function Index({ products, statusCounts = {}, filters = {} }) {
                                     <span className={`idx-status-badge idx-status-badge--${statusMeta.cls}`}>
                                         {statusMeta.label}
                                     </span>
+                                    {isHighlighted && (
+                                        <span className="idx-changed-badge">Изменено</span>
+                                    )}
+                                    {product.promotion_label && (
+                                        <span className="idx-promo-badge" title="Акция на карточке">
+                                            {product.promotion_label}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* Info */}
@@ -142,14 +203,22 @@ export default function Index({ products, statusCounts = {}, filters = {} }) {
                                     <h3 className="idx-card-title" title={product.title}>
                                         {product.title}
                                     </h3>
+                                    <p className="idx-card-cat idx-card-cat--variant">{product.variant_label}</p>
                                     <p className="idx-card-cat">{product.category?.name || '—'}</p>
+
+                                    {(product.promotion_badges?.length ?? 0) > 0 && (
+                                        <p className="idx-card-promo-line">
+                                            Акция:{' '}
+                                            {product.promotion_badges.map((b) => b.label).join(', ')}
+                                        </p>
+                                    )}
 
                                     <div className="idx-card-stats">
                                         <span className="idx-stat">
                                             {product.min_price.toLocaleString('ru-RU')} ₽
                                         </span>
                                         <span className="idx-stat idx-stat--muted">
-                                            {product.variants_count} вар.
+                                            В товаре: {product.variants_count} вар.
                                         </span>
                                         <span className={`idx-stat ${stockWarn ? 'idx-stat--warn' : ''}`}>
                                             Склад: {product.total_stock}
@@ -171,13 +240,13 @@ export default function Index({ products, statusCounts = {}, filters = {} }) {
                                 {/* Actions */}
                                 <div className="idx-card-actions">
                                     <Link
-                                        href={route('seller.products.manage', product.id)}
+                                        href={route('seller.products.manage', productId)}
                                         className="idx-action-btn idx-action-btn--primary"
                                     >
                                         Управление
                                     </Link>
                                     <Link
-                                        href={route('seller.products.edit', product.id)}
+                                        href={route('seller.products.edit', productId)}
                                         className="idx-action-btn"
                                     >
                                         Изменить
@@ -186,7 +255,7 @@ export default function Index({ products, statusCounts = {}, filters = {} }) {
                                         <button
                                             type="button"
                                             className={`idx-action-btn ${product.status === 'hidden' ? 'idx-action-btn--show' : 'idx-action-btn--hide'}`}
-                                            onClick={() => handleVisibilityToggle(product.id)}
+                                            onClick={() => handleVisibilityToggle(productId)}
                                         >
                                             {product.status === 'hidden' ? 'Показать' : 'Скрыть'}
                                         </button>
@@ -196,6 +265,30 @@ export default function Index({ products, statusCounts = {}, filters = {} }) {
                         );
                     })}
                 </div>
+                <div className="idx-pagination">
+                    <span className="idx-pagination-info">
+                        Страница {currentPage} из {lastPage} · Всего: {totalItems}
+                    </span>
+                    <div className="idx-pagination-actions">
+                        <button
+                            type="button"
+                            className="idx-page-btn"
+                            disabled={currentPage <= 1}
+                            onClick={() => goToPage(currentPage - 1)}
+                        >
+                            Назад
+                        </button>
+                        <button
+                            type="button"
+                            className="idx-page-btn"
+                            disabled={currentPage >= lastPage}
+                            onClick={() => goToPage(currentPage + 1)}
+                        >
+                            Вперёд
+                        </button>
+                    </div>
+                </div>
+                </>
             )}
         </SellerLayout>
     );

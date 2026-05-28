@@ -6,11 +6,11 @@
     <title>Alvora — Тестовый доступ</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="manifest" href="/manifest.json?v=3">
+    <link rel="manifest" href="/manifest.json?v=4">
     <meta name="theme-color" content="#FF2E63">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="/icons/icon-192.png?v=3">
-    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=3">
+    <link rel="apple-touch-icon" href="/icons/icon-512.png?v=4">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png?v=4">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {

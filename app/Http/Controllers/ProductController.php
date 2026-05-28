@@ -17,6 +17,7 @@ use App\Models\ReviewVote;
 use App\Models\User;
 use App\Services\CatalogFilterService;
 use App\Services\CommissionService;
+use App\Services\PromotionCatalogService;
 use App\Services\ProductSimilarService;
 use App\Services\ProductViewService;
 use App\Services\ReviewImageService;
@@ -39,54 +40,104 @@ class ProductController extends Controller
     {
         $status = $request->query('status', 'all');
         $sort   = $request->query('sort', 'newest');
+        $search = trim((string) $request->query('search', ''));
 
-        $query = Product::query()
-            ->where('seller_id', Auth::id())
+        $query = ProductVariant::query()
+            ->whereHas('product', function ($q) use ($status, $search) {
+                $q->where('seller_id', Auth::id());
+                if ($status !== 'all') {
+                    $q->where('status', $status);
+                }
+                if ($search !== '') {
+                    $q->where(function ($sq) use ($search) {
+                        $sq->where('title', 'like', '%'.$search.'%')
+                            ->orWhere('short_description', 'like', '%'.$search.'%');
+                    });
+                }
+            })
             ->with([
-                'category',
-                'images' => fn ($q) => $q->whereNull('variant_id'),
-                'variants.images',
+                'images' => fn ($q) => $q->orderByDesc('is_main')->orderBy('sort_order'),
+                'product' => fn ($q) => $q->with(['category']),
             ]);
-
-        if ($status !== 'all') {
-            $query->where('status', $status);
-        }
 
         match ($sort) {
             'oldest'     => $query->orderBy('id'),
-            'price_asc'  => $query->orderBy('min_price'),
-            'price_desc' => $query->orderByDesc('min_price'),
-            'title'      => $query->orderBy('title'),
+            'price_asc'  => $query->orderBy('price'),
+            'price_desc' => $query->orderByDesc('price'),
+            'title'      => $query
+                ->join('products', 'products.id', '=', 'product_variants.product_id')
+                ->orderBy('products.title')
+                ->select('product_variants.*'),
             default      => $query->orderByDesc('id'),
         };
 
-        $products = $query->withCount('variants')->get()->map(function (Product $p) {
-            $totalStock = $p->variants()->sum('stock');
+        $products = $query->paginate(50)->withQueryString();
+
+        $productIds = $products->getCollection()
+            ->pluck('product_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $variantCountsByProduct = ProductVariant::query()
+            ->whereIn('product_id', $productIds)
+            ->selectRaw('product_id, count(*) as cnt')
+            ->groupBy('product_id')
+            ->pluck('cnt', 'product_id');
+
+        $promotionBadgesByProduct = $productIds->isNotEmpty()
+            ? app(PromotionCatalogService::class)->badgesForProducts(
+                Product::query()->whereIn('id', $productIds)->get()
+            )
+            : [];
+
+        $products->getCollection()->transform(function (ProductVariant $variant) use ($variantCountsByProduct, $promotionBadgesByProduct) {
+            $product = $variant->product;
+            $productId = (int) ($product?->id ?? 0);
+            $badges = $promotionBadgesByProduct[$productId] ?? [];
+
             return [
-                'id'             => $p->id,
-                'title'          => $p->title,
-                'category'       => ['name' => $p->category?->name],
-                'min_price'      => (float) $p->min_price,
-                'status'              => $p->status,
-                'moderation_comment'  => $p->moderation_comment,
-                'is_listed'           => (bool) $p->is_on_action,
-                'variants_count' => (int) $p->variants_count,
-                'total_stock'    => (int) $totalStock,
-                'main_image'     => $p->resolveListingImageUrl(),
-                'created_at'     => $p->created_at?->format('d.m.Y'),
+                'id'             => $variant->id,
+                'product_id'     => $product?->id,
+                'title'          => $product?->title ?? 'Товар',
+                'variant_label'  => $variant->displayLabel(),
+                'category'       => ['name' => $product?->category?->name],
+                'min_price'      => (float) $variant->price,
+                'status'         => $product?->status,
+                'moderation_comment' => $product?->moderation_comment,
+                'is_listed'      => (bool) ($product?->is_on_action ?? false),
+                'variants_count' => (int) ($variantCountsByProduct[$product?->id] ?? 0),
+                'total_stock'    => (int) $variant->stock,
+                'main_image'     => $variant->images->first()?->url
+                    ?? $product?->resolveListingImageUrl()
+                    ?? '/img/products/default.png',
+                'created_at'     => $variant->created_at?->format('d.m.Y'),
+                'promotion_badges' => $badges,
+                'promotion_label' => $badges[0]['label'] ?? null,
             ];
         });
 
-        $counts = Product::where('seller_id', Auth::id())
-            ->selectRaw('status, count(*) as cnt')
-            ->groupBy('status')
+        $counts = ProductVariant::query()
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            ->where('products.seller_id', Auth::id())
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($sq) use ($search) {
+                    $sq->where('products.title', 'like', '%'.$search.'%')
+                        ->orWhere('products.short_description', 'like', '%'.$search.'%');
+                });
+            })
+            ->selectRaw('products.status as status, count(product_variants.id) as cnt')
+            ->groupBy('products.status')
             ->pluck('cnt', 'status')
             ->toArray();
+
+        $highlightVariantId = $request->session()->pull('highlight_variant_id');
 
         return Inertia::render('Seller/Products/Index', [
             'products'    => $products,
             'statusCounts'=> $counts,
-            'filters'     => ['status' => $status, 'sort' => $sort],
+            'filters'     => ['status' => $status, 'sort' => $sort, 'search' => $search],
+            'highlightVariantId' => $highlightVariantId ? (int) $highlightVariantId : null,
         ]);
     }
 
@@ -111,7 +162,6 @@ class ProductController extends Controller
 
         $product->load([
             'seller.sellerProfile',
-            'images' => fn ($q) => $q->whereNull('variant_id')->orderByDesc('is_main')->orderBy('sort_order'),
             'attributeValues.attribute',
         ]);
 
@@ -132,26 +182,14 @@ class ProductController extends Controller
             $variants = collect([$created]);
         }
 
-        $galleryUrls = $product->images
-            ->map(fn ($img) => Product::normalizeListingUrl($img->url))
-            ->filter()
-            ->values()
-            ->all();
-
-        if ($galleryUrls === []) {
-            $galleryUrls = ['/img/products/default.png'];
-        }
-
-        $buildGalleryForVariant = function (ProductVariant $v) use ($galleryUrls): array {
+        $buildGalleryForVariant = function (ProductVariant $v): array {
             $fromVariant = $v->images
                 ->map(fn ($img) => Product::normalizeListingUrl($img->url))
                 ->filter()
                 ->values()
                 ->all();
 
-            $merged = array_values(array_unique(array_merge($fromVariant, $galleryUrls)));
-
-            return $merged !== [] ? $merged : ['/img/products/default.png'];
+            return $fromVariant !== [] ? $fromVariant : ['/img/products/default.png'];
         };
 
         $favoriteVariantIds = [];
@@ -373,10 +411,10 @@ class ProductController extends Controller
         $product->setAttribute('promotion_badges', Promotion::query()
             ->active()
             ->whereHas('products', fn ($q) => $q->where('products.id', $product->id))
-            ->get(['title', 'badge_label'])
+            ->get(['badge_label'])
             ->map(fn (Promotion $p) => [
                 'label' => $p->badge_label,
-                'title' => $p->title,
+                'title' => $p->badge_label,
             ])
             ->values()
             ->all());
@@ -390,7 +428,6 @@ class ProductController extends Controller
             'verified' => (bool) $seller->sellerProfile,
         ] : null;
 
-        $product->unsetRelation('images');
         $product->unsetRelation('attributeValues');
         $product->unsetRelation('seller');
 

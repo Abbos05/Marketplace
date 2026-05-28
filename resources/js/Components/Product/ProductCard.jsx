@@ -10,14 +10,6 @@ function normalizeImageUrl(product) {
         if (u.startsWith('http://') || u.startsWith('https://')) return u;
         return u.startsWith('/') ? u : `/${u}`;
     }
-    const imgs = product.images;
-    if (Array.isArray(imgs) && imgs.length > 0) {
-        const row = imgs.find((i) => i.is_main) ?? imgs[0];
-        const u = row?.url ? String(row.url).trim() : '';
-        if (!u) return '/img/products/default.png';
-        if (u.startsWith('http://') || u.startsWith('https://')) return u;
-        return u.startsWith('/') ? u : `/${u}`;
-    }
     return '/img/products/default.png';
 }
 

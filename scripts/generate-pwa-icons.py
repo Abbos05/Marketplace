@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DEPRECATED: placeholder icons only. Use resize_pwa_icons.py with icon-source.png."""
+"""DEPRECATED. Use resize_pwa_icons.py + public/icons/icon-source.png."""
 
 import struct
 import zlib
