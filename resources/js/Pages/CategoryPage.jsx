@@ -6,6 +6,7 @@ import '../../css/product/ShopPage.css';
 import '../../css/product/categories.css';
 import ProductsCatalog from '@/Components/Product/FilterProducts';
 import ProductRecommendationsSection from '@/Components/Product/ProductRecommendationsSection';
+import CategoryIcon from '@/Components/Category/CategoryIcon';
 
 export default function CategoryPage({ auth }) {
   const {
@@ -64,11 +65,11 @@ export default function CategoryPage({ auth }) {
               </h2>
               <p className="category_header__hint">Выберите раздел, чтобы перейти к товарам</p>
             </div>
-            <div className="category_block">
+            <div className="category_block category_block--text">
               {subcategories.map((sub) => (
                 <div
                   key={sub.id}
-                  className="category_item"
+                  className="category_item category_item--text"
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -79,12 +80,11 @@ export default function CategoryPage({ auth }) {
                   }}
                   onClick={() => router.visit(`/category/${sub.id}`)}
                 >
-                  <img
-                    src={sub.icon}
-                    alt=""
-                    className="category_image"
-                  />
-                  <p>{sub.name}</p>
+                  <span className="category_item__leading" aria-hidden>
+                    <CategoryIcon slug={sub.slug} parentSlug={category?.slug} className="category-item-icon-svg" />
+                  </span>
+                  <p className="category_item__name">{sub.name}</p>
+                  <span className="category_item__arrow" aria-hidden>→</span>
                 </div>
               ))}
             </div>

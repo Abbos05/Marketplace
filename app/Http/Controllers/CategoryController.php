@@ -56,7 +56,6 @@ class CategoryController extends Controller
             'id' => $c->id,
             'name' => $c->name,
             'slug' => $c->slug,
-            'icon' => Product::normalizeListingUrl($c->icon) ?: '/img/products/default.png',
         ])->values()->all();
 
         if ($showSubcategories) {

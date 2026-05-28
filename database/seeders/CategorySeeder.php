@@ -55,16 +55,16 @@ class CategorySeeder extends Seeder
     private function seedRoots(): array
     {
         $slugs = [
-            ['slug' => 'electronics', 'name' => 'Электроника', 'icon' => '/img/categories/electronics.png'],
-            ['slug' => 'clothing', 'name' => 'Одежда и обувь', 'icon' => '/img/categories/clothing.png'],
-            ['slug' => 'home', 'name' => 'Дом и интерьер', 'icon' => '/img/categories/home.png'],
-            ['slug' => 'sports', 'name' => 'Спорт и отдых', 'icon' => '/img/categories/sports.png'],
-            ['slug' => 'auto', 'name' => 'Автотовары', 'icon' => '/img/categories/auto.png'],
-            ['slug' => 'books', 'name' => 'Книги и медиа', 'icon' => '/img/categories/books.png'],
-            ['slug' => 'beauty', 'name' => 'Красота и здоровье', 'icon' => '/img/categories/beauty.png'],
-            ['slug' => 'kids', 'name' => 'Детские товары', 'icon' => '/img/categories/kids.png'],
-            ['slug' => 'pets', 'name' => 'Зоотовары', 'icon' => '/img/categories/pets.png'],
-            ['slug' => 'furniture', 'name' => 'Мебель', 'icon' => '/img/categories/furniture.png'],
+            ['slug' => 'electronics', 'name' => 'Электроника'],
+            ['slug' => 'clothing', 'name' => 'Одежда и обувь'],
+            ['slug' => 'home', 'name' => 'Дом и интерьер'],
+            ['slug' => 'sports', 'name' => 'Спорт и отдых'],
+            ['slug' => 'auto', 'name' => 'Автотовары'],
+            ['slug' => 'books', 'name' => 'Книги и медиа'],
+            ['slug' => 'beauty', 'name' => 'Красота и здоровье'],
+            ['slug' => 'kids', 'name' => 'Детские товары'],
+            ['slug' => 'pets', 'name' => 'Зоотовары'],
+            ['slug' => 'furniture', 'name' => 'Мебель'],
         ];
 
         $roots = [];
@@ -73,7 +73,6 @@ class CategorySeeder extends Seeder
                 ['slug' => $row['slug']],
                 [
                     'name' => $row['name'],
-                    'icon' => $row['icon'],
                     'is_active' => true,
                 ]
             );

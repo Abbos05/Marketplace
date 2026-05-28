@@ -30,6 +30,7 @@ class ProductViewServiceTest extends TestCase
             'shop_name' => 'Shop',
             'inn' => '1234567890',
             'legal_address' => 'Address',
+            'pickup_address' => 'Pickup address',
         ]);
 
         $buyer = User::query()->create([

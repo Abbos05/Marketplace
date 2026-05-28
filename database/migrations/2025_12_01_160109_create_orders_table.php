@@ -16,6 +16,8 @@ return new class extends Migration
             $table->foreignId('pickup_point_id')->nullable()->constrained('pickup_points')->nullOnDelete();
             $table->foreignId('issued_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('issued_at')->nullable();
+            $table->foreignId('refused_by_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('refused_at')->nullable();
             $table->enum('status', [
                 'NEW', 'INTRANSIT', 'DELIVERED', 'ISSUED', 'CANCELED', 'REFUSED',
             ])->default('NEW');

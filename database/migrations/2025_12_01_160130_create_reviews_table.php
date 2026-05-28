@@ -20,6 +20,9 @@ return new class extends Migration
             $table->unsignedTinyInteger('rating')->check('rating BETWEEN 1 AND 5');
             $table->text('comment')->nullable();
             $table->boolean('is_moderated')->default(false);
+            $table->text('moderation_comment')->nullable();
+            $table->timestamp('moderated_at')->nullable();
+            $table->foreignId('moderated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->unsignedInteger('likes_count')->default(0);
             $table->unsignedInteger('dislikes_count')->default(0);
             $table->softDeletes();

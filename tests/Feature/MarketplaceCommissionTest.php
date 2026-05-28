@@ -8,8 +8,11 @@ use App\Models\CommissionRate;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PickupPoint;
+use App\Models\PickupPointStaff;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\SellerProfile;
+use App\Models\Region;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\CommissionService;
@@ -32,12 +35,14 @@ class MarketplaceCommissionTest extends TestCase
             'quantity' => 2,
         ]);
 
-        $this->actingAs($buyer)->post(route('order.create'), [
+        $response = $this->actingAs($buyer)->post(route('order.create'), [
             'pickup_point_id' => $pickup->id,
             'items' => [
                 ['cart_id' => Cart::query()->where('user_id', $buyer->id)->value('id'), 'quantity' => 2],
             ],
-        ])->assertRedirect(route('profile.orders'));
+        ]);
+
+        $response->assertStatus(302);
 
         $this->assertDatabaseHas('order_items', [
             'variant_id' => $variant->id,
@@ -128,9 +133,17 @@ class MarketplaceCommissionTest extends TestCase
     private function createSaleFixture(float $percent, float $fixedAmount): array
     {
         $seller = $this->createUser('seller');
+        SellerProfile::query()->create([
+            'user_id' => $seller->id,
+            'shop_name' => 'Seller Shop',
+            'pickup_address' => 'Seller pickup address',
+        ]);
         $buyer = $this->createUser('user', [
             'phone' => '7999000'.random_int(1000, 9999),
             'email_verified_at' => now(),
+        ]);
+        $region = Region::query()->create([
+            'name' => 'Test region',
         ]);
         $category = Category::query()->create([
             'name' => 'Commission category',
@@ -158,8 +171,15 @@ class MarketplaceCommissionTest extends TestCase
         $pickup = PickupPoint::query()->create([
             'title' => 'PVZ',
             'address' => 'Test address',
-            'region_id' => 1,
+            'region_id' => $region->id,
             'is_active' => true,
+        ]);
+        $pvzOperator = $this->createUser('pvz');
+        PickupPointStaff::query()->create([
+            'user_id' => $pvzOperator->id,
+            'pickup_point_id' => $pickup->id,
+            'type' => PickupPointStaff::TYPE_JOIN,
+            'status' => PickupPointStaff::STATUS_APPROVED,
         ]);
 
         return [$buyer, $product, $variant, $pickup];

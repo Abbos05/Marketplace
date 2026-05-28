@@ -44,7 +44,6 @@ class CatalogSearchSuggestionService
         $products = Product::query()
             ->visibleInCatalog()
             ->select(['products.id', 'products.title', 'products.min_price', 'products.category_id', 'products.sales_count'])
-            ->with(['category:id,name,icon'])
             ->where(function ($outer) use ($titleNorm, $lower, $likeContains, $likeStarts) {
                 $outer
                     ->whereRaw("{$titleNorm} LIKE ?", [$lower.'%'])
@@ -116,13 +115,10 @@ class CatalogSearchSuggestionService
             }
 
             $seenTitles[$title] = true;
-            $icon = $product->category?->icon;
-
             $out[] = [
                 'type' => 'query',
                 'text' => $suggestionText,
                 'label' => $suggestionText,
-                'image' => $icon ? Product::normalizeListingUrl($icon) : null,
             ];
         }
 

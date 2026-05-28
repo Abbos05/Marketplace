@@ -279,11 +279,6 @@ const Header = ({ setIsModalOpen }) => {
             className="header-store-menu-link"
             onClick={closeCatalogMenus}
           >
-            <img
-              src={catalog.img || catalog.icon || '/img/products/default.png'}
-              alt=""
-              className="header-store-menu-image"
-            />
             <span>{catalog.name}</span>
           </Link>
         </li>

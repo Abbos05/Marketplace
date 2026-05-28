@@ -71,6 +71,7 @@ class HomeCatalogFeedServiceTest extends TestCase
         $hidden = $this->makeProduct($seller->id, $category->id, [
             'title' => 'Hidden',
             'sales_count' => 999,
+            'status' => 'hidden',
             'is_on_action' => false,
         ]);
 

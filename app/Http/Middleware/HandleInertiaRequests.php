@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use App\Models\Category;
 use App\Models\PickupPointStaff;
-use App\Models\Product;
 use App\Services\ChatService;
 use App\Services\NotificationFeedService;
 use Illuminate\Http\Request;
@@ -106,7 +105,6 @@ class HandleInertiaRequests extends Middleware
                     'id' => $c->id,
                     'name' => $c->name,
                     'slug' => $c->slug,
-                    'img' => $c->icon ? (Product::normalizeListingUrl($c->icon) ?? '/img/products/default.png') : '/img/products/default.png',
                 ])
                 ->values()
                 ->all(),
