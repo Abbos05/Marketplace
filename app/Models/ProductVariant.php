@@ -82,6 +82,31 @@ class ProductVariant extends Model
         return $label !== '' ? $label : ('Вариант #'.$this->id);
     }
 
+    /** Фото варианта или товара для карточек заказа и корзины. */
+    public function resolveDisplayImageUrl(): ?string
+    {
+        $variantImg = $this->images->firstWhere('is_main', true)
+            ?? $this->images->first();
+        if ($variantImg) {
+            $url = $variantImg->url ?? $variantImg->path;
+
+            return $url ? Product::normalizeListingUrl($url) : null;
+        }
+
+        $product = $this->product;
+        if ($product) {
+            $productImg = $product->images->firstWhere('is_main', true)
+                ?? $product->images->first();
+            if ($productImg) {
+                $url = $productImg->url ?? $productImg->path;
+
+                return $url ? Product::normalizeListingUrl($url) : null;
+            }
+        }
+
+        return null;
+    }
+
     // Актуальная цена с учётом скидки
     public function getCurrentPriceAttribute()
     {

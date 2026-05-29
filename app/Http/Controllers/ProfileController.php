@@ -39,13 +39,22 @@ class ProfileController extends Controller
 
         $LikeProducts = $this->catalogRecommendations();
         // Заказы с items и маппингом статусов
-        $orders = Order::with('items.variant.product')
+        $orders = Order::with(['items.variant.product.images', 'items.variant.images'])
             ->where('buyer_id', $user->id)
             ->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_ISSUED, Order::STATUS_REFUSED])
             ->orderBy('created_at', 'desc')
             ->limit(3)
             ->get()
             ->map(function ($order) {
+                foreach ($order->items as $item) {
+                    if ($item->variant?->product) {
+                        $item->variant->product->setAttribute(
+                            'image',
+                            $item->variant->resolveDisplayImageUrl() ?? '/img/products/default.png'
+                        );
+                    }
+                }
+
                 $order->frontend_status =
                     match ($order->status) {
                         Order::STATUS_NEW => 'pending',

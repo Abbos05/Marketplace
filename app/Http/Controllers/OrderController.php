@@ -32,7 +32,7 @@ class OrderController extends Controller
         $user = auth()->user();
         $dailyPickupCode = $user->ensureDailyPickupCode();
 
-        $orders = Order::with('items.variant.product')
+        $orders = Order::with(['items.variant.product.images', 'items.variant.images'])
             ->where('buyer_id', $user->id)
             ->latest()
             ->get();
@@ -74,7 +74,7 @@ class OrderController extends Controller
                                 'product' => [
                                     'id' => $item->variant->product->id ?? null,
                                     'title' => $item->variant->product->title ?? 'Товар',
-                                    'image' => $item->variant->product->image ?? '/img/products/default.png',
+                                    'image' => $item->variant?->resolveDisplayImageUrl() ?? '/img/products/default.png',
                                 ]
                             ]
                         ];
@@ -295,6 +295,8 @@ class OrderController extends Controller
 
         $order->load([
             'items.variant.product.seller',
+            'items.variant.product.images',
+            'items.variant.images',
             'items.review.images',
             'pickupPoint.region',
             'region',
@@ -319,6 +321,11 @@ class OrderController extends Controller
             $row['can_review'] = $this->orderItemCanReview($order, $item, $review);
             $row['review_unavailable_reason'] = $this->orderItemReviewUnavailableReason($order, $item, $review);
             $row['review'] = $review ? $this->formatOrderItemReview($review, $imageService) : null;
+
+            if (isset($row['variant']['product'])) {
+                $row['variant']['product']['image'] = $item->variant?->resolveDisplayImageUrl()
+                    ?? '/img/products/default.png';
+            }
 
             return $row;
         })->values()->all();
