@@ -15,10 +15,8 @@ class YandexController extends Controller
 {
     public function redirectToYandex()
     {
-        // Add phone scope if you need phone numbers
         return Socialite::driver('yandex')
-            ->scopes(['login:email', 'login:phone']) // Added phone scope
-            ->with(['force_confirm' => true])
+            ->with(['scope' => null])  // Исправление ошибки invalid_scope
             ->redirect();
     }
 
@@ -34,10 +32,10 @@ class YandexController extends Controller
 
         $email = $yandexUser->getEmail();
         if (! $email) {
-            return redirect('/login')->with('error', 'Yandex не передал email. Выберите аккаунт с подтвержденной почтой.');
+            return redirect('/login')->with('error', 'Yandex не передал email. Выберите аккаунт с подтверждённой почтой.');
         }
 
-        // Get phone number from Yandex API
+        // Получение номера телефона (требует модерации приложения)
         $phone = $this->getYandexPhoneNumber($yandexUser->token);
         $phone = $this->normalizePhone($phone);
         $phoneWarning = null;
@@ -84,7 +82,8 @@ class YandexController extends Controller
     }
 
     /**
-     * Get phone number from Yandex API
+     * Получение номера телефона из API Яндекса
+     * Требует модерации приложения и права login:phone
      */
     private function getYandexPhoneNumber(string $accessToken): ?string
     {
@@ -92,17 +91,14 @@ class YandexController extends Controller
             $response = Http::withToken($accessToken)
                 ->get('https://login.yandex.ru/info', [
                     'format' => 'json',
-                    'with_phone' => 'yes' // Request phone info
                 ]);
 
             if ($response->successful()) {
                 $data = $response->json();
-                
-                // Yandex returns phone in format: "+7XXXXXXXXXX"
-                return $data['phone'] ?? null;
+                // Телефон возвращается в поле default_phone.number
+                return $data['default_phone']['number'] ?? null;
             }
         } catch (\Exception $e) {
-            // Log error but continue without phone
             \Log::warning('Failed to get Yandex phone: ' . $e->getMessage());
         }
 
@@ -115,19 +111,10 @@ class YandexController extends Controller
             return null;
         }
 
-        // Remove all non-digits
         $phone = preg_replace('/\D/', '', $phone);
         
-        // Remove leading 8 or 7 and add 7
-        if (strlen($phone) === 11 && ($phone[0] === '8' || $phone[0] === '7')) {
+        if (str_starts_with($phone, '8')) {
             $phone = '7' . substr($phone, 1);
-        }
-        
-        // Handle international format with country code
-        if (strlen($phone) === 12 && substr($phone, 0, 2) === '79') {
-            // Already has 7 and 9, keep as is
-        } elseif (strlen($phone) === 11 && $phone[0] === '9') {
-            $phone = '7' . $phone;
         }
 
         return preg_match('/^7\d{10}$/', $phone) ? $phone : null;
