@@ -15,8 +15,7 @@ class YandexController extends Controller
 {
     public function redirectToYandex()
     {
-      
-        return Socialite::driver('yandex')->scopes(['login:email'])->with(['force_confirm' => true])->redirect();
+       return Socialite::driver('yandex')->scopes(['login:email'])->with(['force_confirm' => true])->redirect();
 
     }
 
@@ -35,7 +34,11 @@ class YandexController extends Controller
             return redirect('/login')->with('error', 'Yandex не передал email. Выберите аккаунт с подтверждённой почтой.');
         }
 
-        // Получение номера телефона (требует модерации приложения)
+        // Разделяем полное имя на имя и фамилию
+        $fullName = $yandexUser->getName();
+        $nameParts = $this->splitFullName($fullName);
+        
+        // Получение номера телефона (если нужно)
         $phone = $this->getYandexPhoneNumber($yandexUser->token);
         $phone = $this->normalizePhone($phone);
         $phoneWarning = null;
@@ -58,7 +61,8 @@ class YandexController extends Controller
 
         if (! $user) {
             $user = User::create([
-                'name' => $yandexUser->getName(),
+                'name' => $nameParts['name'],      // Имя
+                'lastname' => $nameParts['lastname'], // Фамилия (может быть null)
                 'newPassw' => true,
                 'email' => $email,
                 'phone' => $phone,
@@ -68,6 +72,14 @@ class YandexController extends Controller
             ]);
         } elseif (! $user->phone && $phone) {
             $user->update(['phone' => $phone]);
+            
+            // Если у пользователя нет имени/фамилии, обновим из Яндекса
+            if (!$user->name && $nameParts['name']) {
+                $user->update([
+                    'name' => $nameParts['name'],
+                    'lastname' => $nameParts['lastname']
+                ]);
+            }
         }
 
         Auth::login($user, true);
@@ -79,6 +91,38 @@ class YandexController extends Controller
         return $phoneWarning
             ? $redirect->with('error', $phoneWarning)
             : $redirect->with('success', 'Успешный вход через Yandex');
+    }
+
+    /**
+     * Разделяет полное имя на имя и фамилию
+     * 
+     * @param string|null $fullName
+     * @return array{name: string|null, lastname: string|null}
+     */
+    private function splitFullName(?string $fullName): array
+    {
+        $result = [
+            'name' => null,
+            'lastname' => null
+        ];
+
+        if (empty($fullName)) {
+            return $result;
+        }
+
+        $parts = explode(' ', trim($fullName), 2);
+        
+        if (count($parts) === 2) {
+            // Два слова - первое имя, второе фамилия
+            $result['name'] = $parts[0];
+            $result['lastname'] = $parts[1];
+        } else {
+            // Одно слово или больше - всё в имя
+            $result['name'] = $fullName;
+            // lastname остаётся null
+        }
+
+        return $result;
     }
 
     /**
@@ -95,7 +139,6 @@ class YandexController extends Controller
 
             if ($response->successful()) {
                 $data = $response->json();
-                // Телефон возвращается в поле default_phone.number
                 return $data['default_phone']['number'] ?? null;
             }
         } catch (\Exception $e) {
