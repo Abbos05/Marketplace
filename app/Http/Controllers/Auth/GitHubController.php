@@ -18,9 +18,13 @@ class GitHubController extends Controller
      */
     public function redirectToProvider()
     {
-        // Явно указываем redirect_uri для гарантии соответствия
+        // Явно указываем полный URL для callback
+        $redirectUrl = url('/auth/github/callback');
+        
+        Log::info('GitHub redirect URL', ['url' => $redirectUrl]);
+        
         return Socialite::driver('github')
-            ->redirectUrl(config('services.github.redirect'))
+            ->redirectUrl($redirectUrl) // ← КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ
             ->scopes(['read:user', 'user:email'])
             ->redirect();
     }
@@ -31,15 +35,17 @@ class GitHubController extends Controller
     public function handleCallback(Request $request)
     {
         try {
-            // Логируем входящий запрос для отладки
-            Log::info('GitHub callback received', [
-                'code_present' => $request->has('code'),
-                'url' => $request->fullUrl()
+            // Тот же URL должен совпадать
+            $redirectUrl = url('/auth/github/callback');
+            
+            Log::info('GitHub callback started', [
+                'redirect_url' => $redirectUrl,
+                'has_code' => $request->has('code'),
+                'full_url' => $request->fullUrl()
             ]);
 
-            // Получаем пользователя из GitHub с явным указанием redirect_uri
             $githubUser = Socialite::driver('github')
-                ->redirectUrl(config('services.github.redirect'))
+                ->redirectUrl($redirectUrl) // ← ДОЛЖНО СОВПАДАТЬ
                 ->setHttpClient(new \GuzzleHttp\Client(['verify' => false]))
                 ->user();
 
@@ -49,31 +55,20 @@ class GitHubController extends Controller
                 'email' => $githubUser->getEmail()
             ]);
 
-            // Получаем email (может быть null, если email приватный)
             $email = $githubUser->getEmail();
-            
-            if (!$email) {
-                // Пробуем получить email через отдельный API запрос
-                $email = $this->getGitHubEmailFromApi($githubUser->token);
-                
-                if (!$email) {
-                    return redirect('/login')->with('error', 
-                        'GitHub не передал email. Убедитесь, что в настройках аккаунта указан публичный email или предоставлен доступ к email.');
-                }
+            if (! $email) {
+                return redirect('/login')->with('error', 'GitHub не передал email. Выберите аккаунт с публичной или подтвержденной почтой.');
             }
 
-            // Разделяем имя и фамилию (GitHub обычно не разделяет)
+            // Разделяем имя и фамилию
             $userNames = $this->splitGitHubName($githubUser->getName() ?? $githubUser->getNickname());
 
-            // Поиск пользователя
             $user = User::withTrashed()->where('email', $email)->first();
             
             if ($user?->trashed()) {
-                return redirect('/login')->with('error', 
-                    'Аккаунт с этой почтой был удалён. Обратитесь в поддержку для восстановления доступа.');
+                return redirect('/login')->with('error', 'Аккаунт с этой почтой был удалён. Обратитесь в поддержку для восстановления доступа.');
             }
 
-            // Создание или обновление пользователя
             if (!$user) {
                 $userData = [
                     'newPassw' => true,
@@ -84,17 +79,13 @@ class GitHubController extends Controller
                     'password' => Hash::make('temp_password_' . rand(1000, 9999)),
                 ];
                 $user = User::create($userData);
-                
-                Log::info('New user created from GitHub', ['user_id' => $user->id, 'email' => $email]);
             } elseif (!$user->name && $userNames['name']) {
-                // Обновляем имя, если его нет
                 $user->update([
                     'name' => $userNames['name'],
                     'last_name' => $userNames['last_name']
                 ]);
             }
 
-            // Авторизация
             Auth::login($user, true);
             $request->session()->regenerate();
             app(LoginHistoryRecorder::class)->record($request, $user, 'github');
@@ -106,55 +97,8 @@ class GitHubController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             
-            // Более информативное сообщение об ошибке
-            $errorMessage = 'Ошибка авторизации через GitHub';
-            if (str_contains($e->getMessage(), '401')) {
-                $errorMessage .= ': Проблема с аутентификацией. Проверьте настройки приложения в GitHub и убедитесь, что redirect_uri совпадает.';
-            } elseif (str_contains($e->getMessage(), 'code')) {
-                $errorMessage .= ': Проблема с получением токена.';
-            }
-            
-            return redirect('/login')->with('error', $errorMessage);
+            return redirect('/login')->with('error', 'Ошибка авторизации через GitHub: ' . $e->getMessage());
         }
-    }
-
-    /**
-     * Получение email через API GitHub (если Socialite не вернул)
-     */
-    private function getGitHubEmailFromApi(string $accessToken): ?string
-    {
-        try {
-            $client = new \GuzzleHttp\Client([
-                'verify' => false,
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
-                    'Accept' => 'application/vnd.github.v3+json',
-                ]
-            ]);
-            
-            $response = $client->get('https://api.github.com/user/emails');
-            $emails = json_decode($response->getBody(), true);
-            
-            // Ищем primary и verified email
-            foreach ($emails as $emailData) {
-                if (isset($emailData['primary']) && $emailData['primary'] === true && 
-                    isset($emailData['verified']) && $emailData['verified'] === true) {
-                    return $emailData['email'];
-                }
-            }
-            
-            // Если primary нет, берем первый verified
-            foreach ($emails as $emailData) {
-                if (isset($emailData['verified']) && $emailData['verified'] === true) {
-                    return $emailData['email'];
-                }
-            }
-            
-        } catch (\Exception $e) {
-            Log::warning('Failed to get GitHub email via API: ' . $e->getMessage());
-        }
-        
-        return null;
     }
 
     /**
