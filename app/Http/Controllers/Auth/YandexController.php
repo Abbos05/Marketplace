@@ -15,9 +15,9 @@ class YandexController extends Controller
 {
     public function redirectToYandex()
     {
-        return Socialite::driver('yandex')
-            ->with(['scope' => null])  // Исправление ошибки invalid_scope
-            ->redirect();
+      
+        return Socialite::driver('yandex')->scopes(['login:email'])->with(['force_confirm' => true])->redirect();
+
     }
 
     public function handleYandexCallback(Request $request)
