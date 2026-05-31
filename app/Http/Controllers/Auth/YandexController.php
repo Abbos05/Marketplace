@@ -62,7 +62,7 @@ class YandexController extends Controller
         if (! $user) {
             $user = User::create([
                 'name' => $nameParts['name'],      // Имя
-                'lastname' => $nameParts['lastname'], // Фамилия (может быть null)
+                'last_name' => $nameParts['last_name'], // Фамилия (может быть null)
                 'newPassw' => true,
                 'email' => $email,
                 'phone' => $phone,
@@ -77,7 +77,7 @@ class YandexController extends Controller
             if (!$user->name && $nameParts['name']) {
                 $user->update([
                     'name' => $nameParts['name'],
-                    'lastname' => $nameParts['lastname']
+                    'last_name' => $nameParts['last_name']
                 ]);
             }
         }
@@ -97,13 +97,13 @@ class YandexController extends Controller
      * Разделяет полное имя на имя и фамилию
      * 
      * @param string|null $fullName
-     * @return array{name: string|null, lastname: string|null}
+     * @return array{name: string|null, last_name: string|null}
      */
     private function splitFullName(?string $fullName): array
     {
         $result = [
             'name' => null,
-            'lastname' => null
+            'last_name' => null
         ];
 
         if (empty($fullName)) {
@@ -115,11 +115,11 @@ class YandexController extends Controller
         if (count($parts) === 2) {
             // Два слова - первое имя, второе фамилия
             $result['name'] = $parts[0];
-            $result['lastname'] = $parts[1];
+            $result['last_name'] = $parts[1];
         } else {
             // Одно слово или больше - всё в имя
             $result['name'] = $fullName;
-            // lastname остаётся null
+            // last_name остаётся null
         }
 
         return $result;
