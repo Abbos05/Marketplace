@@ -44,11 +44,11 @@ return [
         'client_secret' => env('YANDEX_CLIENT_SECRET'),
         'redirect' => env('YANDEX_REDIRECT_URI'),
     ],
-    'github' => [
-        'client_id' => env('GitHub_CLIENT_ID'),
-        'client_secret' => env('GITHUB_CLIENT_SECRET'),
-        'redirect' => env('GitHub_REDIRECT_URI'),
-    ],
+'github' => [
+    'client_id' => env('GITHUB_CLIENT_ID'),      
+    'client_secret' => env('GITHUB_CLIENT_SECRET'),
+    'redirect' => env('GITHUB_REDIRECT_URI'),      
+],
     'stripe' => [
         'model' => App\Models\User::class,
         'key' => env('STRIPE_KEY'),
