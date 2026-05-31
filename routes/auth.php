@@ -93,6 +93,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile/sessions/{session}', [ProfileController::class, 'destroySession'])->name('profile.sessions.destroy');
     Route::post('/profile/phone/send-code', [ProfileController::class, 'sendPhoneCode'])->name('profile.phone.send-code');
     Route::post('/profile/phone/verify-code', [ProfileController::class, 'verifyPhoneCode'])->name('profile.phone.verify-code');
+    Route::post('/profile/email/send-code', [ProfileController::class, 'sendEmailCode'])->name('profile.email.send-code');
+    Route::post('/profile/email/verify-code', [ProfileController::class, 'verifyEmailCode'])->name('profile.email.verify-code');
     Route::post('/profile/update-phone', [ProfileController::class, 'updatePhone'])->name('profile.update.phone');
     // Удаление профиля
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

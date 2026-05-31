@@ -92,6 +92,7 @@ return [
             'auth_login_sms' => filter_var(env('NOTIFY_EMAIL_AUTH_LOGIN_SMS', true), FILTER_VALIDATE_BOOL),
             'auth_password_reset' => filter_var(env('NOTIFY_EMAIL_AUTH_PASSWORD_RESET', true), FILTER_VALIDATE_BOOL),
             'auth_profile_phone' => filter_var(env('NOTIFY_EMAIL_AUTH_PROFILE_PHONE', true), FILTER_VALIDATE_BOOL),
+            'auth_profile_email' => filter_var(env('NOTIFY_EMAIL_AUTH_PROFILE_EMAIL', true), FILTER_VALIDATE_BOOL),
             'security' => filter_var(env('NOTIFY_EMAIL_SECURITY', true), FILTER_VALIDATE_BOOL),
             'account' => filter_var(env('NOTIFY_EMAIL_ACCOUNT', true), FILTER_VALIDATE_BOOL),
             'order_created' => filter_var(env('NOTIFY_EMAIL_ORDER_CREATED', true), FILTER_VALIDATE_BOOL),

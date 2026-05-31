@@ -2085,9 +2085,9 @@ main {
 
 /* Поле ввода кода — крупный центрированный шрифт */
 .phone-auth-code-input {
-  font-size: 24px !important;
+  font-size: 18px !important;
   font-weight: 700 !important;
-  letter-spacing: 12px !important;
+  letter-spacing: 8px !important;
   text-align: center !important;
   padding: 14px !important;
   color: #1e293b !important;
@@ -2827,4 +2827,9 @@ main {
   .header-menu-store--mobile p {
     display: none;
   }
+  .phone-auth-code-input{
+    font-size: 14px !important;
+    padding: 8px !important;
+  }
+  
 }

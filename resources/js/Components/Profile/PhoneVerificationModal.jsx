@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
+import ProfileEmailVerificationFields, {
+  profileEmailNeedsVerification,
+} from '@/Components/Profile/ProfileEmailVerificationFields';
 
 /**
  * Модал верификации профиля: имя, email и обязательная привязка телефона.
@@ -85,10 +88,14 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
   };
 
   const saveProfile = () => {
+    if (profileEmailNeedsVerification(data.email, auth?.user?.email)) {
+      setPhoneError('Подтвердите email кодом из письма перед сохранением.');
+      return;
+    }
+
     const formData = new FormData();
     formData.append('name',      data.name.trim());
     formData.append('last_name', data.last_name.trim());
-    formData.append('email',     data.email.trim());
 
     post('/profile/update', {
       data: formData,
@@ -156,6 +163,11 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (profileEmailNeedsVerification(data.email, auth?.user?.email)) {
+      setPhoneError('Подтвердите email кодом из письма перед сохранением.');
+      return;
+    }
 
     if (needsPhone && phoneStep === 'phone') {
       await sendPhoneCode();
@@ -225,6 +237,15 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
               className="phone-modal-input"
             />
             {errors.email && <p className="modal-error">{errors.email}</p>}
+            <ProfileEmailVerificationFields
+              email={data.email}
+              onEmailChange={(value) => setData('email', value)}
+              currentEmail={auth?.user?.email}
+              inputClassName="phone-modal-input"
+              labelClassName="verification-label"
+              errorClassName="modal-error"
+              infoClassName="modal-success"
+            />
           </div>
 
           {needsPhone ? (

@@ -1,6 +1,8 @@
 import React from 'react';
-import useEffect from 'react';
 import { useForm } from '@inertiajs/react';
+import ProfileEmailVerificationFields, {
+  profileEmailNeedsVerification,
+} from '@/Components/Profile/ProfileEmailVerificationFields';
 
 export default function ProfileEditModal({ auth, isOpen, onClose }) {
   const [preview, setPreview] = React.useState(auth.user.avatar || '/img/profiles/profile.png');
@@ -44,7 +46,10 @@ export default function ProfileEditModal({ auth, isOpen, onClose }) {
 
     const formData = new FormData();
     formData.append('name', data.name);
-    formData.append('email', data.email);
+
+    if (profileEmailNeedsVerification(data.email, auth.user.email)) {
+      return;
+    }
 
     // Отправляем телефон ТОЛЬКО если пользователь его трогал
     if (phoneTouched && data.phone) {
@@ -151,6 +156,20 @@ export default function ProfileEditModal({ auth, isOpen, onClose }) {
                 maxLength={75}
               />
               {errors.email && <p className="profile-modal-error">{errors.email}</p>}
+              <ProfileEmailVerificationFields
+                email={data.email}
+                onEmailChange={(value) => setData('email', value)}
+                currentEmail={auth.user.email}
+                inputClassName="profile-modal-input"
+                labelClassName="profile-modal-label"
+                errorClassName="profile-modal-error"
+                infoClassName="profile-modal-hint"
+              />
+              {profileEmailNeedsVerification(data.email, auth.user.email) && (
+                <p className="profile-modal-hint">
+                  Сначала подтвердите новый email кодом из письма, затем сохраните остальные изменения.
+                </p>
+              )}
             </div>
 
             {/* Телефон — только если уже есть */}

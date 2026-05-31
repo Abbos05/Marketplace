@@ -72,6 +72,41 @@ class TransactionalMailService
         );
     }
 
+    public function sendOtpToAddress(string $email, string $code, string $purposeLabel, string $category, User $user): bool
+    {
+        if (! $this->shouldEmailCategory($category)) {
+            $this->logFallback($category, $user, [
+                'purpose' => $purposeLabel,
+                'code' => $code,
+                'to' => $email,
+                'reason' => 'disabled',
+            ]);
+
+            return false;
+        }
+
+        $to = $this->recipientForAddress($email);
+
+        return $this->send(
+            $to,
+            new AuthOtpMail($code, $purposeLabel),
+            $category,
+            $user,
+            ['purpose' => $purposeLabel, 'code' => $code, 'to' => $email],
+        );
+    }
+
+    private function recipientForAddress(string $email): string
+    {
+        $override = config('marketplace.notifications.email_override');
+
+        if (is_string($override) && $override !== '') {
+            return $override;
+        }
+
+        return $email;
+    }
+
     public function sendAlert(User $user, string $title, string $body, ?string $actionUrl, string $category): bool
     {
         if (! $this->canSendTo($user, $category)) {

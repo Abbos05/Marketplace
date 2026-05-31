@@ -20,7 +20,10 @@ use App\Models\User;
 use App\Notifications\MarketplaceAlert;
 use App\Support\NotificationCategory;
 use App\Services\OtpCodeGenerator;
+use App\Services\TransactionalMailService;
 use App\Services\UserRestrictionService;
+use App\Support\ContactMasker;
+use Illuminate\Support\Str;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Favorite;
@@ -385,7 +388,6 @@ class ProfileController extends Controller
         $rules = [
             'name'      => 'nullable|string|max:50',
             'last_name' => 'nullable|string|max:50',
-            'email'     => 'nullable|email|max:255|unique:users,email,' . $user->id,
             'avatar' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
             'current_password' => 'nullable|string',
             'password' => 'nullable|string|min:4|confirmed',
@@ -395,10 +397,6 @@ class ProfileController extends Controller
             'name.required' => 'Имя обязательно для заполнения.',
             'name.string' => 'Имя должно быть текстом.',
             'name.max' => 'Имя не должно превышать 50 символов.',
-
-            'email.email' => 'Введите корректный адрес электронной почты.',
-            'email.max' => 'Email не должен превышать 255 символов.',
-            'email.unique' => 'Пользователь с таким email уже существует.',
 
             'avatar.image' => 'Аватар должен быть изображением (JPG, PNG, WEBP).',
             'avatar.mimes' => 'Поддерживаются форматы JPG, PNG, WEBP и GIF.',
@@ -536,6 +534,130 @@ class ProfileController extends Controller
             'success' => true,
             'phone' => $phone,
             'message' => 'Номер телефона подтверждён.',
+        ]);
+    }
+
+    public function sendEmailCode(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
+        ], [
+            'email.required' => 'Укажите email.',
+            'email.email' => 'Введите корректный адрес электронной почты.',
+            'email.unique' => 'Пользователь с таким email уже существует.',
+        ]);
+
+        $email = Str::lower(trim($validated['email']));
+        $current = Str::lower(trim((string) $user->email));
+
+        if ($email === $current) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Это ваш текущий email.',
+            ], 422);
+        }
+
+        $otpGenerator = app(OtpCodeGenerator::class);
+        $otp = $otpGenerator->forEmail();
+        $mailSent = app(TransactionalMailService::class)->sendOtpToAddress(
+            $email,
+            $otp,
+            'подтверждения email',
+            NotificationCategory::AuthProfileEmail,
+            $user,
+        );
+
+        if (! $mailSent) {
+            $otp = $otpGenerator->fallback();
+        }
+
+        if (app()->environment('local', 'testing')) {
+            Log::info('Profile email OTP', [
+                'email' => ContactMasker::email($email),
+                'code' => $otp,
+                'sent' => $mailSent,
+            ]);
+        }
+
+        $request->session()->put([
+            'profile_email_pending' => $email,
+            'profile_email_otp_hash' => Hash::make($otp),
+            'profile_email_otp_expires' => now()->addMinutes(10)->timestamp,
+        ]);
+
+        $masked = ContactMasker::email($email);
+        $message = $mailSent
+            ? "Код отправлен на {$masked}. Проверьте входящие и папку «Спам»."
+            : 'Не удалось отправить код на почту. Временно введите код 000000.';
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'masked_target' => $masked,
+            'email_sent' => $mailSent,
+            'cooldown_seconds' => 60,
+        ]);
+    }
+
+    public function verifyEmailCode(Request $request): JsonResponse
+    {
+        $request->validate([
+            'code' => ['required', 'string', 'size:6'],
+        ], [
+            'code.required' => 'Введите код подтверждения.',
+            'code.size' => 'Код должен состоять из 6 цифр.',
+        ]);
+
+        $pending = $request->session()->get('profile_email_pending');
+        $otpHash = $request->session()->get('profile_email_otp_hash');
+        $expires = $request->session()->get('profile_email_otp_expires');
+
+        if (
+            ! $pending
+            || ! $otpHash
+            || ! Hash::check($request->input('code'), $otpHash)
+            || ! $expires
+            || now()->timestamp > $expires
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Неверный или истёкший код подтверждения.',
+            ], 422);
+        }
+
+        $emailTaken = User::where('email', $pending)
+            ->whereKeyNot($request->user()->id)
+            ->exists();
+
+        if ($emailTaken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Этот email уже привязан к другому аккаунту.',
+            ], 422);
+        }
+
+        $request->user()->update([
+            'email' => $pending,
+            'email_verified_at' => now(),
+        ]);
+
+        $request->session()->forget([
+            'profile_email_pending',
+            'profile_email_otp_hash',
+            'profile_email_otp_expires',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'email' => $pending,
+            'message' => 'Email подтверждён и сохранён.',
         ]);
     }
 

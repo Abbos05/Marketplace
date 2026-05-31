@@ -5,6 +5,9 @@ import { router, useForm } from '@inertiajs/react';
 import { canManageUserAsStaff, canAssignStaffRoles, isStaff, roleOptionsFor, roleOptionsForTarget } from '@/lib/staffAccess';
 
 import PhoneVerificationModal from '@/Components/Profile/PhoneVerificationModal';
+import ProfileEmailVerificationFields, {
+  profileEmailNeedsVerification,
+} from '@/Components/Profile/ProfileEmailVerificationFields';
 import BlockedAccountModal from '@/Components/Profile/BlockedAccountModal';
 import BlockedAccountBanner from '@/Components/Profile/BlockedAccountBanner';
 import ConfirmModal from '@/Components/ConfirmModal';
@@ -177,8 +180,8 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
     });
   };
 
-  // Форма: контактные данные (только email; телефон — readonly)
-  const { data: contactData, setData: setContactData, post: postContact, processing: contactProcessing, errors: contactErrors } = useForm({
+  // Форма: контактные данные (email — только через код подтверждения)
+  const { data: contactData, setData: setContactData } = useForm({
     email: auth.user.email || '',
   });
 
@@ -234,13 +237,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
 
   const handleContactSubmit = (e) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append('email', contactData.email);
-    // phone НЕ отправляем — изменяется только через поддержку
-    postContact('/profile/update', {
-      data: formData, forceFormData: true, preserveState: true, preserveScroll: true,
-      onSuccess: () => { setEditingCard(null); setMessage('Email обновлён!'); },
-    });
+    // Email сохраняется только после подтверждения кода (ProfileEmailVerificationFields).
   };
 
   const goSettingsSection = (section) => {
@@ -1152,7 +1149,22 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                         className="settings-input"
                         placeholder="example@mail.com"
                       />
-                      {contactErrors.email && <p className="settings-error">{contactErrors.email}</p>}
+                      <ProfileEmailVerificationFields
+                        email={contactData.email}
+                        onEmailChange={(value) => {
+                          setContactData('email', value);
+                          setMessage('Email подтверждён и сохранён!');
+                          setEditingCard(null);
+                        }}
+                        currentEmail={auth.user.email}
+                        onVerified={() => {
+                          setMessage('Email подтверждён и сохранён!');
+                          setEditingCard(null);
+                        }}
+                      />
+                      {!profileEmailNeedsVerification(contactData.email, auth.user.email) && (
+                        <p className="settings-hint-text">Измените email и подтвердите его кодом из письма.</p>
+                      )}
                     </div>
                     <div className="settings-field">
                       <label className="settings-label">Телефон</label>
@@ -1174,11 +1186,6 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                           <p className="settings-hint-text">Без подтверждённого телефона нельзя оформить заказ.</p>
                         </>
                       )}
-                    </div>
-                    <div className="settings-card-actions">
-                      <button type="submit" className="settings-save-btn" disabled={contactProcessing}>
-                        {contactProcessing ? 'Сохранение...' : 'Сохранить'}
-                      </button>
                     </div>
                   </form>
                 )}

@@ -18,6 +18,8 @@ final class NotificationCategory
 
     public const AuthProfilePhone = 'auth_profile_phone';
 
+    public const AuthProfileEmail = 'auth_profile_email';
+
     public const Security = 'security';
 
     public const Account = 'account';
@@ -57,6 +59,7 @@ final class NotificationCategory
             self::AuthLoginSms,
             self::AuthPasswordReset,
             self::AuthProfilePhone,
+            self::AuthProfileEmail,
             self::Security,
             self::Account,
             self::OrderCreated,
