@@ -26,6 +26,20 @@ def run_sips(args: list[str]) -> None:
     subprocess.run(["sips", *args], check=True, stdout=subprocess.DEVNULL)
 
 
+def is_square(path: Path) -> bool:
+    out = subprocess.check_output(
+        ["sips", "-g", "pixelWidth", "-g", "pixelHeight", str(path)],
+        text=True,
+    )
+    w = h = None
+    for line in out.splitlines():
+        if "pixelWidth:" in line:
+            w = int(line.split(":")[-1].strip())
+        elif "pixelHeight:" in line:
+            h = int(line.split(":")[-1].strip())
+    return w is not None and w == h
+
+
 def main() -> int:
     if not SOURCE.is_file():
         print(f"Missing {SOURCE}")
@@ -37,19 +51,23 @@ def main() -> int:
         return 1
 
     master = ICONS / ".pwa-master-512.png"
-    # 1) Квадрат 512×512 с полями вокруг логотипа
-    run_sips([
-        "--padColor", PAD_COLOR,
-        "--padToHeightWidth", "512", "512",
-        str(SOURCE), "--out", str(master),
-    ])
-    inner = max(64, int(512 * LOGO_SCALE))
-    run_sips(["-Z", str(inner), str(master)])
-    run_sips([
-        "--padColor", PAD_COLOR,
-        "--padToHeightWidth", "512", "512",
-        str(master), "--out", str(master),
-    ])
+    if is_square(SOURCE):
+        # Готовая квадратная иконка с фоном — без белых полей
+        run_sips(["-z", "512", "512", str(SOURCE), "--out", str(master)])
+    else:
+        # Логотип без фона — уменьшаем и центрируем с отступами под маску Android/iOS
+        run_sips([
+            "--padColor", PAD_COLOR,
+            "--padToHeightWidth", "512", "512",
+            str(SOURCE), "--out", str(master),
+        ])
+        inner = max(64, int(512 * LOGO_SCALE))
+        run_sips(["-Z", str(inner), str(master)])
+        run_sips([
+            "--padColor", PAD_COLOR,
+            "--padToHeightWidth", "512", "512",
+            str(master), "--out", str(master),
+        ])
 
     for size in SIZES:
         out = ICONS / f"icon-{size}.png"

@@ -1878,7 +1878,7 @@ main {
   border: 1.5px solid #e2e8f0;
   color: #1e293b;
   border-radius: 10px;
-  font-size: var(--size-15);
+  font-size: var(--size-15) !important;
   font-family: inherit;
 }
 

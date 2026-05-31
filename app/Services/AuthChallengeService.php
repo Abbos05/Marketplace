@@ -377,11 +377,19 @@ class AuthChallengeService
             'expires_at' => now()->addMinutes($ttl),
         ]);
 
-        $deliveryMethod = $this->deliverPasswordResetCode($user, $code);
+        $emailSent = $this->deliverPasswordResetCode($user, $code);
+
+        if (! $emailSent) {
+            $fallbackCode = $this->otp->fallback();
+            $loginChallenge->update([
+                'reset_code_hash' => Hash::make($fallbackCode),
+            ]);
+        }
 
         return [
             'challenge' => $loginChallenge->fresh(),
-            'delivery_method' => $deliveryMethod,
+            'delivery_method' => $emailSent ? 'email' : 'fallback',
+            'email_sent' => $emailSent,
         ];
     }
 
@@ -552,13 +560,8 @@ class AuthChallengeService
         $this->mail->sendOtp($user, $code, 'входа', NotificationCategory::AuthLoginSms);
     }
 
-    /**
-     * @return 'test'|'email'
-     */
-    private function deliverPasswordResetCode(User $user, string $code): string
+    private function deliverPasswordResetCode(User $user, string $code): bool
     {
-        $sent = $this->mail->sendOtp($user, $code, 'сброса пароля', NotificationCategory::AuthPasswordReset);
-
-        return $sent ? 'email' : 'test';
+        return $this->mail->sendOtp($user, $code, 'сброса пароля', NotificationCategory::AuthPasswordReset);
     }
 }

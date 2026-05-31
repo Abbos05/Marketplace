@@ -27,7 +27,7 @@ Android и iOS рисуют ярлык в круге или «скруглённ
 -------------------
 1. Замените:  public/icons/icon-source.png
 2. Выполните:  python3 scripts/resize_pwa_icons.py
-3. Увеличьте ?v= в manifest.json и app.blade.php (сейчас v=3 → v=4)
+3. Увеличьте ?v= в manifest.json и app.blade.php (сейчас v=5 → v=6)
 4. Chrome: Application → Clear site data; удалите PWA с рабочего стола → установите снова
 
-Проверка:  /icons/icon-512.png?v=4
+Проверка:  /icons/icon-512.png?v=5

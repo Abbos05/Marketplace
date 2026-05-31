@@ -3,6 +3,7 @@
 @php
     $ttl = (int) config('marketplace.auth.otp_ttl_minutes', 10);
     $digits = preg_split('//u', $code, -1, PREG_SPLIT_NO_EMPTY);
+    $emailLogoUrl = rtrim((string) config('app.url'), '/') . '/icons/icon-192.png';
 @endphp
 
 @section('preheader')
@@ -17,7 +18,7 @@
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
         <tr>
             <td align="center" style="padding-bottom:8px;">
-                <span style="display:inline-block;width:48px;height:48px;line-height:48px;border-radius:12px;background:#fff0f4;color:#FF2E63;font-size:22px;text-align:center;">🔐</span>
+                <img src="{{ $emailLogoUrl }}" alt="{{ config('app.name') }}" width="48" height="48" style="display:block;width:48px;height:48px;border-radius:12px;border:0;">
             </td>
         </tr>
         <tr>

@@ -105,13 +105,55 @@ test('forgot password masks email and does not expose test code hint', function 
     $response->assertOk()
         ->assertJson([
             'success' => true,
-            'masked_target' => 'iv***ov@g***.com',
+            'masked_target' => 'iv***ov@gmail.com',
+            'email_sent' => true,
         ]);
 
     expect($response->json('message'))
-        ->toContain('iv***ov@g***.com')
-        ->not->toContain('000000')
+        ->toContain('iv***ov@gmail.com')
+        ->not->toContain('g***')
         ->not->toContain('Тестовый');
+});
+
+test('forgot password uses fallback code hint when email cannot be sent', function () {
+    config([
+        'marketplace.notifications.email_enabled' => false,
+    ]);
+
+    $user = User::factory()->create([
+        'email' => 'user@example.com',
+        'phone' => '79995556678',
+        'newPassw' => false,
+        'password' => Hash::make('secret'),
+    ]);
+
+    $challenge = LoginChallenge::create([
+        'user_id' => $user->id,
+        'phone' => $user->phone,
+        'code_hash' => Hash::make('123456'),
+        'channel' => LoginChallenge::CHANNEL_SMS,
+        'purpose' => LoginChallenge::PURPOSE_LOGIN,
+        'phone_verified_at' => now(),
+        'expires_at' => now()->addMinutes(10),
+    ]);
+
+    $response = $this->postJson('/auth/phone/forgot-password/send', [
+        'challenge_id' => $challenge->id,
+    ]);
+
+    $response->assertOk()
+        ->assertJson([
+            'success' => true,
+            'email_sent' => false,
+            'reset_channel' => 'fallback',
+        ]);
+
+    expect($response->json('message'))
+        ->toContain('Не удалось отправить код на почту')
+        ->toContain('000000');
+
+    $challenge->refresh();
+    expect(Hash::check('000000', $challenge->reset_code_hash))->toBeTrue();
 });
 
 test('active session on another device requires notification otp', function () {

@@ -8,6 +8,7 @@
     $muted = '#64748b';
     $border = '#e2e8f0';
     $preheaderText = trim($__env->yieldContent('preheader'));
+    $emailLogoUrl = rtrim((string) config('app.url'), '/') . '/icons/icon-192.png';
 @endphp
 <!DOCTYPE html>
 <html lang="ru">
@@ -49,6 +50,7 @@
             <table role="presentation" class="email-container" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;">
                 <tr>
                     <td align="center" style="padding-bottom:20px;">
+                        <img src="{{ $emailLogoUrl }}" alt="{{ $appName }}" width="40" height="40" style="display:block;margin:0 auto 8px;width:40px;height:40px;border-radius:10px;border:0;">
                         <span style="display:inline-block;font-size:22px;font-weight:700;color:{{ $brand }};letter-spacing:-0.02em;">{{ $appName }}</span>
                     </td>
                 </tr>

@@ -478,9 +478,11 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
       if (data.success) {
         setResetDeliveryHint(
           data.message
-            || (data.masked_target
-              ? `Код отправлен на ${data.masked_target}. Проверьте входящие и папку «Спам».`
-              : 'Код отправлен на привязанную почту. Проверьте входящие и папку «Спам».')
+            || (data.email_sent === false
+              ? 'Не удалось отправить код на почту. Временно введите код 000000.'
+              : data.masked_target
+                ? `Код отправлен на ${data.masked_target}. Проверьте входящие и папку «Спам».`
+                : 'Код отправлен на привязанную почту. Проверьте входящие и папку «Спам».')
         );
         setCode('');
         setStep(STEPS.FORGOT_CODE);
@@ -756,7 +758,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
                 type="text"
                 value={code}
                 onChange={(e) => handleCodeChange(e, handleForgotVerifyCode)}
-                placeholder="6 цифр из письма"
+                placeholder="000000"
                 className="modal-input phone-auth-code-input"
                 inputMode="numeric"
                 maxLength={6}

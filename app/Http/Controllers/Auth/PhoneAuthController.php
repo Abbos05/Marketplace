@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\LoginChallenge;
+use App\Support\ContactMasker;
 use App\Models\User;
 use App\Services\AuthChallengeService;
 use Illuminate\Http\JsonResponse;
@@ -248,18 +249,25 @@ class PhoneAuthController extends Controller
         $result = $this->challenges->createPasswordResetChallenge($challenge);
 
         $masked = $user->email
-            ? $this->maskEmail($user->email)
+            ? ContactMasker::email($user->email)
             : null;
 
-        $message = $masked
-            ? "Код отправлен на {$masked}. Проверьте входящие и папку «Спам»."
-            : 'Код отправлен на привязанную почту. Проверьте входящие и папку «Спам».';
+        $emailSent = (bool) ($result['email_sent'] ?? true);
+
+        if (! $emailSent) {
+            $message = 'Не удалось отправить код на почту. Временно введите код 000000.';
+        } elseif ($masked) {
+            $message = "Код отправлен на {$masked}. Проверьте входящие и папку «Спам».";
+        } else {
+            $message = 'Код отправлен на привязанную почту. Проверьте входящие и папку «Спам».';
+        }
 
         return response()->json([
             'success'         => true,
-            'reset_channel'   => 'email',
+            'reset_channel'   => $emailSent ? 'email' : 'fallback',
             'masked_target'   => $masked,
             'delivery_method' => $result['delivery_method'],
+            'email_sent'      => $emailSent,
             'message'         => $message,
         ]);
     }
@@ -340,49 +348,6 @@ class PhoneAuthController extends Controller
     private function usersByPhone(string $phone)
     {
         return User::withTrashed()->where('phone', $phone)->limit(2)->get();
-    }
-
-    private function maskEmail(string $email): string
-    {
-        $email = trim($email);
-        $parts = explode('@', $email, 2);
-        if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
-            return '***@***';
-        }
-
-        [$local, $domain] = $parts;
-        $len = strlen($local);
-
-        if ($len === 1) {
-            $maskedLocal = '*';
-        } elseif ($len === 2) {
-            $maskedLocal = $local[0] . '*';
-        } elseif ($len <= 4) {
-            $maskedLocal = substr($local, 0, 1) . '***' . substr($local, -1);
-        } else {
-            $start = min(2, (int) floor($len / 4));
-            $end = min(2, (int) floor($len / 4));
-            $maskedLocal = substr($local, 0, $start) . '***' . substr($local, -$end);
-        }
-
-        $domainParts = explode('.', $domain);
-        if (count($domainParts) >= 2) {
-            $tld = array_pop($domainParts);
-            $host = implode('.', $domainParts);
-            if (strlen($host) <= 2) {
-                $maskedDomain = $host . '.' . $tld;
-            } elseif (strlen($host) <= 5) {
-                $maskedDomain = substr($host, 0, 1) . '***.' . $tld;
-            } else {
-                $maskedDomain = substr($host, 0, 2) . '***' . substr($host, -1) . '.' . $tld;
-            }
-        } else {
-            $maskedDomain = strlen($domain) > 3
-                ? substr($domain, 0, 2) . '***'
-                : '***';
-        }
-
-        return $maskedLocal . '@' . $maskedDomain;
     }
 
     private function duplicatePhoneResponse(): JsonResponse

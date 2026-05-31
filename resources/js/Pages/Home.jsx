@@ -33,7 +33,7 @@ export default function Home({ auth, categoryData, showModal, homeSlides = [] })
     };
     return (
         <MainLayout auth={auth} categories={categoryData} showModal={showModal}>
-            <Head title="Home" />
+            <Head title="Alvora Маркетплейс" />
 
             {search ? (
                 <>

@@ -22,10 +22,22 @@ class OtpCodeGenerator
         return $this->random();
     }
 
-    /** Код на почту (сброс пароля): в local/testing — тестовый 000000. */
+    /** Код на почту — всегда случайный (не dev OTP). */
     public function forEmail(): string
     {
-        return $this->forSms();
+        return $this->random();
+    }
+
+    /** Fallback, если письмо не ушло (временно 000000). */
+    public function fallback(): string
+    {
+        $devOtp = config('marketplace.auth.dev_otp');
+
+        if ($devOtp !== null && $devOtp !== '') {
+            return (string) $devOtp;
+        }
+
+        return '000000';
     }
 
     private function random(): string
