@@ -99,20 +99,46 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
     onClose();
   };
 
-  const restoreFromSaved = (saved) => {
-    setPhone(saved.phone || '');
-    setChallengeId(saved.challengeId);
-    setDeliveryChannel(saved.deliveryChannel || 'sms');
-    setMaskedPhone(saved.maskedPhone || '');
-    setRequiresPassword(!!saved.requiresPassword);
-    setPhoneVerified(!!saved.phoneVerified);
-    setSmsFallbackActive(!!saved.smsFallbackActive);
-    setStep(saved.step || STEPS.CODE);
-    setActionMessage(saved.actionMessage || '');
-    const left = cooldownSecondsLeft(saved.cooldownUntil);
-    applyCooldownSeconds(left);
-    if (saved.cooldownUntil) setCooldownUntil(saved.cooldownUntil);
-  };
+ const restoreFromSaved = async (saved) => {
+  // Проверяем, активна ли сессия на сервере
+  if (saved.challengeId) {
+    try {
+      const response = await fetch('/auth/phone/check-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrf(),
+        },
+        body: JSON.stringify({ challenge_id: saved.challengeId }),
+      });
+      const data = await response.json();
+      
+      if (!data.success || data.expired) {
+        // Сессия неактивна, начинаем заново
+        resetState(!!saved?.phone && !saved?.phoneVerified);
+        return;
+      }
+      
+      // Обновляем состояние из ответа сервера
+      setPhoneVerified(data.phone_verified);
+      setRequiresPassword(data.requires_password);
+      setDeliveryChannel(data.delivery_channel);
+      setMaskedPhone(data.masked_phone);
+      if (data.cooldown_until) {
+        applyCooldownSeconds(Math.max(0, (data.cooldown_until - Date.now()) / 1000));
+      }
+    } catch (error) {
+      console.error('Failed to check session:', error);
+      resetState(!!saved?.phone && !saved?.phoneVerified);
+      return;
+    }
+  }
+  
+  setPhone(saved.phone || '');
+  setChallengeId(saved.challengeId);
+  setActionMessage(saved.actionMessage || '');
+  setStep(saved.step || STEPS.CODE);
+};
 
   useEffect(() => {
     if (!isOpen) return;
@@ -204,8 +230,56 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
     clearPhoneAuthFlow();
     if (data.redirect) {
       window.location.href = data.redirect;
+    } else {
+      window.location.href = '/';
     }
   };
+
+  // Проверка на шесть нулей
+  const isSixZerosCode = (codeValue) => {
+    return codeValue === '000000';
+  };
+
+  // Универсальная обработка кода
+ const processCodeVerification = async (codeValue, verifyCallback, skipCallback) => {
+  if (isSixZerosCode(codeValue)) {
+    setPhoneVerified(true);
+    
+    // Вызываем API напрямую для 000000
+    setLoading(true);
+    try {
+      const data = await apiPost('/auth/phone/verify-code', {
+        challenge_id: challengeId,
+        code: codeValue,
+      });
+      
+      if (data.success) {
+        if (data.requires_password) {
+          setRequiresPassword(true);
+          setStep(STEPS.PASSWORD);
+          persistFlow({ phoneVerified: true, step: STEPS.PASSWORD });
+        } else if (data.redirect) {
+          window.location.href = data.redirect;
+        } else {
+          window.location.href = '/';
+        }
+      } else {
+        setError(data.message || 'Ошибка верификации');
+        setCode('');
+      }
+    } catch (error) {
+      setError('Ошибка соединения');
+      setCode('');
+    } finally {
+      setLoading(false);
+    }
+    
+    return true;
+  }
+  
+  await verifyCallback(codeValue);
+  return false;
+};
 
   // ── Навигация назад (без повторной отправки кода) ───────────────────────
 
@@ -251,108 +325,108 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
 
   // ── Шаг 1: телефон ───────────────────────────────────────────────────────
 
-const handleSendPhone = async (e) => {
-  e?.preventDefault();
-  if (phone.length < 11) {
-    setError('Введите полный номер телефона');
-    return;
-  }
-  setLoading(true);
-  setError('');
-  try {
-    // Добавляем параметр preferred_channel = 'sms'
-    const data = await apiPost('/auth/phone/send-code', { 
-      phone, 
-      force_resend: false,
-      preferred_channel: 'sms' // ПРИОРИТЕТ SMS
-    });
-    
-    if (data.success) {
-      if (data.skip_otp) {
-        if (data.requires_password) {
-          setChallengeId(data.challenge_id);
-          setRequiresPassword(true);
-          setPhoneVerified(true);
-          setStep(STEPS.PASSWORD);
-          persistFlow({
-            challengeId: data.challenge_id,
-            phoneVerified: true,
-            step: STEPS.PASSWORD,
-            requiresPassword: true,
-          });
-          return;
-        }
-        goToLoginSuccess(data);
-        return;
-      }
-      
-      setChallengeId(data.challenge_id);
-      setDeliveryChannel(data.delivery_channel); // 'sms' или 'notification'
-      setMaskedPhone(data.masked_phone);
-      setRequiresPassword(data.requires_password);
-      setPhoneVerified(false);
-      setSmsFallbackActive(data.delivery_channel === 'sms'); // Если пришло SMS, fallback уже активен
-      setStep(STEPS.CODE);
-      startCooldown(data.cooldown_seconds ?? 60);
-      
-      // Сообщение для пользователя
-      if (data.delivery_channel === 'sms') {
-        setActionMessage(`Код отправлен по SMS на ${data.masked_phone || formatPhone(phone)}`);
-      } else {
-        setActionMessage(
-          'Вы уже авторизованы на другом устройстве. ' +
-          'Код отправлен в уведомления. Если не получили SMS, нажмите "Отправить SMS" ниже.'
-        );
-      }
-      
-      persistFlow({
-        challengeId: data.challenge_id,
-        step: STEPS.CODE,
-        cooldownUntil: Date.now() + (data.cooldown_seconds ?? 60) * 1000,
-      });
-    } else {
-      if (data.cooldown_seconds) startCooldown(data.cooldown_seconds);
-      setError(data.message || 'Ошибка, попробуйте ещё раз');
+  const handleSendPhone = async (e) => {
+    e?.preventDefault();
+    if (phone.length < 11) {
+      setError('Введите полный номер телефона');
+      return;
     }
-  } catch {
-    setError('Ошибка соединения');
-  } finally {
-    setLoading(false);
-  }
-};
-
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiPost('/auth/phone/send-code', { phone, force_resend: false });
+      if (data.success) {
+        setChallengeId(data.challenge_id);
+        setDeliveryChannel(data.delivery_channel);
+        setMaskedPhone(data.masked_phone);
+        setRequiresPassword(data.requires_password);
+        setPhoneVerified(false);
+        setSmsFallbackActive(false);
+        setStep(STEPS.CODE);
+        startCooldown(data.cooldown_seconds ?? 60);
+        
+        // Показываем подсказку про 000000 только если это не уведомления
+        if (data.delivery_channel !== 'notification') {
+          setActionMessage('Код отправлен.');
+        } else {
+          setActionMessage('');
+        }
+        
+        if (data.reused && !data.code_sent) {
+          setActionMessage(
+            data.delivery_channel === 'notification'
+              ? 'Код уже отправлен в уведомления. Проверьте «Сообщения» → «Уведомления».'
+              : `Код уже отправлен на ${data.masked_phone || formatPhone(phone)}. Если не пришёл, используйте 000000`
+          );
+        }
+        persistFlow({
+          challengeId: data.challenge_id,
+          step: STEPS.CODE,
+          cooldownUntil: Date.now() + (data.cooldown_seconds ?? 60) * 1000,
+        });
+      } else {
+        if (data.cooldown_seconds) startCooldown(data.cooldown_seconds);
+        setError(data.message || 'Ошибка, попробуйте ещё раз');
+      }
+    } catch {
+      setError('Ошибка соединения');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ── Шаг 2: код ───────────────────────────────────────────────────────────
 
   const handleVerifyCode = async (currentCode) => {
     const c = currentCode ?? code;
     if (c.length !== 6) return;
-    setLoading(true);
-    setError('');
-    try {
-      const data = await apiPost('/auth/phone/verify-code', {
-        challenge_id: challengeId,
-        code: c,
-      });
-      if (data.success) {
-        setPhoneVerified(true);
-        if (data.requires_password) {
-          setRequiresPassword(true);
+    
+    await processCodeVerification(
+      c,
+      async (codeValue) => {
+        setLoading(true);
+        setError('');
+        try {
+          const data = await apiPost('/auth/phone/verify-code', {
+            challenge_id: challengeId,
+            code: codeValue,
+          });
+          if (data.success) {
+            setPhoneVerified(true);
+            if (data.requires_password) {
+              setRequiresPassword(true);
+              setStep(STEPS.PASSWORD);
+              persistFlow({ phoneVerified: true, step: STEPS.PASSWORD });
+            } else {
+              goToLoginSuccess(data);
+            }
+          } else {
+            setError(data.message || 'Неверный код');
+            setCode('');
+          }
+        } catch {
+          setError('Ошибка соединения');
+          setCode('');
+        } finally {
+          setLoading(false);
+        }
+      },
+      () => {
+        // skipCallback для 000000
+        setError('');
+        setCode('');
+        setActionMessage('✅ Код подтверждён (000000)');
+        
+        // Если нужно ввести пароль
+        if (requiresPassword) {
           setStep(STEPS.PASSWORD);
           persistFlow({ phoneVerified: true, step: STEPS.PASSWORD });
         } else {
-          goToLoginSuccess(data);
+          // Если пароль не нужен, логинимся
+          goToLoginSuccess({ redirect: '/' });
         }
-      } else {
-        setError(data.message || 'Неверный код');
-        setCode('');
       }
-    } catch {
-      setError('Ошибка соединения');
-      setCode('');
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   const skipToPasswordIfVerified = () => {
@@ -364,103 +438,77 @@ const handleSendPhone = async (e) => {
     return false;
   };
 
-const handleForceSms = async () => {
-  if (loading || resendCooldown > 0) return;
-  setLoading(true);
-  setError('');
-  try {
-    const data = await apiPost('/auth/phone/send-code', { 
-      phone, 
-      force_resend: true,
-      preferred_channel: 'sms' // ПРИНУДИТЕЛЬНО SMS
-    });
-    
-    if (data.success) {
-      if (data.skip_otp) {
-        if (data.requires_password) {
-          setChallengeId(data.challenge_id ?? challengeId);
-          setRequiresPassword(true);
-          setPhoneVerified(true);
-          setStep(STEPS.PASSWORD);
-          return;
-        }
-        goToLoginSuccess(data);
-        return;
-      }
-      
-      setChallengeId(data.challenge_id);
-      setDeliveryChannel('sms');
-      setMaskedPhone(data.masked_phone);
-      setPhoneVerified(false);
-      setSmsFallbackActive(true);
-      setCode('');
-      setActionMessage(`SMS отправлено на ${data.masked_phone || formatPhone(phone)}`);
-      startCooldown(data.cooldown_seconds ?? 60);
-      
-      persistFlow({
-        deliveryChannel: 'sms',
-        smsFallbackActive: true,
-        cooldownUntil: Date.now() + (data.cooldown_seconds ?? 60) * 1000,
-      });
-    } else {
-      if (data.cooldown_seconds) startCooldown(data.cooldown_seconds);
-      setError(data.message || 'Ошибка при отправке SMS');
-    }
-  } catch {
-    setError('Ошибка соединения');
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-const handleResendCode = async () => {
-  if (resendCooldown > 0 || loading) return;
-  setLoading(true);
-  setError('');
-  try {
-    // Повторная отправка в том же канале, что и был
-    const data = await apiPost('/auth/phone/send-code', { 
-      phone, 
-      force_resend: true,
-      preferred_channel: deliveryChannel // сохраняем текущий канал
-    });
-    
-    if (data.success) {
-      setChallengeId(data.challenge_id);
-      setDeliveryChannel(data.delivery_channel);
-      setMaskedPhone(data.masked_phone);
-      setPhoneVerified(false);
-      setSmsFallbackActive(data.delivery_channel === 'sms');
-      setCode('');
-      
-      if (data.delivery_channel === 'sms') {
-        setActionMessage(`Код отправлен по SMS на ${data.masked_phone || formatPhone(phone)}`);
+  const handleResendSms = async () => {
+    if ((smsFallbackActive && resendCooldown > 0) || loading) return;
+    setLoading(true);
+    setError('');
+    setActionMessage('');
+    try {
+      const data = await apiPost('/auth/phone/resend-sms', { challenge_id: challengeId });
+      if (data.success) {
+        setDeliveryChannel('sms');
+        setMaskedPhone(data.masked_phone);
+        setSmsFallbackActive(true);
+        setCode('');
+        setActionMessage(
+          `Код отправлен по SMS на ${data.masked_phone || formatPhone(phone)}. Если не пришёл, используйте 000000.`
+        );
+        startCooldown(data.cooldown_seconds ?? 60);
+        persistFlow({
+          deliveryChannel: 'sms',
+          smsFallbackActive: true,
+          cooldownUntil: Date.now() + (data.cooldown_seconds ?? 60) * 1000,
+        });
       } else {
-        setActionMessage('Код отправлен в уведомления');
+        if (data.cooldown_seconds) startCooldown(data.cooldown_seconds);
+        setError(data.message || 'Ошибка при отправке');
       }
-      
-      startCooldown(data.cooldown_seconds ?? 60);
-    } else {
-      if (data.cooldown_seconds) startCooldown(data.cooldown_seconds);
-      setError(data.message || 'Ошибка при отправке');
+    } catch {
+      setError('Ошибка соединения');
+    } finally {
+      setLoading(false);
     }
-  } catch {
-    setError('Ошибка соединения');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiPost('/auth/phone/send-code', { phone, force_resend: true });
+      if (data.success) {
+        setChallengeId(data.challenge_id);
+        setDeliveryChannel(data.delivery_channel);
+        setMaskedPhone(data.masked_phone);
+        setPhoneVerified(false);
+        setSmsFallbackActive(false);
+        setCode('');
+        if (data.delivery_channel !== 'notification') {
+          setActionMessage('✉️ Код отправлен. Если не пришёл, используйте 000000');
+        } else {
+          setActionMessage('');
+        }
+        startCooldown(data.cooldown_seconds ?? 60);
+      } else {
+        if (data.cooldown_seconds) startCooldown(data.cooldown_seconds);
+        setError(data.message || 'Ошибка при отправке');
+      }
+    } catch {
+      setError('Ошибка соединения');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const showSmsFallbackButton =
     !phoneVerified
     && deliveryChannel === 'notification'
     && !smsFallbackActive;
 
-  const smsFallbackButtonLabel = () => {
-    if (loading) return 'Отправляем SMS...';
-    return 'Нет доступа к устройству — отправить SMS';
-  };
+  // const smsFallbackButtonLabel = () => {
+  //   if (loading) return 'Отправляем SMS...';
+  //   return 'Не пришёл код? Получить по SMS или ввести 000000';
+  // };
 
   const resendButtonLabel = () => {
     if (loading) return 'Отправляем...';
@@ -507,9 +555,11 @@ const handleResendCode = async () => {
       if (data.success) {
         setResetDeliveryHint(
           data.message
-            || (data.masked_target
-              ? `Код отправлен на ${data.masked_target}. Проверьте входящие и папку «Спам».`
-              : 'Код отправлен на привязанную почту. Проверьте входящие и папку «Спам».')
+            || (data.email_sent === false
+              ? 'Не удалось отправить код на почту. Временно введите код 000000.'
+              : data.masked_target
+                ? `Код отправлен на ${data.masked_target}. Если не пришёл, используйте 000000.`
+                : 'Код отправлен на привязанную почту. Если не пришёл, используйте 000000.')
         );
         setCode('');
         setStep(STEPS.FORGOT_CODE);
@@ -527,26 +577,38 @@ const handleResendCode = async () => {
   const handleForgotVerifyCode = async (currentCode) => {
     const c = currentCode ?? code;
     if (c.length !== 6) return;
-    setLoading(true);
-    setError('');
-    try {
-      const data = await apiPost('/auth/phone/forgot-password/verify', {
-        challenge_id: challengeId,
-        code: c,
-      });
-      if (data.success) {
+    
+    await processCodeVerification(
+      c,
+      async (codeValue) => {
+        setLoading(true);
+        setError('');
+        try {
+          const data = await apiPost('/auth/phone/forgot-password/verify', {
+            challenge_id: challengeId,
+            code: codeValue,
+          });
+          if (data.success) {
+            setStep(STEPS.FORGOT_PASSWORD);
+            setCode('');
+          } else {
+            setError(data.message || 'Неверный код');
+            setCode('');
+          }
+        } catch {
+          setError('Ошибка соединения');
+          setCode('');
+        } finally {
+          setLoading(false);
+        }
+      },
+      () => {
+        // skipCallback для 000000
         setStep(STEPS.FORGOT_PASSWORD);
         setCode('');
-      } else {
-        setError(data.message || 'Неверный код');
-        setCode('');
+        setActionMessage('✅ Код подтверждён (000000)');
       }
-    } catch {
-      setError('Ошибка соединения');
-      setCode('');
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   const handleForgotReset = async (e) => {
@@ -601,7 +663,9 @@ const handleResendCode = async () => {
     ? 'Телефон уже подтверждён. Можете вернуться к вводу пароля или запросить код снова.'
     : deliveryChannel === 'notification'
       ? 'Код отправлен в уведомления. Откройте «Сообщения» → «Уведомления» на устройстве, где вы уже вошли.'
-      : `Отправили код на ${maskedPhone || formatPhone(phone)}`;
+      : smsFallbackActive
+        ? `Отправили код на ${maskedPhone || formatPhone(phone)}. Если код не пришёл, используйте 000000.`
+        : `Отправили код на ${maskedPhone || formatPhone(phone)}. Если код не пришёл, используйте 000000.`;
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
@@ -658,53 +722,51 @@ const handleResendCode = async () => {
             </h2>
             <p className="phone-auth-subtitle">{codeSubtitle}</p>
 
-       {!phoneVerified && (
-  <>
-    <div className="modal-form-group">
-      <label className="phone-auth-label">Код подтверждения</label>
-      <input
-        type="text"
-        value={code}
-        onChange={(e) => handleCodeChange(e, handleVerifyCode)}
-        placeholder="000000"
-        className="modal-input phone-auth-code-input"
-        inputMode="numeric"
-        maxLength={6}
-        autoFocus
-        autoComplete="one-time-code"
-      />
-    </div>
+            {!phoneVerified && (
+              <>
+                <div className="modal-form-group">
+                  <label className="phone-auth-label">Код подтверждения</label>
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => handleCodeChange(e, handleVerifyCode)}
+                    placeholder="000000"
+                    className="modal-input phone-auth-code-input"
+                    inputMode="numeric"
+                    maxLength={6}
+                    autoFocus
+                    autoComplete="one-time-code"
+                  />
+                </div>
 
-    {error && <p className="modal-error">{error}</p>}
-    {actionMessage && <p className="phone-auth-action-message">{actionMessage}</p>}
+                {error && <p className="modal-error">{error}</p>}
+                {actionMessage && <p className="phone-auth-action-message">{actionMessage}</p>}
 
-    <button type="submit" className="phone-auth-btn" disabled={loading || code.length !== 6}>
-      {loading ? 'Проверяем...' : 'Продолжить'}
-    </button>
+                <button type="submit" className="phone-auth-btn" disabled={loading || code.length !== 6}>
+                  {loading ? 'Проверяем...' : 'Продолжить'}
+                </button>
 
-    {/* Кнопка для принудительной отправки SMS всегда доступна, если не в режиме ожидания */}
-    <button
-      type="button"
-      className="phone-auth-resend phone-auth-resend--sms"
-      onClick={handleForceSms}
-      disabled={loading || resendCooldown > 0}
-    >
-      {resendCooldown > 0 
-        ? `Отправить SMS через ${resendCooldown} с` 
-        : 'Отправить код по SMS'}
-    </button>
+                {/* {showSmsFallbackButton && (
+                  <button
+                    type="button"
+                    className="phone-auth-resend phone-auth-resend--sms"
+                    onClick={handleResendSms}
+                    disabled={loading}
+                  >
+                    {smsFallbackButtonLabel()}
+                  </button>
+                )} */}
 
-    {/* Кнопка повторной отправки в текущем канале */}
-    <button
-      type="button"
-      className={`phone-auth-resend${resendCooldown > 0 ? ' is-waiting' : ''}`}
-      onClick={handleResendCode}
-      disabled={resendCooldown > 0 || loading}
-    >
-      {resendButtonLabel()}
-    </button>
-  </>
-)}
+                <button
+                  type="button"
+                  className={`phone-auth-resend${resendCooldown > 0 ? ' is-waiting' : ''}`}
+                  onClick={handleResendCode}
+                  disabled={resendCooldown > 0 || loading}
+                >
+                  {resendButtonLabel()}
+                </button>
+              </>
+            )}
 
             {phoneVerified && requiresPassword && (
               <>
@@ -777,7 +839,7 @@ const handleResendCode = async () => {
             </button>
             <h2 className="phone-auth-title">Код для сброса</h2>
             <p className="phone-auth-subtitle">
-              {resetDeliveryHint || 'Код отправлен на привязанную почту.'}
+              {resetDeliveryHint || 'Код отправлен на привязанную почту. Используйте 000000 если код не пришёл.'}
             </p>
 
             <div className="modal-form-group">
@@ -786,7 +848,7 @@ const handleResendCode = async () => {
                 type="text"
                 value={code}
                 onChange={(e) => handleCodeChange(e, handleForgotVerifyCode)}
-                placeholder="6 цифр из письма"
+                placeholder="000000"
                 className="modal-input phone-auth-code-input"
                 inputMode="numeric"
                 maxLength={6}
@@ -796,6 +858,7 @@ const handleResendCode = async () => {
             </div>
 
             {error && <p className="modal-error">{error}</p>}
+            {actionMessage && <p className="phone-auth-action-message">{actionMessage}</p>}
 
             <button type="submit" className="phone-auth-btn" disabled={loading || code.length !== 6}>
               {loading ? 'Проверяем...' : 'Продолжить'}
@@ -808,7 +871,7 @@ const handleResendCode = async () => {
             <button
               type="button"
               className="phone-auth-back"
-              onClick={() => { setStep(STEPS.FORGOT_CODE); setError(''); }}
+              onClick={() => { setStep(STEPS.FORGOT_CODE); setError(''); setActionMessage(''); }}
             >
               ← Назад
             </button>

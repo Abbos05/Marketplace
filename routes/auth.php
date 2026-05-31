@@ -96,6 +96,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/email/send-code', [ProfileController::class, 'sendEmailCode'])->name('profile.email.send-code');
     Route::post('/profile/email/verify-code', [ProfileController::class, 'verifyEmailCode'])->name('profile.email.verify-code');
     Route::post('/profile/update-phone', [ProfileController::class, 'updatePhone'])->name('profile.update.phone');
+    Route::post('/auth/phone/check-session', [PhoneAuthController::class, 'checkSession']);
     // Удаление профиля
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
