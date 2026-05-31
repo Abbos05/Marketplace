@@ -72,6 +72,10 @@ return [
         'email' => env('MARKETPLACE_SUPPORT_EMAIL', 'support@alvoraplace.ru'),
     ],
 
+    'mail' => [
+        'logo_path' => env('MAIL_BRAND_LOGO_PATH', 'icons/icon-192.png'),
+    ],
+
     /*
     | Дублирование уведомлений (колокольчик) на email.
     | Поставьте NOTIFICATION_EMAIL_ENABLED=false, чтобы отключить все письма.
