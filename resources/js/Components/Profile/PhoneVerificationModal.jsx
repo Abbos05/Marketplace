@@ -259,7 +259,7 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
                     setPhone(normalizePhone(e.target.value));
                     setPhoneError('');
                   }}
-                  placeholder="+7 999 123 45 67"
+                  placeholder="+7 999 99 99"
                   className="phone-modal-input"
                   disabled={phoneStep === 'code'}
                 />
