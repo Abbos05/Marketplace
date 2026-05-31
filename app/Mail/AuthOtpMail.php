@@ -27,6 +27,7 @@ class AuthOtpMail extends Mailable
     public function content(): Content
     {
         return new Content(
+            html: 'mail.auth-otp-html',
             text: 'mail.auth-otp',
         );
     }

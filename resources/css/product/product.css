@@ -20,7 +20,7 @@
   grid-template-columns: repeat(auto-fill, minmax(220px, 270px));
   align-items: stretch;
   justify-content: space-between;
-  column-gap: 12px;
+  column-gap: 5px;
   row-gap: 20px;
 }
 

@@ -28,6 +28,7 @@ class MarketplaceAlertMail extends Mailable
     public function content(): Content
     {
         return new Content(
+            html: 'mail.marketplace-alert-html',
             text: 'mail.marketplace-alert',
         );
     }

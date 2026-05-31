@@ -1,10 +1,12 @@
+{{ config('app.name') }}
+
 {{ $title }}
 
 {{ $body }}
 
 @if($actionUrl)
-Ссылка: {{ str_starts_with($actionUrl, 'http') ? $actionUrl : url($actionUrl) }}
+Открыть: {{ str_starts_with($actionUrl, 'http') ? $actionUrl : url($actionUrl) }}
 @endif
 
 —
-{{ config('app.name') }}
+Уведомление также в личном кабинете.
