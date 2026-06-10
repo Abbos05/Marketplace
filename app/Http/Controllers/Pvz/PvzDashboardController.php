@@ -61,16 +61,19 @@ class PvzDashboardController extends Controller
         $staff = $request->attributes->get('pvz_staff');
         $point = $staff->pickupPoint;
 
-        if (! $point) {
+        if (!$point) {
             return back()->with('error', 'Пункт выдачи не найден.');
         }
 
         $data = $request->validate([
             'closure_reason' => 'nullable|string|max:1000',
+        ], [
+            'closure_reason.string' => 'Причина закрытия должна быть текстом.',
+            'closure_reason.max' => 'Причина закрытия не должна превышать 1000 символов.',
         ]);
 
         $check = app(PvzClosureService::class)->canRequestClosure($point);
-        if (! $check['ok']) {
+        if (!$check['ok']) {
             return back()->with('error', $check['message']);
         }
 
@@ -127,6 +130,14 @@ class PvzDashboardController extends Controller
             'order_search' => ['required', 'string', 'max:80'],
             'pickup_filter' => ['nullable', 'string', 'in:mine,other,all'],
             'status_filter' => ['nullable', 'string', 'in:active,ready,done,all'],
+        ], [
+            'order_search.required' => 'Необходимо указать поисковый запрос.',
+            'order_search.string' => 'Поисковый запрос должен быть текстом.',
+            'order_search.max' => 'Поисковый запрос не должен превышать 80 символов.',
+            'pickup_filter.string' => 'Фильтр пункта выдачи должен быть строкой.',
+            'pickup_filter.in' => 'Недопустимый фильтр пункта выдачи.',
+            'status_filter.string' => 'Фильтр статуса должен быть строкой.',
+            'status_filter.in' => 'Недопустимый фильтр статуса.',
         ]);
 
         $searchService = app(OrderSearchService::class);
@@ -161,6 +172,13 @@ class PvzDashboardController extends Controller
             'pickup_filter' => ['nullable', 'string', 'in:mine,other,all'],
             'status_filter' => ['nullable', 'string', 'in:active,ready,done,all'],
             'page' => ['nullable', 'integer', 'min:1'],
+        ], [
+            'pickup_filter.string' => 'Фильтр пункта выдачи должен быть строкой.',
+            'pickup_filter.in' => 'Недопустимый фильтр пункта выдачи.',
+            'status_filter.string' => 'Фильтр статуса должен быть строкой.',
+            'status_filter.in' => 'Недопустимый фильтр статуса.',
+            'page.integer' => 'Номер страницы должен быть числом.',
+            'page.min' => 'Номер страницы должен быть не менее 1.',
         ]);
 
         $searchService = app(OrderSearchService::class);
@@ -177,19 +195,19 @@ class PvzDashboardController extends Controller
             $saved = $request->session()->get('pvz_orders_search', []);
         }
 
-        $orderSearch = ! empty($saved['order_search'])
+        $orderSearch = !empty($saved['order_search'])
             ? $searchService->trimSearchInput($saved['order_search'])
             : '';
 
         $searchType = $orderSearch !== '' ? $searchService->classifySearch($orderSearch) : '';
 
         $pickupFilter = $request->input('pickup_filter', $saved['pickup_filter'] ?? 'mine');
-        if (! in_array($pickupFilter, ['mine', 'other', 'all'], true)) {
+        if (!in_array($pickupFilter, ['mine', 'other', 'all'], true)) {
             $pickupFilter = 'mine';
         }
 
         $statusFilter = $request->input('status_filter', $saved['status_filter'] ?? 'active');
-        if (! in_array($statusFilter, ['active', 'ready', 'done', 'all'], true)) {
+        if (!in_array($statusFilter, ['active', 'ready', 'done', 'all'], true)) {
             $statusFilter = $searchService->defaultStatusFilterForSearchType($searchType);
         }
 
@@ -250,7 +268,7 @@ class PvzDashboardController extends Controller
 
         $filteredOrders = match ($pickupFilter) {
             'mine' => $foundOrders->where('pickup_point_id', $pickupPointId),
-            'other' => $foundOrders->filter(fn (Order $o) => (int) $o->pickup_point_id !== $pickupPointId),
+            'other' => $foundOrders->filter(fn(Order $o) => (int) $o->pickup_point_id !== $pickupPointId),
             default => $foundOrders,
         };
 
@@ -289,7 +307,7 @@ class PvzDashboardController extends Controller
             'statusCounts' => $statusCounts,
             'pagination' => $presentation['pagination'],
             'orderResults' => $orderResults,
-                'recentSearches' => array_slice($request->session()->get('pvz_recent_searches', []), 0, 4),
+            'recentSearches' => array_slice($request->session()->get('pvz_recent_searches', []), 0, 4),
         ];
     }
 
@@ -327,7 +345,7 @@ class PvzDashboardController extends Controller
         $recent = $request->session()->get('pvz_recent_searches', []);
         $recent = array_values(array_filter(
             $recent,
-            fn (array $row) => ($row['q'] ?? '') !== $orderSearch,
+            fn(array $row) => ($row['q'] ?? '') !== $orderSearch,
         ));
         array_unshift($recent, [
             'q' => $orderSearch,
@@ -348,6 +366,11 @@ class PvzDashboardController extends Controller
             'period_to' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
             'sort' => ['nullable', Rule::in(['asc', 'desc'])],
             'only_activity' => ['nullable', 'boolean'],
+        ], [
+            'period_from.regex' => 'Формат периода должен быть ГГГГ-ММ (например, 2026-01).',
+            'period_to.regex' => 'Формат периода должен быть ГГГГ-ММ (например, 2026-01).',
+            'sort.in' => 'Направление сортировки должно быть asc или desc.',
+            'only_activity.boolean' => 'Значение должно быть true или false.',
         ]);
 
         $periodFrom = $data['period_from'] ?? null;
@@ -355,10 +378,10 @@ class PvzDashboardController extends Controller
         $sort = $data['sort'] ?? 'desc';
         $onlyActivity = $request->boolean('only_activity', true);
 
-        if ($periodFrom && ! $periodTo) {
+        if ($periodFrom && !$periodTo) {
             $periodTo = $periodFrom;
         }
-        if ($periodTo && ! $periodFrom) {
+        if ($periodTo && !$periodFrom) {
             $periodFrom = $periodTo;
         }
 
@@ -402,7 +425,14 @@ class PvzDashboardController extends Controller
     {
         $request->validate([
             'status' => ['required', Rule::in([Order::STATUS_ISSUED, Order::STATUS_REFUSED])],
-            'refusal_code' => ['required_if:status,'.Order::STATUS_REFUSED, 'nullable', 'string', 'min:4', 'max:10'],
+            'refusal_code' => ['required_if:status,' . Order::STATUS_REFUSED, 'nullable', 'string', 'min:4', 'max:10'],
+        ], [
+            'status.required' => 'Необходимо указать статус.',
+            'status.in' => 'Недопустимый статус.',
+            'refusal_code.required_if' => 'При отказе необходимо указать код отказа.',
+            'refusal_code.string' => 'Код отказа должен быть строкой.',
+            'refusal_code.min' => 'Код отказа должен содержать минимум 4 символа.',
+            'refusal_code.max' => 'Код отказа не должен превышать 10 символов.',
         ]);
 
         try {
@@ -440,6 +470,13 @@ class PvzDashboardController extends Controller
             'period_from' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
             'period_to' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
             'all' => ['nullable', 'boolean'],
+        ], [
+            'format.required' => 'Необходимо выбрать формат отчёта.',
+            'format.in' => 'Формат должен быть: pdf, csv или xlsx.',
+            'period.regex' => 'Формат периода должен быть ГГГГ-ММ (например, 2024-01).',
+            'period_from.regex' => 'Формат периода должен быть ГГГГ-ММ (например, 2024-01).',
+            'period_to.regex' => 'Формат периода должен быть ГГГГ-ММ (например, 2024-01).',
+            'all.boolean' => 'Значение должно быть true или false.',
         ]);
 
         if ($request->boolean('all') && $request->format === 'xlsx') {
@@ -447,7 +484,7 @@ class PvzDashboardController extends Controller
         }
 
         $period = $request->period ?? now()->format('Y-m');
-        if (! $period) {
+        if (!$period) {
             abort(422, 'Укажите период.');
         }
         [$year, $month] = explode('-', $period);
@@ -567,7 +604,7 @@ class PvzDashboardController extends Controller
 
         return response()->streamDownload(function () use ($reportData, $percent) {
             $out = fopen('php://output', 'w');
-            fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($out, ['Период', $reportData['period']], ';');
             fputcsv($out, ['ПВЗ', $reportData['pickup_point']?->title ?? ''], ';');
             fputcsv($out, ['Формула вознаграждения', $reportData['fee_description']], ';');
@@ -581,7 +618,7 @@ class PvzDashboardController extends Controller
                     $row->order?->number ?? $row->order_id,
                     $row->created_at?->format('d.m.Y H:i'),
                     $row->order_total ?? $row->order?->total,
-                    $percent.'%',
+                    $percent . '%',
                     $row->amount,
                 ], ';');
             }

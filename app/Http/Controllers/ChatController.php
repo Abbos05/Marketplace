@@ -15,7 +15,8 @@ class ChatController extends Controller
     public function __construct(
         protected ChatService $chat,
         protected NotificationFeedService $notificationFeed,
-    ) {}
+    ) {
+    }
 
     protected function hubUnreadCount(User $user): int
     {
@@ -68,8 +69,8 @@ class ChatController extends Controller
                 : $this->chat->threadsForStaffInbox($user, false, $supportFilter));
 
         return [
-            'threads'  => $threads,
-            'active'   => $active,
+            'threads' => $threads,
+            'active' => $active,
             'messages' => $messages,
         ];
     }
@@ -120,23 +121,23 @@ class ChatController extends Controller
         $supportUnread = $this->chat->supportInboxUnreadFor($user);
 
         $props = [
-            'threads'           => $state['threads'],
-            'activeConversation'=> $state['active'],
-            'messages'          => $state['messages'],
-            'isAdminSupport'    => false,
-            'embed'             => false,
+            'threads' => $state['threads'],
+            'activeConversation' => $state['active'],
+            'messages' => $state['messages'],
+            'isAdminSupport' => false,
+            'embed' => false,
             'supportInboxUnreadCount' => $supportUnread,
-            'supportFilter'     => $supportFilter,
+            'supportFilter' => $supportFilter,
             ...$this->notificationProps($user, $request),
         ];
 
         if ($user->isStaff()) {
             $props['staffMergedInbox'] = true;
             $props['staffForTransfer'] = $this->chat->staffMembersForTransfer($user)
-                ->map(fn (User $u) => [
-                    'id'    => $u->id,
-                    'name'  => trim(($u->name ?? '').' '.($u->last_name ?? '')),
-                    'role'  => $u->role,
+                ->map(fn(User $u) => [
+                    'id' => $u->id,
+                    'name' => trim(($u->name ?? '') . ' ' . ($u->last_name ?? '')),
+                    'role' => $u->role,
                 ])
                 ->values()
                 ->all();
@@ -159,25 +160,25 @@ class ChatController extends Controller
         $staffForTransfer = [];
         if ($user->isStaff()) {
             $staffForTransfer = $this->chat->staffMembersForTransfer($user)
-                ->map(fn (User $u) => [
-                    'id'    => $u->id,
-                    'name'  => trim(($u->name ?? '').' '.($u->last_name ?? '')),
-                    'role'  => $u->role,
+                ->map(fn(User $u) => [
+                    'id' => $u->id,
+                    'name' => trim(($u->name ?? '') . ' ' . ($u->last_name ?? '')),
+                    'role' => $u->role,
                 ])
                 ->values()
                 ->all();
         }
 
         return Inertia::render('Messages/Index', [
-            'threads'           => $state['threads'],
-            'activeConversation'=> $state['active'],
-            'messages'          => $state['messages'],
-            'isAdminSupport'    => false,
-            'embed'             => true,
-            'staffMergedInbox'  => $user->isStaff(),
+            'threads' => $state['threads'],
+            'activeConversation' => $state['active'],
+            'messages' => $state['messages'],
+            'isAdminSupport' => false,
+            'embed' => true,
+            'staffMergedInbox' => $user->isStaff(),
             'supportInboxUnreadCount' => $supportUnread,
-            'staffForTransfer'  => $staffForTransfer,
-            'supportFilter'     => $supportFilter,
+            'staffForTransfer' => $staffForTransfer,
+            'supportFilter' => $supportFilter,
             ...$this->notificationProps($user, $request),
         ]);
     }
@@ -211,7 +212,7 @@ class ChatController extends Controller
     protected function renderSupportInbox(Request $request, bool $embed)
     {
         $user = $request->user();
-        if (! $user->isStaff()) {
+        if (!$user->isStaff()) {
             abort(403);
         }
 
@@ -233,23 +234,23 @@ class ChatController extends Controller
         $supportUnread = $this->chat->supportInboxUnreadFor($user);
 
         $staffForTransfer = $this->chat->staffMembersForTransfer($user)
-            ->map(fn (User $u) => [
-                'id'    => $u->id,
-                'name'  => trim(($u->name ?? '').' '.($u->last_name ?? '')),
-                'role'  => $u->role,
+            ->map(fn(User $u) => [
+                'id' => $u->id,
+                'name' => trim(($u->name ?? '') . ' ' . ($u->last_name ?? '')),
+                'role' => $u->role,
             ])
             ->values()
             ->all();
 
         return Inertia::render('Messages/Index', [
-            'threads'           => $state['threads'],
-            'activeConversation'=> $state['active'],
-            'messages'          => $state['messages'],
-            'isAdminSupport'    => true,
-            'embed'             => $embed,
+            'threads' => $state['threads'],
+            'activeConversation' => $state['active'],
+            'messages' => $state['messages'],
+            'isAdminSupport' => true,
+            'embed' => $embed,
             'supportInboxUnreadCount' => $supportUnread,
-            'staffForTransfer'  => $staffForTransfer,
-            'supportFilter'     => $supportFilter,
+            'staffForTransfer' => $staffForTransfer,
+            'supportFilter' => $supportFilter,
             ...$this->notificationProps($user, $request),
         ]);
     }
@@ -257,7 +258,7 @@ class ChatController extends Controller
     public function assignSupport(Request $request, Conversation $conversation)
     {
         $user = $request->user();
-        if (! $user->isStaff() || $conversation->type !== Conversation::TYPE_SUPPORT) {
+        if (!$user->isStaff() || $conversation->type !== Conversation::TYPE_SUPPORT) {
             abort(403);
         }
 
@@ -268,25 +269,29 @@ class ChatController extends Controller
         if ($embed) {
             return redirect()->route('messages.embed', [
                 'conversation' => $conversation->id,
-                'filter'       => 'mine',
+                'filter' => 'mine',
             ]);
         }
 
         return redirect()->route('admin.support', [
             'conversation' => $conversation->id,
-            'filter'       => 'mine',
+            'filter' => 'mine',
         ]);
     }
 
     public function transferSupport(Request $request, Conversation $conversation)
     {
         $user = $request->user();
-        if (! $user->isStaff() || $conversation->type !== Conversation::TYPE_SUPPORT) {
+        if (!$user->isStaff() || $conversation->type !== Conversation::TYPE_SUPPORT) {
             abort(403);
         }
 
         $data = $request->validate([
             'staff_id' => 'required|integer|exists:users,id',
+        ], [
+            'staff_id.required' => 'Необходимо указать сотрудника.',
+            'staff_id.integer' => 'ID сотрудника должен быть числом.',
+            'staff_id.exists' => 'Выбранный сотрудник не существует в системе.',
         ]);
 
         $newAssignee = User::query()->findOrFail($data['staff_id']);
@@ -297,13 +302,13 @@ class ChatController extends Controller
         if ($embed) {
             return redirect()->route('messages.embed', [
                 'conversation' => $conversation->id,
-                'filter'       => 'transferred',
+                'filter' => 'transferred',
             ]);
         }
 
         return redirect()->route('admin.support', [
             'conversation' => $conversation->id,
-            'filter'       => 'transferred',
+            'filter' => 'transferred',
         ]);
     }
 
@@ -324,9 +329,9 @@ class ChatController extends Controller
             $conversation = Conversation::query()
                 ->with(['buyer', 'assignedStaff', 'seller', 'product', 'order', 'latestMessage'])
                 ->find($activeId);
-            if (! $conversation || ! $this->chat->canAccess($user, $conversation)) {
+            if (!$conversation || !$this->chat->canAccess($user, $conversation)) {
                 $conversation = null;
-            } elseif ($admin && ! $merged && $conversation->type !== Conversation::TYPE_SUPPORT) {
+            } elseif ($admin && !$merged && $conversation->type !== Conversation::TYPE_SUPPORT) {
                 $conversation = null;
             } elseif (
                 $admin
@@ -346,7 +351,7 @@ class ChatController extends Controller
             }
         }
 
-        if ($user->isStaff() && ! $adminQueueOnly) {
+        if ($user->isStaff() && !$adminQueueOnly) {
             $threads = $this->chat->threadsForStaffMergedInbox($user, $supportFilter);
         } elseif ($user->isStaff() && $adminQueueOnly) {
             $threads = $this->chat->threadsFor($user, true, $supportFilter);
@@ -356,11 +361,11 @@ class ChatController extends Controller
         $supportUnread = $this->chat->supportInboxUnreadFor($user);
 
         return response()->json([
-            'threads'            => $threads,
+            'threads' => $threads,
             'activeConversation' => $active,
-            'messages'           => $messages,
-            'supportFilter'      => $supportFilter,
-            'chatUnreadCount'    => $this->chat->unreadCountFor($user),
+            'messages' => $messages,
+            'supportFilter' => $supportFilter,
+            'chatUnreadCount' => $this->chat->unreadCountFor($user),
             'supportInboxUnreadCount' => $supportUnread,
             'notificationsFeed' => $this->notificationFeed->feedFor($user),
             'notificationsUnreadCount' => $this->notificationFeed->unreadCount($user),
@@ -371,12 +376,24 @@ class ChatController extends Controller
     public function open(Request $request)
     {
         $data = $request->validate([
-            'type'       => 'required|string|in:support,seller_shop,seller_product,order',
-            'seller_id'  => 'nullable|integer|exists:users,id',
+            'type' => 'required|string|in:support,seller_shop,seller_product,order',
+            'seller_id' => 'nullable|integer|exists:users,id',
             'product_id' => 'nullable|integer|exists:products,id',
-            'order_id'   => 'nullable|integer|exists:orders,id',
-            'draft'      => 'nullable|string|max:500',
-            'embed'      => 'nullable|boolean',
+            'order_id' => 'nullable|integer|exists:orders,id',
+            'draft' => 'nullable|string|max:500',
+            'embed' => 'nullable|boolean',
+        ], [
+            'type.required' => 'Необходимо указать тип обращения.',
+            'type.string' => 'Тип обращения должен быть текстовым значением.',
+            'type.in' => 'Недопустимый тип обращения. Доступные типы: поддержка, продавец (магазин), продавец (товар), заказ.',
+            'seller_id.integer' => 'ID продавца должен быть числом.',
+            'seller_id.exists' => 'Выбранный продавец не существует в системе.',
+            'product_id.integer' => 'ID товара должен быть числом.',
+            'product_id.exists' => 'Выбранный товар не существует.',
+            'order_id.integer' => 'ID заказа должен быть числом.',
+            'order_id.exists' => 'Выбранный заказ не существует.',
+            'draft.max' => 'Черновик не должен превышать 500 символов.',
+            'embed.boolean' => 'Поле embed должно быть true или false.',
         ]);
 
         $user = $request->user();
@@ -404,7 +421,7 @@ class ChatController extends Controller
         $conversation = $this->chat->openOrCreate($payload, $user);
 
         $routeParams = ['conversation' => $conversation->id];
-        if (! empty($data['draft'])) {
+        if (!empty($data['draft'])) {
             $routeParams['draft'] = trim((string) $data['draft']);
         }
 
@@ -418,20 +435,26 @@ class ChatController extends Controller
     public function storeMessage(Request $request, Conversation $conversation)
     {
         $user = $request->user();
-        if (! $this->chat->canSend($user, $conversation)) {
+        if (!$this->chat->canSend($user, $conversation)) {
             abort(403);
         }
 
         $request->validate([
             'message' => 'nullable|string|max:5000',
             'attachment' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx',
+        ], [
+            'message.max' => 'Сообщение не должно превышать 5000 символов.',
+            'attachment.file' => 'Загруженный файл повреждён или не является файлом.',
+            'attachment.max' => 'Размер файла не должен превышать 10 МБ.',
+            'attachment.mimes' => 'Допустимые форматы: JPG, JPEG, PNG, GIF, WEBP, PDF, DOC, DOCX.',
+            'attachment.uploaded' => 'Не удалось загрузить файл. Возможно, файл слишком большой или повреждён.',
         ]);
 
         $file = $request->file('attachment');
         $hasFile = $file && $file->isValid();
         $text = trim((string) $request->input('message', ''));
 
-        if (! $hasFile && $text === '') {
+        if (!$hasFile && $text === '') {
             if ($request->wantsJson()) {
                 return response()->json(['message' => 'Введите текст или прикрепите файл'], 422);
             }
@@ -468,7 +491,7 @@ class ChatController extends Controller
     public function hide(Request $request, Conversation $conversation)
     {
         $user = $request->user();
-        if (! $this->chat->canAccess($user, $conversation)) {
+        if (!$this->chat->canAccess($user, $conversation)) {
             abort(403);
         }
 
@@ -499,12 +522,16 @@ class ChatController extends Controller
         if ((int) $message->conversation_id !== (int) $conversation->id) {
             abort(404);
         }
-        if (! $this->chat->canSend($user, $conversation)) {
+        if (!$this->chat->canSend($user, $conversation)) {
             abort(403);
         }
 
         $request->validate([
             'message' => 'required|string|max:5000',
+        ], [
+            'message.required' => 'Необходимо ввести сообщение.',
+            'message.string' => 'Сообщение должно быть текстом.',
+            'message.max' => 'Сообщение не должно превышать 5000 символов.',
         ]);
 
         try {
@@ -539,7 +566,7 @@ class ChatController extends Controller
         if ((int) $message->conversation_id !== (int) $conversation->id) {
             abort(404);
         }
-        if (! $this->chat->canSend($user, $conversation)) {
+        if (!$this->chat->canSend($user, $conversation)) {
             abort(403);
         }
 

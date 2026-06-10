@@ -843,18 +843,21 @@ class ChatService
         }
     }
 
-    public function sendMessage(Conversation $c, User $sender, string $text, ?UploadedFile $file = null): Message
-    {
-        $text = trim($text);
-        $hasFile = $file instanceof UploadedFile && $file->isValid();
+   public function sendMessage(Conversation $c, User $sender, string $text, ?UploadedFile $file = null): Message
+{
+    $text = trim($text);
+    $hasFile = $file instanceof UploadedFile && $file->isValid();
 
-        if (! $hasFile && $text === '') {
-            throw new \InvalidArgumentException('empty');
-        }
+    if (! $hasFile && $text === '') {
+        throw new \InvalidArgumentException('empty');
+    }
 
-        if ($hasFile && ! $this->counterpartHasMessaged($c, $sender)) {
-            abort(422, 'Файл можно отправить только после ответа собеседника в этом чате.');
-        }
+    // Проверяем, может ли отправитель отправлять файлы без ограничений
+    $canSendFileWithoutRestriction = $sender->isAdmin() || $sender->isModerator();
+    
+    if ($hasFile && ! $this->counterpartHasMessaged($c, $sender) && ! $canSendFileWithoutRestriction) {
+        abort(422, 'Файл можно отправить только после ответа собеседника в этом чате.');
+    }
 
         $relPath = null;
         $mime = null;

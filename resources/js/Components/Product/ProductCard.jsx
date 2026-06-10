@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import '../../../css/product/product.css';
-    
+import axios from 'axios';
+
 function normalizeImageUrl(product) {
     if (!product) return '/img/products/default.png';
     const direct = product.image ?? product.main_image;
@@ -61,7 +62,7 @@ function formatReviewsCountRu(n) {
     return `${num} отзывов`;
 }
 
-export default function ProductCard({ product, hideFooter = false }) {
+export default function ProductCard({ product, hideFooter = false,  }) {
     if (!product) return null;
 
     const { auth, delivery_hint: deliveryHint } = usePage().props;
@@ -82,7 +83,7 @@ export default function ProductCard({ product, hideFooter = false }) {
         setIsFavorite(!!product.is_favorite);
     }, [product.is_favorite, product.id, variantId]);
 
-    const toggleFavorite = () => {
+    const toggleFavorite = async () => {
         if (isToggling || !product?.id) return;
 
         const previousValue = isFavorite;
@@ -91,21 +92,17 @@ export default function ProductCard({ product, hideFooter = false }) {
         setIsToggling(true);
         setIsFavorite(newValue);
 
-        router.post(
-            route('favorites.toggle', product.id),
-            variantId != null ? { variant_id: variantId } : {},
-            {
-                preserveState: true,
-                preserveScroll: true,
-                onError: () => {
-                    setIsFavorite(previousValue);
-                    alert('Ошибка, попробуйте позже');
-                },
-                onFinish: () => {
-                    setIsToggling(false);
-                },
-            }
-        );
+        try {
+            await axios.post(
+                route('favorites.toggle', product.id),
+                variantId != null ? { variant_id: variantId } : {}
+            );
+        } catch (error) {
+            setIsFavorite(previousValue);
+            alert('Ошибка, попробуйте позже');
+        } finally {
+            setIsToggling(false);
+        }
     };
 
     const imgSrc = normalizeImageUrl(product);
@@ -120,8 +117,8 @@ export default function ProductCard({ product, hideFooter = false }) {
         product.discount_percent != null
             ? Number(product.discount_percent)
             : showOldPrice
-              ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100)
-              : null;
+                ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100)
+                : null;
 
     const reviewsCount = Number(product.reviews_count ?? 0);
     const ratingStr = reviewsCount === 0 ? null : formatRating(product);
@@ -145,7 +142,7 @@ export default function ProductCard({ product, hideFooter = false }) {
                     role="presentation"
                 >
                     <img
-                        src={imgSrc} 
+                        src={imgSrc}
                         alt={product.title ?? 'Товар'}
                         className="products__image"
                         onError={(e) => {

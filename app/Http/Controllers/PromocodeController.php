@@ -15,9 +15,17 @@ class PromocodeController extends Controller
     public function validate(Request $request)
     {
         $request->validate([
-            'code'       => 'required|string|max:50',
-            'cart_ids'   => 'required|array|min:1',
+            'code' => 'required|string|max:50',
+            'cart_ids' => 'required|array|min:1',
             'cart_ids.*' => 'integer',
+        ], [
+            'code.required' => 'Необходимо указать промокод.',
+            'code.string' => 'Промокод должен быть строкой.',
+            'code.max' => 'Промокод не должен превышать 50 символов.',
+            'cart_ids.required' => 'Необходимо выбрать товары из корзины.',
+            'cart_ids.array' => 'Список товаров должен быть массивом.',
+            'cart_ids.min' => 'Выберите хотя бы один товар.',
+            'cart_ids.*.integer' => 'ID товара должен быть числом.',
         ]);
 
         $user = auth()->user();
@@ -66,7 +74,7 @@ class PromocodeController extends Controller
 
         if ($sellerItems->isEmpty()) {
             return response()->json([
-                'valid'   => false,
+                'valid' => false,
                 'message' => 'Промокод действует только на товары конкретного продавца, которых нет в выборке.',
             ]);
         }
@@ -77,9 +85,9 @@ class PromocodeController extends Controller
         // Check minimum order amount
         if ($promo->min_order_amount !== null && $sellerSubtotal < $promo->min_order_amount) {
             return response()->json([
-                'valid'   => false,
+                'valid' => false,
                 'message' => 'Сумма товаров продавца меньше минимальной: ' .
-                             number_format($promo->min_order_amount, 0, '.', ' ') . ' ₽.',
+                    number_format($promo->min_order_amount, 0, '.', ' ') . ' ₽.',
             ]);
         }
 
@@ -92,11 +100,11 @@ class PromocodeController extends Controller
         }
 
         return response()->json([
-            'valid'           => true,
-            'message'         => "Промокод применён! Скидка {$promo->discount_value}%.",
-            'code'            => $promo->code,
+            'valid' => true,
+            'message' => "Промокод применён! Скидка {$promo->discount_value}%.",
+            'code' => $promo->code,
             'discount_amount' => $discountAmount,
-            'seller_id'       => $promo->seller_id,
+            'seller_id' => $promo->seller_id,
         ]);
     }
 }

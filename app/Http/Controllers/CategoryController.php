@@ -8,6 +8,7 @@ use App\Http\Controllers\Concerns\PreparesCatalogRecommendations;
 use App\Http\Controllers\Concerns\RedirectsArticleSearch;
 use App\Services\CatalogFilterService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class CategoryController extends Controller
@@ -17,7 +18,8 @@ class CategoryController extends Controller
 
     public function __construct(
         private CatalogFilterService $catalogFilters,
-    ) {}
+    ) {
+    }
 
     public function show($id, Request $request)
     {
@@ -28,10 +30,10 @@ class CategoryController extends Controller
 
         $category = Category::query()
             ->where('is_active', true)
-            ->with(['parent' => fn ($q) => $q->select('id', 'name', 'parent_id')])
+            ->with(['parent' => fn($q) => $q->select('id', 'name', 'parent_id')])
             ->findOrFail((int) $id);
 
-        $listed = fn ($productQuery) => $productQuery->visibleInCatalog();
+        $listed = fn($productQuery) => $productQuery->visibleInCatalog();
 
         $activeChildren = $category->children()
             ->where('is_active', true)
@@ -52,7 +54,7 @@ class CategoryController extends Controller
         }
         $breadcrumbs[] = ['label' => $category->name, 'href' => null];
 
-        $subcategories = $activeChildren->map(fn (Category $c) => [
+        $subcategories = $activeChildren->map(fn(Category $c) => [
             'id' => $c->id,
             'name' => $c->name,
             'slug' => $c->slug,
@@ -66,7 +68,7 @@ class CategoryController extends Controller
             $pagination = null;
             $excludeCategoryIds = $activeChildren->pluck('id')->push($category->id)->all();
         } else {
-            $baseFactory = fn () => Product::forCatalogPresentation()
+            $baseFactory = fn() => Product::forCatalogPresentation()
                 ->where('products.category_id', $category->id)
                 ->visibleInCatalog();
 
@@ -85,10 +87,23 @@ class CategoryController extends Controller
             $excludeCategoryIds = [(int) $category->id];
         }
 
+        // Получаем ID избранных товаров
+        $favoriteProductIds = DB::table('favorites')
+            ->where('user_id', $request?->user()?->id)
+            ->pluck('product_id')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        // Передаём их в рекомендации для исключения
         $LikeProducts = $this->catalogRecommendations([
-            'exclude_category_ids' => $excludeCategoryIds,
+            'exclude_product_ids' => $favoriteProductIds,
+            'limit' => '80'
+
         ]);
 
+        // Перемешиваем
+        $LikeProducts = $LikeProducts->shuffle();
         $this->catalogFilters->markFavorites($products);
 
         return Inertia::render('CategoryPage', [

@@ -15,7 +15,7 @@ class ReviewModerationController extends Controller
     public function index(Request $request): Response
     {
         $status = $request->query('status', 'pending');
-        if (! in_array($status, ['pending', 'published', 'hidden', 'all'], true)) {
+        if (!in_array($status, ['pending', 'published', 'hidden', 'all'], true)) {
             $status = 'pending';
         }
 
@@ -47,11 +47,11 @@ class ReviewModerationController extends Controller
             $search = mb_substr($search, 0, 200);
         }
         if ($search !== '') {
-            $like = '%'.addcslashes($search, '%_\\').'%';
+            $like = '%' . addcslashes($search, '%_\\') . '%';
             $query->where(function ($q) use ($search, $like) {
                 $q->where('reviews.comment', 'like', $like);
-                $q->orWhereHas('product', fn ($pq) => $pq->where('title', 'like', $like));
-                $q->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', $like));
+                $q->orWhereHas('product', fn($pq) => $pq->where('title', 'like', $like));
+                $q->orWhereHas('user', fn($uq) => $uq->where('name', 'like', $like));
                 if (ctype_digit($search)) {
                     $q->orWhere('reviews.id', (int) $search);
                 }
@@ -62,7 +62,7 @@ class ReviewModerationController extends Controller
 
         $reviews = $query->paginate(20)->withQueryString()->through(function (Review $r) use ($status, $imageService) {
             $comment = (string) ($r->comment ?? '');
-            $snippet = mb_strlen($comment) > 160 ? mb_substr($comment, 0, 160).'…' : $comment;
+            $snippet = mb_strlen($comment) > 160 ? mb_substr($comment, 0, 160) . '…' : $comment;
 
             return [
                 'id' => $r->id,
@@ -113,6 +113,11 @@ class ReviewModerationController extends Controller
     {
         $data = $request->validate([
             'moderation_comment' => 'required|string|min:3|max:2000',
+        ], [
+            'moderation_comment.required' => 'Необходимо указать комментарий модерации.',
+            'moderation_comment.string' => 'Комментарий модерации должен быть текстом.',
+            'moderation_comment.min' => 'Комментарий модерации должен содержать минимум 3 символа.',
+            'moderation_comment.max' => 'Комментарий модерации не должен превышать 2000 символов.',
         ]);
 
         $review->update([

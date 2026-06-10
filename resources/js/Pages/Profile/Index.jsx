@@ -681,7 +681,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
               {myFavorites && myFavorites.length > 0 ? (
                 <>
                   <MyFavorites products={myFavorites.slice(0, 4)} />
-                  <Link href="/favorites" className="showMore__btn">Показать еще</Link>
+                  <Link href="/favorites" className="showMore__btn">Посмотреть все </Link>
                 </>
               ) : (
                 <div className="empty-favorite products">

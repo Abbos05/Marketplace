@@ -23,7 +23,7 @@ class PickupPointController extends Controller
             ->orderBy('sort_order')
             ->orderBy('title')
             ->get()
-            ->map(fn (PickupPoint $p) => [
+            ->map(fn(PickupPoint $p) => [
                 'id' => $p->id,
                 'title' => $p->title,
                 'address' => $p->address,
@@ -33,7 +33,7 @@ class PickupPointController extends Controller
                 'sort_order' => $p->sort_order,
                 'operator' => $p->approvedStaff?->user ? [
                     'id' => $p->approvedStaff->user->id,
-                    'name' => trim($p->approvedStaff->user->name.' '.($p->approvedStaff->user->last_name ?? '')),
+                    'name' => trim($p->approvedStaff->user->name . ' ' . ($p->approvedStaff->user->last_name ?? '')),
                     'email' => $p->approvedStaff->user->email,
                 ] : null,
                 'closure_status' => $p->closure_status ?? PickupPoint::CLOSURE_NONE,
@@ -66,6 +66,17 @@ class PickupPointController extends Controller
             'address' => 'required|string|max:500',
             'region_id' => 'nullable|exists:regions,id',
             'sort_order' => 'nullable|integer|min:0|max:65535',
+        ], [
+            'title.required' => 'Необходимо указать название.',
+            'title.string' => 'Название должно быть текстом.',
+            'title.max' => 'Название не должно превышать 120 символов.',
+            'address.required' => 'Необходимо указать адрес.',
+            'address.string' => 'Адрес должен быть текстом.',
+            'address.max' => 'Адрес не должен превышать 500 символов.',
+            'region_id.exists' => 'Выбранный регион не существует.',
+            'sort_order.integer' => 'Порядок сортировки должен быть числом.',
+            'sort_order.min' => 'Порядок сортировки должен быть от 0 до 65535.',
+            'sort_order.max' => 'Порядок сортировки должен быть от 0 до 65535.',
         ]);
 
         PickupPoint::query()->create([
@@ -87,9 +98,20 @@ class PickupPointController extends Controller
             'region_id' => 'nullable|exists:regions,id',
             'sort_order' => 'nullable|integer|min:0|max:65535',
             'is_active' => 'sometimes|boolean',
+        ], [
+            'title.required' => 'Необходимо указать название.',
+            'title.string' => 'Название должно быть текстом.',
+            'title.max' => 'Название не должно превышать 120 символов.',
+            'address.required' => 'Необходимо указать адрес.',
+            'address.string' => 'Адрес должен быть текстом.',
+            'address.max' => 'Адрес не должен превышать 500 символов.',
+            'region_id.exists' => 'Выбранный регион не существует.',
+            'sort_order.integer' => 'Порядок сортировки должен быть числом.',
+            'sort_order.min' => 'Порядок сортировки должен быть от 0 до 65535.',
+            'sort_order.max' => 'Порядок сортировки должен быть от 0 до 65535.',
+            'is_active.boolean' => 'Статус активности должен быть true или false.',
         ]);
-
-        if (! empty($data['is_active'])) {
+        if (!empty($data['is_active'])) {
             $data['closure_status'] = PickupPoint::CLOSURE_NONE;
             $data['closure_requested_at'] = null;
             $data['closure_reason'] = null;
@@ -118,6 +140,9 @@ class PickupPointController extends Controller
     {
         $data = $request->validate([
             'user_id' => 'required|exists:users,id',
+        ], [
+            'user_id.required' => 'Необходимо указать пользователя.',
+            'user_id.exists' => 'Выбранный пользователь не существует.',
         ]);
 
         if (PickupPointStaff::pickupPointHasApprovedStaff($pickupPoint->id)) {
@@ -135,7 +160,7 @@ class PickupPointController extends Controller
             'pickup_point_id' => $pickupPoint->id,
             'type' => PickupPointStaff::TYPE_JOIN,
             'status' => PickupPointStaff::STATUS_APPROVED,
-            'contact_name' => trim($user->name.' '.($user->last_name ?? '')),
+            'contact_name' => trim($user->name . ' ' . ($user->last_name ?? '')),
             'contact_phone' => $user->phone,
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now(),
@@ -163,7 +188,7 @@ class PickupPointController extends Controller
         }
 
         $check = app(PvzClosureService::class)->canRequestClosure($pickupPoint);
-        if (! $check['ok'] && str_contains($check['message'], 'заказ')) {
+        if (!$check['ok'] && str_contains($check['message'], 'заказ')) {
             return back()->with('error', $check['message']);
         }
 

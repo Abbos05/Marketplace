@@ -29,10 +29,10 @@ export default function About() {
         </p>
         <p>
           Публичные каналы проекта:{' '}
-          <a href="https://t.me/AlvoraPlace" className="info-page__link" target="_blank" rel="noopener noreferrer">
+          {/* <a href="https://t.me/AlvoraPlace" className="info-page__link" target="_blank" rel="noopener noreferrer">
             Telegram
           </a>
-          {' '}и{' '}
+          {' '}и{' '} */}
           <a href="https://max.ru/join/uTTd84ZCWV6LDqeiR1KOFZnBPp-2ar4mgwWMtSsmfmQ" className="info-page__link" target="_blank" rel="noopener noreferrer">
             MAX
           </a>

@@ -6,13 +6,14 @@ export default function ProductRecommendationsSection({
     products = [],
     title = 'Возможно, вам понравится',
     initialCount = 5,
-    step = 10,
+    step = 40,
     maxCount,
     headingClassName = 'category-header',
     titleClassName = '',
     wrapperClassName = '',
 }) {
     const [displayCount, setDisplayCount] = useState(initialCount);
+console.log(products.length);
 
     if (!products?.length) {
         return null;

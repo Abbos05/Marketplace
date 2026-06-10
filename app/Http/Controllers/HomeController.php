@@ -25,7 +25,8 @@ class HomeController extends Controller
         private CatalogFilterService $catalogFilters,
         private HomeCatalogFeedService $homeFeed,
         private PromotionCatalogService $promotionCatalog,
-    ) {}
+    ) {
+    }
 
     public function index(Request $request, $returnDataOnly = false, $id = null)
     {
@@ -35,7 +36,7 @@ class HomeController extends Controller
             if ($redirect = $this->redirectIfArticleSearch($search)) {
                 return $redirect;
             }
-            $baseFactory = fn () => Product::forCatalogPresentation()
+            $baseFactory = fn() => Product::forCatalogPresentation()
                 ->visibleInCatalog();
 
             $result = $this->catalogFilters->process($request, $baseFactory, [
@@ -69,14 +70,29 @@ class HomeController extends Controller
             ->active()
             ->ordered()
             ->get()
-            ->map(fn (HomeSlide $s) => $s->toFrontendArray())
+            ->map(fn(HomeSlide $s) => $s->toFrontendArray())
             ->values()
             ->all();
 
-      
 
-        $LikeProducts = $this->catalogRecommendations();
 
+        // Получаем ID избранных товаров
+        $favoriteProductIds = DB::table('favorites')
+            ->where('user_id', $request?->user()?->id)
+            ->pluck('product_id')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        // Передаём их в рекомендации для исключения
+        $LikeProducts = $this->catalogRecommendations([
+            'exclude_product_ids' => $favoriteProductIds,
+            'limit' => '80'
+
+        ]);
+
+        // Перемешиваем
+        $LikeProducts = $LikeProducts->shuffle();
         $data = [
             'LikeProducts' => $LikeProducts,
             'category' => $category,
@@ -151,7 +167,7 @@ class HomeController extends Controller
             ->active()
             ->ordered()
             ->get()
-            ->map(fn (HomeSlide $s) => $s->toFrontendArray())
+            ->map(fn(HomeSlide $s) => $s->toFrontendArray())
             ->values()
             ->all();
 
@@ -174,13 +190,16 @@ class HomeController extends Controller
     {
         $user = Auth::user();
 
-        if (! $product->canBeViewedBy($user)) {
+        if (!$product->canBeViewedBy($user)) {
             abort(404);
         }
 
         if ($user) {
             $data = $request->validate([
                 'variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
+            ], [
+                'variant_id.integer' => 'ID варианта товара должен быть числом.',
+                'variant_id.exists' => 'Выбранный вариант товара не существует.',
             ]);
 
             $variantId = $data['variant_id'] ?? null;
@@ -216,7 +235,9 @@ class HomeController extends Controller
             }
         }
 
-        // Важно: возвращаемся с обновлёнными данными
-        return back();
+        // ✅ Вместо return back() используем:
+        return redirect()->back()->with('success', true);
+        // Или если у вас Inertia:
+        // return back()->with('success', true);
     }
 }

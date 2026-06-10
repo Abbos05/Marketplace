@@ -38,15 +38,29 @@ class OrderController extends Controller
             ->get();
 
         $excludeProductIds = $orders
-            ->flatMap(fn (Order $order) => $order->items->pluck('variant.product_id'))
+            ->flatMap(fn(Order $order) => $order->items->pluck('variant.product_id'))
             ->filter()
             ->unique()
             ->values()
             ->all();
 
+        // Получаем ID избранных товаров
+        $favoriteProductIds = DB::table('favorites')
+            ->where('user_id', $user->id)
+            ->pluck('product_id')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        // Передаём их в рекомендации для исключения
         $LikeProducts = $this->catalogRecommendations([
-            'exclude_product_ids' => $excludeProductIds,
+            'exclude_product_ids' => $favoriteProductIds,
+            'limit' => '80'
+
         ]);
+
+        // Перемешиваем
+        $LikeProducts = $LikeProducts->shuffle();
 
         return Inertia::render('Profile/Orders', [
             'dailyPickupCode' => $dailyPickupCode,
@@ -93,7 +107,7 @@ class OrderController extends Controller
             return back()->with('error', 'Аккаунт заблокирован. Оформление заказов недоступно.');
         }
 
-        if (! $user->phone) {
+        if (!$user->phone) {
             return redirect()->route('profile')->with('error', 'Подтвердите номер телефона в профиле, чтобы оформить заказ.');
         }
 
@@ -102,12 +116,12 @@ class OrderController extends Controller
         }
 
         $pickupPointId = $request->input('pickup_point_id') ?? $user->default_pickup_point_id;
-        if (! $pickupPointId) {
+        if (!$pickupPointId) {
             return back()->with('error', 'Укажите пункт выдачи в профиле или при оформлении заказа.');
         }
 
         $pickup = PickupPoint::query()->active()->whereKey($pickupPointId)->first();
-        if (! $pickup) {
+        if (!$pickup) {
             return back()->with('error', 'Выбранный пункт выдачи недоступен. Выберите другой.');
         }
 
@@ -144,7 +158,7 @@ class OrderController extends Controller
                     ->where('user_id', $user->id)
                     ->first();
 
-                if (! $cartItem) {
+                if (!$cartItem) {
                     DB::rollBack();
 
                     return back()->with('error', 'Позиция корзины не найдена или уже оформлена.');
@@ -173,13 +187,13 @@ class OrderController extends Controller
                     ->first();
             }
 
-            if (! $variant || ! $variant->is_active) {
+            if (!$variant || !$variant->is_active) {
                 DB::rollBack();
 
                 return back()->with('error', 'Товар недоступен для заказа.');
             }
 
-            if (! $variant->product?->isPurchasable()) {
+            if (!$variant->product?->isPurchasable()) {
                 DB::rollBack();
 
                 return back()->with(
@@ -191,7 +205,7 @@ class OrderController extends Controller
             if ($variant->stock < $quantity) {
                 DB::rollBack();
 
-                return back()->with('error', 'Недостаточно товара на складе: «'.($variant->product->title ?? 'Товар').'». Доступно: '.$variant->stock.' шт.');
+                return back()->with('error', 'Недостаточно товара на складе: «' . ($variant->product->title ?? 'Товар') . '». Доступно: ' . $variant->stock . ' шт.');
             }
 
             $price = (float) $variant->price;
@@ -240,11 +254,11 @@ class OrderController extends Controller
             $promo = Promocode::where('code', strtoupper(trim($promoCode)))->first();
 
             if ($promo && $promo->isValid()) {
-                $usedCount     = $promo->usages()->count();
+                $usedCount = $promo->usages()->count();
                 $userUsedCount = $promo->usages()->where('user_id', $user->id)->count();
 
-                $limitOk    = $promo->usage_limit    === null || $usedCount     < $promo->usage_limit;
-                $perUserOk  = $promo->usage_per_user === null || $userUsedCount < $promo->usage_per_user;
+                $limitOk = $promo->usage_limit === null || $usedCount < $promo->usage_limit;
+                $perUserOk = $promo->usage_per_user === null || $userUsedCount < $promo->usage_per_user;
 
                 if ($limitOk && $perUserOk) {
                     // Sum seller's items subtotal for discount calculation
@@ -262,10 +276,10 @@ class OrderController extends Controller
                         }
 
                         PromocodeUsage::create([
-                            'promocode_id'    => $promo->id,
-                            'user_id'         => $user->id,
-                            'order_id'        => $order->id,
-                            'discount_applied'=> $discount,
+                            'promocode_id' => $promo->id,
+                            'user_id' => $user->id,
+                            'order_id' => $order->id,
+                            'discount_applied' => $discount,
                         ]);
                     }
                 }
@@ -273,7 +287,7 @@ class OrderController extends Controller
         }
 
         $order->update([
-            'total'    => max(0, $total - $discount),
+            'total' => max(0, $total - $discount),
             'discount' => $discount,
         ]);
 
@@ -289,7 +303,7 @@ class OrderController extends Controller
             abort(403);
         }
 
-        if ($this->shouldOfferRefundCheckout($order) && ! $request->boolean('view')) {
+        if ($this->shouldOfferRefundCheckout($order) && !$request->boolean('view')) {
             return redirect()->route('order.refund.checkout', $order);
         }
 
@@ -309,10 +323,23 @@ class OrderController extends Controller
             ->values()
             ->all();
 
+        // Получаем ID избранных товаров
+        $favoriteProductIds = DB::table('favorites')
+            ->where('user_id', $request?->user()?->id)
+            ->pluck('product_id')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        // Передаём их в рекомендации для исключения
         $LikeProducts = $this->catalogRecommendations([
-            'exclude_product_ids' => $excludeProductIds,
+            'exclude_product_ids' => $favoriteProductIds,
+            'limit' => '80'
+
         ]);
 
+        // Перемешиваем
+        $LikeProducts = $LikeProducts->shuffle();
         $imageService = app(ReviewImageService::class);
         $orderPayload = $order->toArray();
         $orderPayload['items'] = $order->items->map(function (OrderItem $item) use ($order, $imageService) {
@@ -343,7 +370,7 @@ class OrderController extends Controller
      */
     private function buildOrderDocumentsPayload(Order $order): array
     {
-        $hasType = static fn (string $type) => Transaction::query()
+        $hasType = static fn(string $type) => Transaction::query()
             ->where('order_id', $order->id)
             ->where('type', $type)
             ->exists();
@@ -387,13 +414,13 @@ class OrderController extends Controller
         };
 
         $sellers = $order->items
-            ->map(fn (OrderItem $i) => $i->variant?->product?->seller?->name)
+            ->map(fn(OrderItem $i) => $i->variant?->product?->seller?->name)
             ->filter()
             ->unique()
             ->values()
             ->implode(', ');
         $originDetail = $sellers !== ''
-            ? 'Продавец: '.$sellers
+            ? 'Продавец: ' . $sellers
             : 'Заказ сформирован на маркетплейсе';
 
         $paid = $order->payment_status === 'paid';
@@ -406,8 +433,8 @@ class OrderController extends Controller
             Order::STATUS_ISSUED => 'Выдан покупателю',
             Order::STATUS_INTRANSIT => 'В пути в пункт выдачи',
             Order::STATUS_NEW => $paid
-                ? 'Продавец готовит заказ к отправке'
-                : 'Ожидаем оплату — после оплаты заказ перейдёт к продавцу',
+            ? 'Продавец готовит заказ к отправке'
+            : 'Ожидаем оплату — после оплаты заказ перейдёт к продавцу',
             default => 'Статус доставки обновляется',
         };
 
@@ -416,8 +443,8 @@ class OrderController extends Controller
             Order::STATUS_ISSUED => 'Заказ получен. Можно оставить отзыв в течение 90 дней.',
             Order::STATUS_INTRANSIT => 'Точная дата прибытия в пункт зависит от продавца и службы доставки — следите за статусом.',
             Order::STATUS_NEW => $paid
-                ? 'Обычно отправка в течение 1–3 рабочих дней после оплаты (зависит от продавца).'
-                : 'После оплаты продавец получит заказ в работу.',
+            ? 'Обычно отправка в течение 1–3 рабочих дней после оплаты (зависит от продавца).'
+            : 'После оплаты продавец получит заказ в работу.',
             Order::STATUS_CANCELED => '',
             Order::STATUS_REFUSED => '',
             default => '',
@@ -484,7 +511,7 @@ class OrderController extends Controller
             $push($steps, 'prep', 'Сборка и отправка', 'Заказ у продавца, ожидается передача в доставку', $fmt($order->updated_at), 'active');
             $push($steps, 'transit', 'В пути в пункт выдачи', $destination, null, 'pending');
             $push($steps, 'pvz', 'Пункт выдачи', 'Прибытие и выдача по коду', null, 'pending');
-        } elseif ($st === Order::STATUS_NEW && ! $paid) {
+        } elseif ($st === Order::STATUS_NEW && !$paid) {
             $push($steps, 'prep', 'Сборка и отправка', 'Начнётся после оплаты', null, 'pending');
             $push($steps, 'transit', 'В пути в пункт выдачи', $destination, null, 'pending');
             $push($steps, 'pvz', 'Пункт выдачи', 'Прибытие и выдача по коду', null, 'pending');
@@ -526,7 +553,7 @@ class OrderController extends Controller
 
             foreach ($order->items as $item) {
                 $variant = $item->variant;
-                if (! $variant) {
+                if (!$variant) {
                     continue;
                 }
 
@@ -581,7 +608,7 @@ class OrderController extends Controller
                 ->with('error', 'Возврат доступен только для оплаченных заказов.');
         }
 
-        if (! in_array($order->status, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true)) {
+        if (!in_array($order->status, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true)) {
             return redirect()->route('order.show', $order)
                 ->with('error', 'Сначала отмените заказ или оформите отказ от получения.');
         }
@@ -616,7 +643,7 @@ class OrderController extends Controller
                 ->with('error', 'Заказ не оплачен — возврат не требуется.');
         }
 
-        if (! in_array($order->status, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true)) {
+        if (!in_array($order->status, [Order::STATUS_CANCELED, Order::STATUS_REFUSED], true)) {
             return redirect()->route('order.show', $order)
                 ->with('error', 'Возврат недоступен для текущего статуса заказа.');
         }
@@ -687,7 +714,7 @@ class OrderController extends Controller
     private function formatOrderItemReview(Review $review, ReviewImageService $imageService): array
     {
         $moderationStatus = 'pending';
-        if ($review->trashed() || ($review->moderation_comment && ! $review->is_moderated)) {
+        if ($review->trashed() || ($review->moderation_comment && !$review->is_moderated)) {
             $moderationStatus = 'rejected';
         } elseif ($review->is_moderated) {
             $moderationStatus = 'published';

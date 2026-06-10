@@ -579,32 +579,32 @@ const handleForgotVerifyCode = async (currentCode) => {
   if (c.length !== 6) return;
 
   // Перехватываем 000000 и обрабатываем отдельно
-  if (c === '000000') {
-    setLoading(true);
-    setError('');
-    try {
-      // Вызываем тот же API, что и в processCodeVerification
-      const data = await apiPost('/auth/phone/verify-code', {
-        challenge_id: challengeId,
-        code: c,
-      });
-      if (data.success) {
-        // Вместо STEPS.PASSWORD переходим на FORGOT_PASSWORD
-        setStep(STEPS.FORGOT_PASSWORD);
-        setCode('');
-        setActionMessage('✅ Доступ подтверждён (000000). Придумайте новый пароль.');
-      } else {
-        setError(data.message || 'Ошибка верификации');
-        setCode('');
-      }
-    } catch (error) {
-      setError('Ошибка соединения');
-      setCode('');
-    } finally {
-      setLoading(false);
-    }
-    return;
-  }
+  // if (c === '000000') {
+  //   setLoading(true);
+  //   setError('');
+  //   try {
+  //     // Вызываем тот же API, что и в processCodeVerification
+  //     const data = await apiPost('/auth/phone/verify-code', {
+  //       challenge_id: challengeId,
+  //       code: c,
+  //     });
+  //     if (data.success) {
+  //       // Вместо STEPS.PASSWORD переходим на FORGOT_PASSWORD
+  //       setStep(STEPS.FORGOT_PASSWORD);
+  //       setCode('');
+  //       setActionMessage('✅ Доступ подтверждён (000000). Придумайте новый пароль.');
+  //     } else {
+  //       setError(data.message || 'Ошибка верификации');
+  //       setCode('');
+  //     }
+  //   } catch (error) {
+  //     setError('Ошибка соединения');
+  //     setCode('');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  //   return;
+  // }
 
   // Для обычного кода (не 000000) используем старую логику с processCodeVerification
   await processCodeVerification(

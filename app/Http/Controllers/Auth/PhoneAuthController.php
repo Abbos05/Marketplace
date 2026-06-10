@@ -16,7 +16,8 @@ class PhoneAuthController extends Controller
 {
     public function __construct(
         private readonly AuthChallengeService $challenges,
-    ) {}
+    ) {
+    }
 
     /**
      * Шаг 1: телефон → создание challenge и отправка кода.
@@ -25,6 +26,11 @@ class PhoneAuthController extends Controller
     {
         $request->validate([
             'phone' => 'required|string|min:11|max:15',
+        ], [
+            'phone.required' => 'Необходимо указать номер телефона.',
+            'phone.string' => 'Номер телефона должен быть строкой.',
+            'phone.min' => 'Номер телефона должен содержать от 11 до 15 символов.',
+            'phone.max' => 'Номер телефона должен содержать от 11 до 15 символов.',
         ]);
 
         $phone = $this->challenges->normalizePhone($request->phone);
@@ -47,7 +53,7 @@ class PhoneAuthController extends Controller
             // Временный пользователь без сохранения в БД
             // Или сохраняем с флагом, что email не подтверждён
             $user = User::create([
-                'phone'    => $phone,
+                'phone' => $phone,
                 'password' => Hash::make(uniqid('phone_temp_', true)),
                 'newPassw' => true,
                 'email_verified_at' => null, // Не верифицирован
@@ -56,15 +62,15 @@ class PhoneAuthController extends Controller
         }
 
         $forceResend = $request->boolean('force_resend');
-        
+
         // ВАЖНО: При создании нового пользователя ВСЕГДА требуем OTP
         // Отключаем автоматический вход для новых пользователей
         $result = $this->challenges->sendLoginCode($request, $user, $phone, $forceResend, $isNew);
 
-        if (! empty($result['error'])) {
+        if (!empty($result['error'])) {
             return response()->json([
-                'success'          => false,
-                'message'          => $result['message'],
+                'success' => false,
+                'message' => $result['message'],
                 'cooldown_seconds' => $result['cooldown_seconds'],
             ], 429);
         }
@@ -76,44 +82,44 @@ class PhoneAuthController extends Controller
         if (!$isNew) {
             $withoutOtp = $this->challenges->tryLoginWithoutOtp($request, $challenge);
             if ($withoutOtp !== null) {
-                if (! ($withoutOtp['success'] ?? false)) {
+                if (!($withoutOtp['success'] ?? false)) {
                     return response()->json($withoutOtp, 422);
                 }
 
                 if ($withoutOtp['requires_password'] ?? false) {
                     return response()->json([
-                        'success'           => true,
-                        'skip_otp'          => true,
+                        'success' => true,
+                        'skip_otp' => true,
                         'requires_password' => true,
-                        'challenge_id'      => $withoutOtp['challenge_id'] ?? $challenge->id,
-                        'is_new'            => $isNew,
-                        'has_email'         => (bool) $user->email,
+                        'challenge_id' => $withoutOtp['challenge_id'] ?? $challenge->id,
+                        'is_new' => $isNew,
+                        'has_email' => (bool) $user->email,
                     ]);
                 }
 
                 return response()->json([
-                    'success'           => true,
-                    'skip_otp'          => true,
-                    'is_new'            => $isNew,
-                    'redirect'          => $withoutOtp['redirect'] ?? route('profile'),
+                    'success' => true,
+                    'skip_otp' => true,
+                    'is_new' => $isNew,
+                    'redirect' => $withoutOtp['redirect'] ?? route('profile'),
                     'requires_password' => false,
                 ]);
             }
         }
 
         return response()->json([
-            'success'            => true,
-            'is_new'             => $isNew,
-            'challenge_id'       => $challenge->id,
-            'delivery_channel'   => $challenge->channel,
-            'masked_phone'       => $this->challenges->maskPhone($phone),
-            'requires_password'  => ! $user->newPassw,
-            'requires_otp'       => true,
-            'has_email'          => (bool) $user->email,
-            'support_email'      => $this->challenges->supportEmail(),
-            'reused'             => $result['reused'],
-            'code_sent'          => $result['code_sent'],
-            'cooldown_seconds'   => $result['cooldown_seconds'],
+            'success' => true,
+            'is_new' => $isNew,
+            'challenge_id' => $challenge->id,
+            'delivery_channel' => $challenge->channel,
+            'masked_phone' => $this->challenges->maskPhone($phone),
+            'requires_password' => !$user->newPassw,
+            'requires_otp' => true,
+            'has_email' => (bool) $user->email,
+            'support_email' => $this->challenges->supportEmail(),
+            'reused' => $result['reused'],
+            'code_sent' => $result['code_sent'],
+            'cooldown_seconds' => $result['cooldown_seconds'],
         ]);
     }
 
@@ -124,29 +130,35 @@ class PhoneAuthController extends Controller
     {
         $request->validate([
             'challenge_id' => 'required|uuid',
-            'code'         => 'required|string|size:6',
+            'code' => 'required|string|size:6',
+        ], [
+            'challenge_id.required' => 'Необходимо указать идентификатор запроса.',
+            'challenge_id.uuid' => 'Идентификатор запроса должен быть в формате UUID.',
+            'code.required' => 'Необходимо указать код подтверждения.',
+            'code.string' => 'Код подтверждения должен быть строкой.',
+            'code.size' => 'Код подтверждения должен содержать ровно 6 символов.',
         ]);
 
         // ВАЖНО: Проверяем 000000 первым
         if ($request->code === '000000') {
             // Для тестового кода пропускаем проверку
             $challenge = $this->challenges->findChallenge($request->challenge_id);
-            
+
             if (!$challenge || $challenge->isExpired()) {
                 return response()->json([
-                    'success' => false, 
+                    'success' => false,
                     'message' => 'Сессия истекла. Запросите код заново.'
                 ], 422);
             }
-            
+
             // Помечаем телефон как подтверждённый
             $challenge->update([
                 'phone_verified_at' => now(),
                 'verified_at' => now(),
             ]);
-            
+
             $user = $challenge->user;
-            
+
             // Для нового пользователя - подтверждаем аккаунт
             if ($user && $user->is_temp ?? false) {
                 $user->update([
@@ -154,29 +166,29 @@ class PhoneAuthController extends Controller
                     'email_verified_at' => now(),
                 ]);
             }
-            
-            if (! $user->newPassw) {
+
+            if (!$user->newPassw) {
                 return response()->json([
-                    'success'           => true,
+                    'success' => true,
                     'requires_password' => true,
-                    'challenge_id'      => $challenge->id,
-                    'has_email'         => (bool) $user->email,
+                    'challenge_id' => $challenge->id,
+                    'has_email' => (bool) $user->email,
                 ]);
             }
-            
+
             $loginResult = $this->challenges->completeLogin($request, $challenge);
-            
-            if (! $loginResult['success']) {
+
+            if (!$loginResult['success']) {
                 return response()->json($loginResult, 422);
             }
-            
+
             return response()->json($loginResult);
         }
-        
+
         // Обычная проверка кода
         $result = $this->challenges->verifyCode($request->challenge_id, $request->code);
 
-        if (! $result['success']) {
+        if (!$result['success']) {
             return response()->json($result, 422);
         }
 
@@ -184,18 +196,18 @@ class PhoneAuthController extends Controller
         $challenge = $result['challenge'];
         $user = $challenge->user;
 
-        if (! $user->newPassw) {
+        if (!$user->newPassw) {
             return response()->json([
-                'success'           => true,
+                'success' => true,
                 'requires_password' => true,
-                'challenge_id'      => $challenge->id,
-                'has_email'         => (bool) $user->email,
+                'challenge_id' => $challenge->id,
+                'has_email' => (bool) $user->email,
             ]);
         }
 
         $loginResult = $this->challenges->completeLogin($request, $challenge);
 
-        if (! $loginResult['success']) {
+        if (!$loginResult['success']) {
             return response()->json($loginResult, 422);
         }
 
@@ -209,32 +221,37 @@ class PhoneAuthController extends Controller
     {
         $request->validate([
             'challenge_id' => 'required|uuid',
-            'password'     => 'required|string',
+            'password' => 'required|string',
+        ], [
+            'challenge_id.required' => 'Необходимо указать идентификатор запроса.',
+            'challenge_id.uuid' => 'Идентификатор запроса должен быть в формате UUID.',
+            'password.required' => 'Необходимо ввести пароль.',
+            'password.string' => 'Пароль должен быть строкой.',
         ]);
 
         $challenge = $this->challenges->findChallenge($request->challenge_id);
 
-        if (! $challenge || $challenge->purpose !== LoginChallenge::PURPOSE_LOGIN) {
+        if (!$challenge || $challenge->purpose !== LoginChallenge::PURPOSE_LOGIN) {
             return response()->json(['success' => false, 'message' => 'Сессия входа не найдена'], 422);
         }
-        
+
         // Проверяем, не истекла ли сессия
         if ($challenge->isExpired()) {
             return response()->json([
-                'success' => false, 
+                'success' => false,
                 'message' => 'Сессия истекла. Пожалуйста, начните заново.'
             ], 422);
         }
 
         $result = $this->challenges->completeLogin($request, $challenge, $request->password);
 
-        if (! $result['success']) {
+        if (!$result['success']) {
             return response()->json($result, 422);
         }
 
         return response()->json($result);
     }
-    
+
     /**
      * Проверка статуса сессии (для восстановления после обновления страницы)
      */
@@ -242,10 +259,13 @@ class PhoneAuthController extends Controller
     {
         $request->validate([
             'challenge_id' => 'required|uuid',
+        ], [
+            'challenge_id.required' => 'Необходимо указать идентификатор запроса.',
+            'challenge_id.uuid' => 'Идентификатор запроса должен быть в формате UUID.',
         ]);
-        
+
         $challenge = $this->challenges->findChallenge($request->challenge_id);
-        
+
         if (!$challenge) {
             return response()->json([
                 'success' => false,
@@ -253,7 +273,7 @@ class PhoneAuthController extends Controller
                 'expired' => true,
             ]);
         }
-        
+
         if ($challenge->isExpired()) {
             return response()->json([
                 'success' => false,
@@ -261,9 +281,9 @@ class PhoneAuthController extends Controller
                 'expired' => true,
             ]);
         }
-        
+
         $user = $challenge->user;
-        
+
         return response()->json([
             'success' => true,
             'phone_verified' => $challenge->isPhoneVerified(),
@@ -281,11 +301,14 @@ class PhoneAuthController extends Controller
     {
         $request->validate([
             'challenge_id' => 'required|uuid',
+        ], [
+            'challenge_id.required' => 'Необходимо указать идентификатор запроса.',
+            'challenge_id.uuid' => 'Идентификатор запроса должен быть в формате UUID.',
         ]);
 
         $challenge = $this->challenges->findChallenge($request->challenge_id);
 
-        if (! $challenge || $challenge->purpose !== LoginChallenge::PURPOSE_LOGIN) {
+        if (!$challenge || $challenge->purpose !== LoginChallenge::PURPOSE_LOGIN) {
             return response()->json(['success' => false, 'message' => 'Сессия не найдена'], 422);
         }
 
@@ -295,16 +318,16 @@ class PhoneAuthController extends Controller
 
         $result = $this->challenges->resendSmsWithCooldown($request, $challenge);
 
-        if (! empty($result['error'])) {
+        if (!empty($result['error'])) {
             return response()->json([
-                'success'          => false,
-                'message'          => $result['message'],
+                'success' => false,
+                'message' => $result['message'],
                 'cooldown_seconds' => $result['cooldown_seconds'],
             ], 429);
         }
 
         $challenge->refresh();
-        
+
         $user = $challenge->user;
         $isNew = ($user && ($user->is_temp ?? false));
 
@@ -312,35 +335,35 @@ class PhoneAuthController extends Controller
         if (!$isNew) {
             $withoutOtp = $this->challenges->tryLoginWithoutOtp($request, $challenge);
             if ($withoutOtp !== null) {
-                if (! ($withoutOtp['success'] ?? false)) {
+                if (!($withoutOtp['success'] ?? false)) {
                     return response()->json($withoutOtp, 422);
                 }
 
                 if ($withoutOtp['requires_password'] ?? false) {
                     return response()->json([
-                        'success'           => true,
-                        'skip_otp'          => true,
+                        'success' => true,
+                        'skip_otp' => true,
                         'requires_password' => true,
-                        'challenge_id'      => $withoutOtp['challenge_id'] ?? $challenge->id,
-                        'cooldown_seconds'  => $result['cooldown_seconds'],
+                        'challenge_id' => $withoutOtp['challenge_id'] ?? $challenge->id,
+                        'cooldown_seconds' => $result['cooldown_seconds'],
                     ]);
                 }
 
                 return response()->json([
-                    'success'          => true,
-                    'skip_otp'         => true,
-                    'redirect'         => $withoutOtp['redirect'] ?? route('profile'),
+                    'success' => true,
+                    'skip_otp' => true,
+                    'redirect' => $withoutOtp['redirect'] ?? route('profile'),
                     'cooldown_seconds' => $result['cooldown_seconds'],
                 ]);
             }
         }
 
         return response()->json([
-            'success'          => true,
+            'success' => true,
             'delivery_channel' => LoginChallenge::CHANNEL_SMS,
-            'masked_phone'     => $this->challenges->maskPhone($challenge->phone),
+            'masked_phone' => $this->challenges->maskPhone($challenge->phone),
             'cooldown_seconds' => $result['cooldown_seconds'],
-            'requires_otp'     => true,
+            'requires_otp' => true,
         ]);
     }
 
@@ -351,11 +374,14 @@ class PhoneAuthController extends Controller
     {
         $request->validate([
             'challenge_id' => 'required|uuid',
+        ], [
+            'challenge_id.required' => 'Необходимо указать идентификатор запроса.',
+            'challenge_id.uuid' => 'Идентификатор запроса должен быть в формате UUID.',
         ]);
 
         $challenge = $this->challenges->findChallenge($request->challenge_id);
 
-        if (! $challenge || ! $challenge->isPhoneVerified()) {
+        if (!$challenge || !$challenge->isPhoneVerified()) {
             return response()->json(['success' => false, 'message' => 'Сначала подтвердите код входа'], 422);
         }
 
@@ -368,7 +394,7 @@ class PhoneAuthController extends Controller
 
         $emailSent = (bool) ($result['email_sent'] ?? true);
 
-        if (! $emailSent) {
+        if (!$emailSent) {
             $message = 'Не удалось отправить код на почту. Временно введите код 000000.';
         } elseif ($masked) {
             $message = "Код отправлен на {$masked}. Проверьте входящие и папку «Спам».";
@@ -377,12 +403,12 @@ class PhoneAuthController extends Controller
         }
 
         return response()->json([
-            'success'         => true,
-            'reset_channel'   => $emailSent ? 'email' : 'fallback',
-            'masked_target'   => $masked,
+            'success' => true,
+            'reset_channel' => $emailSent ? 'email' : 'fallback',
+            'masked_target' => $masked,
             'delivery_method' => $result['delivery_method'],
-            'email_sent'      => $emailSent,
-            'message'         => $message,
+            'email_sent' => $emailSent,
+            'message' => $message,
         ]);
     }
 
@@ -393,11 +419,14 @@ class PhoneAuthController extends Controller
     {
         $request->validate([
             'challenge_id' => 'required|uuid',
+        ], [
+            'challenge_id.required' => 'Необходимо указать идентификатор запроса.',
+            'challenge_id.uuid' => 'Идентификатор запроса должен быть в формате UUID.',
         ]);
 
         $challenge = $this->challenges->findChallenge($request->challenge_id);
 
-        if (! $challenge || ! $challenge->isPhoneVerified()) {
+        if (!$challenge || !$challenge->isPhoneVerified()) {
             return response()->json(['success' => false, 'message' => 'Сессия не найдена'], 422);
         }
 
@@ -413,17 +442,23 @@ class PhoneAuthController extends Controller
     {
         $request->validate([
             'challenge_id' => 'required|uuid',
-            'code'         => 'required|string|size:6',
+            'code' => 'required|string|size:6',
+        ], [
+            'challenge_id.required' => 'Необходимо указать идентификатор запроса.',
+            'challenge_id.uuid' => 'Идентификатор запроса должен быть в формате UUID.',
+            'code.required' => 'Необходимо указать код подтверждения.',
+            'code.string' => 'Код подтверждения должен быть строкой.',
+            'code.size' => 'Код подтверждения должен содержать ровно 6 символов.',
         ]);
 
         // Поддержка 000000 для сброса пароля
         if ($request->code === '000000') {
             $challenge = $this->challenges->findChallenge($request->challenge_id);
-            
+
             if (!$challenge) {
                 return response()->json(['success' => false, 'message' => 'Сессия не найдена'], 422);
             }
-            
+
             return response()->json(['success' => true, 'challenge_id' => $request->challenge_id]);
         }
 
@@ -432,7 +467,7 @@ class PhoneAuthController extends Controller
             $request->code,
         );
 
-        if (! $result['success']) {
+        if (!$result['success']) {
             return response()->json($result, 422);
         }
 
@@ -445,16 +480,23 @@ class PhoneAuthController extends Controller
     public function forgotPasswordReset(Request $request): JsonResponse
     {
         $request->validate([
-            'challenge_id'          => 'required|uuid',
-            'password'              => 'required|string|min:4|confirmed',
+            'challenge_id' => 'required|uuid',
+            'password' => 'required|string|min:4|confirmed',
+        ], [
+            'challenge_id.required' => 'Необходимо указать идентификатор запроса.',
+            'challenge_id.uuid' => 'Идентификатор запроса должен быть в формате UUID.',
+            'password.required' => 'Необходимо ввести новый пароль.',
+            'password.string' => 'Новый пароль должен быть строкой.',
+            'password.min' => 'Новый пароль должен содержать минимум 4 символа.',
+            'password.confirmed' => 'Подтверждение пароля не совпадает.',
         ]);
 
         $challenge = $this->challenges->findChallenge($request->challenge_id);
 
-        if (! $challenge) {
+        if (!$challenge) {
             return response()->json(['success' => false, 'message' => 'Сессия не найдена'], 422);
         }
-        
+
         if ($challenge->isExpired()) {
             return response()->json(['success' => false, 'message' => 'Сессия истекла. Начните заново.'], 422);
         }
@@ -465,7 +507,7 @@ class PhoneAuthController extends Controller
             $request->password,
         );
 
-        if (! $result['success']) {
+        if (!$result['success']) {
             return response()->json($result, 422);
         }
 

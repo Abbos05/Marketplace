@@ -191,7 +191,7 @@ function MessageSenderLabel({ message, profileDisabled = false }) {
 
   const inner = (
     <>
-     
+
       <span className="msg-sender-label-text">{displayName}</span>
       {showSubtitle && <span className="msg-sender-label-sub">{realName}</span>}
     </>
@@ -675,14 +675,14 @@ export default function Index() {
       const res = await fetch(
         `${route('messages.messages.destroy', { conversation: activeId, message: mid })}${delQuery ? `?${delQuery}` : ''}`,
         {
-        method: 'DELETE',
-        credentials: 'same-origin',
-        headers: {
-          Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-TOKEN': token,
+          method: 'DELETE',
+          credentials: 'same-origin',
+          headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': token,
+          },
         },
-      },
       );
       const j = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -996,54 +996,54 @@ export default function Index() {
 
                 <div className="msg-scroll-wrap">
                   <div className="msg-scroll" ref={notifScrollRef}>
-                  <div className="msg-fon">
-                    <div className="msg-inner">
-                      {groupedNotifs.length === 0 && <div className="msg-main-empty msg-main-empty--inline">Пока нет уведомлений</div>}
-                      {groupedNotifs.map((row) =>
-                        row.kind === 'date' ? (
-                          <div key={row.key} className="msg-date-sep">
-                            {row.label}
-                          </div>
-                        ) : (() => {
-                          const notifActionUrl = resolveNotificationActionUrl(row.n.action_url);
-                          return (
-                          <div key={row.key} className={`msg-row msg-row--notif ${row.n.read ? 'msg-row--notif-read' : ''}`}>
-                            <div className="msg-bubble-avatar msg-bubble-avatar--notif" aria-hidden>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <path
-                                  d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
-                                  fill="currentColor"
-                                />
-                              </svg>
+                    <div className="msg-fon">
+                      <div className="msg-inner">
+                        {groupedNotifs.length === 0 && <div className="msg-main-empty msg-main-empty--inline">Пока нет уведомлений</div>}
+                        {groupedNotifs.map((row) =>
+                          row.kind === 'date' ? (
+                            <div key={row.key} className="msg-date-sep">
+                              {row.label}
                             </div>
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              className="msg-bubble msg-bubble--notif"
-                              onClick={() => !row.n.read && markNotifReadOne(row.n.id)}
-                              onKeyDown={(e) => {
-                                if ((e.key === 'Enter' || e.key === ' ') && !row.n.read) markNotifReadOne(row.n.id);
-                              }}
-                            >
-                              <div className="msg-bubble-text msg-bubble-text--notif">
-                                <strong>{row.n.title}</strong>
-                                <div>{row.n.body}</div>
+                          ) : (() => {
+                            const notifActionUrl = resolveNotificationActionUrl(row.n.action_url);
+                            return (
+                              <div key={row.key} className={`msg-row msg-row--notif ${row.n.read ? 'msg-row--notif-read' : ''}`}>
+                                <div className="msg-bubble-avatar msg-bubble-avatar--notif" aria-hidden>
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path
+                                      d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
+                                      fill="currentColor"
+                                    />
+                                  </svg>
+                                </div>
+                                <div
+                                  role="button"
+                                  tabIndex={0}
+                                  className="msg-bubble msg-bubble--notif"
+                                  onClick={() => !row.n.read && markNotifReadOne(row.n.id)}
+                                  onKeyDown={(e) => {
+                                    if ((e.key === 'Enter' || e.key === ' ') && !row.n.read) markNotifReadOne(row.n.id);
+                                  }}
+                                >
+                                  <div className="msg-bubble-text msg-bubble-text--notif">
+                                    <strong>{row.n.title}</strong>
+                                    <div>{row.n.body}</div>
+                                  </div>
+                                  <div className="msg-bubble-meta">
+                                    <span className="msg-bubble-time">{timeInBubble(row.n.created_at)}</span>
+                                    {notifActionUrl && (
+                                      <Link href={notifActionUrl} className="msg-notif-link" onClick={(e) => e.stopPropagation()}>
+                                        Открыть
+                                      </Link>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="msg-bubble-meta">
-                                <span className="msg-bubble-time">{timeInBubble(row.n.created_at)}</span>
-                                {notifActionUrl && (
-                                  <Link href={notifActionUrl} className="msg-notif-link" onClick={(e) => e.stopPropagation()}>
-                                    Открыть
-                                  </Link>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          );
-                        })(),
-                      )}
+                            );
+                          })(),
+                        )}
+                      </div>
                     </div>
-                  </div>
                   </div>
                   <ScrollDownFab visible={awayFromBottom} onClick={() => scrollToBottom(true)} />
                 </div>
@@ -1139,122 +1139,122 @@ export default function Index() {
 
                 <div className="msg-scroll-wrap">
                   <div className="msg-scroll" ref={scrollRef}>
-                  <div className="msg-fon">
-                    <div className="msg-inner">
-                      {grouped.map((row) =>
-                        row.kind === 'date' ? (
-                          <div key={row.key} className="msg-date-sep">
-                            {row.label}
-                          </div>
-                        ) : row.m.is_own ? (
-                          <div key={row.key} className="msg-row msg-row--own">
-                            <ProfileAvatarWrap
-                              kind={row.m.sender_profile_kind}
-                              userId={row.m.sender_profile_user_id}
-                              profileDisabled={embed}
-                              className="msg-bubble-avatar"
-                            >
-                              {row.m.sender_avatar ? (
-                                <img src={row.m.sender_avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: 8, objectFit: 'cover' }} />
-                              ) : (
-                                (row.m.sender_name || '?').slice(0, 1).toUpperCase()
-                              )}
-                            </ProfileAvatarWrap>
-                            <div className={`msg-bubble ${editingId === row.m.id ? 'msg-bubble--editing' : ''}`}>
-                              {editingId === row.m.id ? (
-                                <div className="msg-edit-box">
-                                  {row.m.attachment_url && row.m.is_attachment_image && (
-                                    <a href={row.m.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-img-wrap">
-                                      <img src={row.m.attachment_url} alt="" className="msg-attachment-img msg-attachment-img--edit" />
-                                    </a>
-                                  )}
-                                  {row.m.attachment_url && !row.m.is_attachment_image && (
-                                    <div className="msg-attachment-file msg-attachment-file--static">
-                                      <span className="msg-attachment-file-icon" aria-hidden>
-                                        {(row.m.attachment_mime || '').includes('pdf') ? '📄' : '📎'}
-                                      </span>
-                                      <span className="msg-attachment-file-name">{row.m.attachment_name || 'Вложение'}</span>
-                                    </div>
-                                  )}
-                                  <textarea
-                                    className="msg-edit-textarea"
-                                    value={editDraft}
-                                    onChange={(e) => setEditDraft(e.target.value)}
-                                    rows={8}
-                                    disabled={editBusy}
-                                    placeholder={row.m.attachment_url ? 'Подпись к файлу (необязательно)' : ''}
-                                  />
-                                  {editError && <div className="msg-edit-error">{editError}</div>}
-                                  <div className="msg-edit-actions">
-                                    <button type="button" className="msg-btn-ghost msg-btn-ghost--compact" onClick={cancelEdit} disabled={editBusy}>
-                                      Отмена
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="msg-composer-send msg-composer-send--compact"
-                                      onClick={saveEdit}
-                                      disabled={editBusy || (!editDraft.trim() && !row.m.attachment_url)}
-                                    >
-                                      Сохранить
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <>
-                                  {showSenderNames && <MessageSenderLabel message={row.m} profileDisabled={embed} />}
-                                  <MessageBubbleContent message={row.m} />
-                                  <MessageBubbleMeta message={row.m} />
-                                </>
-                              )}
+                    <div className="msg-fon">
+                      <div className="msg-inner">
+                        {grouped.map((row) =>
+                          row.kind === 'date' ? (
+                            <div key={row.key} className="msg-date-sep">
+                              {row.label}
                             </div>
-                            {messageCanMutate(row.m.created_at) && editingId !== row.m.id && (
-                              <div className="msg-row-tools">
-                                <button type="button" className="msg-tool-btn" title="Редактировать" aria-label="Редактировать" onClick={() => startEdit(row.m)}>
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                                    <path
-                                      d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                                      fill="currentColor"
+                          ) : row.m.is_own ? (
+                            <div key={row.key} className="msg-row msg-row--own">
+                              <ProfileAvatarWrap
+                                kind={row.m.sender_profile_kind}
+                                userId={row.m.sender_profile_user_id}
+                                profileDisabled={embed}
+                                className="msg-bubble-avatar"
+                              >
+                                {row.m.sender_avatar ? (
+                                  <img src={row.m.sender_avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: 8, objectFit: 'cover' }} />
+                                ) : (
+                                  (row.m.sender_name || '?').slice(0, 1).toUpperCase()
+                                )}
+                              </ProfileAvatarWrap>
+                              <div className={`msg-bubble ${editingId === row.m.id ? 'msg-bubble--editing' : ''}`}>
+                                {editingId === row.m.id ? (
+                                  <div className="msg-edit-box">
+                                    {row.m.attachment_url && row.m.is_attachment_image && (
+                                      <a href={row.m.attachment_url} target="_blank" rel="noopener noreferrer" className="msg-attachment-img-wrap">
+                                        <img src={row.m.attachment_url} alt="" className="msg-attachment-img msg-attachment-img--edit" />
+                                      </a>
+                                    )}
+                                    {row.m.attachment_url && !row.m.is_attachment_image && (
+                                      <div className="msg-attachment-file msg-attachment-file--static">
+                                        <span className="msg-attachment-file-icon" aria-hidden>
+                                          {(row.m.attachment_mime || '').includes('pdf') ? '📄' : '📎'}
+                                        </span>
+                                        <span className="msg-attachment-file-name">{row.m.attachment_name || 'Вложение'}</span>
+                                      </div>
+                                    )}
+                                    <textarea
+                                      className="msg-edit-textarea"
+                                      value={editDraft}
+                                      onChange={(e) => setEditDraft(e.target.value)}
+                                      rows={8}
+                                      disabled={editBusy}
+                                      placeholder={row.m.attachment_url ? 'Подпись к файлу (необязательно)' : ''}
                                     />
-                                  </svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="msg-tool-btn msg-tool-btn--danger"
-                                  title="Удалить"
-                                  aria-label="Удалить"
-                                  onClick={() => handleDeleteMessage(row.m.id)}
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor" />
-                                  </svg>
-                                </button>
+                                    {editError && <div className="msg-edit-error">{editError}</div>}
+                                    <div className="msg-edit-actions">
+                                      <button type="button" className="msg-btn-ghost msg-btn-ghost--compact" onClick={cancelEdit} disabled={editBusy}>
+                                        Отмена
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="msg-composer-send msg-composer-send--compact"
+                                        onClick={saveEdit}
+                                        disabled={editBusy || (!editDraft.trim() && !row.m.attachment_url)}
+                                      >
+                                        Сохранить
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    {showSenderNames && <MessageSenderLabel message={row.m} profileDisabled={embed} />}
+                                    <MessageBubbleContent message={row.m} />
+                                    <MessageBubbleMeta message={row.m} />
+                                  </>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div key={row.key} className="msg-row">
-                            <ProfileAvatarWrap
-                              kind={row.m.sender_profile_kind}
-                              userId={row.m.sender_profile_user_id}
-                              profileDisabled={embed}
-                              className="msg-bubble-avatar"
-                            >
-                              {row.m.sender_avatar ? (
-                                <img src={row.m.sender_avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: 8, objectFit: 'cover' }} />
-                              ) : (
-                                (row.m.sender_name || '?').slice(0, 1).toUpperCase()
+                              {messageCanMutate(row.m.created_at) && editingId !== row.m.id && (
+                                <div className="msg-row-tools">
+                                  <button type="button" className="msg-tool-btn" title="Редактировать" aria-label="Редактировать" onClick={() => startEdit(row.m)}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                                      <path
+                                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                                        fill="currentColor"
+                                      />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="msg-tool-btn msg-tool-btn--danger"
+                                    title="Удалить"
+                                    aria-label="Удалить"
+                                    onClick={() => handleDeleteMessage(row.m.id)}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor" />
+                                    </svg>
+                                  </button>
+                                </div>
                               )}
-                            </ProfileAvatarWrap>
-                            <div className="msg-bubble">
-                              {showSenderNames && <MessageSenderLabel message={row.m} profileDisabled={embed} />}
-                              <MessageBubbleContent message={row.m} />
-                              <MessageBubbleMeta message={row.m} />
                             </div>
-                          </div>
-                        ),
-                      )}
+                          ) : (
+                            <div key={row.key} className="msg-row">
+                              <ProfileAvatarWrap
+                                kind={row.m.sender_profile_kind}
+                                userId={row.m.sender_profile_user_id}
+                                profileDisabled={embed}
+                                className="msg-bubble-avatar"
+                              >
+                                {row.m.sender_avatar ? (
+                                  <img src={row.m.sender_avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: 8, objectFit: 'cover' }} />
+                                ) : (
+                                  (row.m.sender_name || '?').slice(0, 1).toUpperCase()
+                                )}
+                              </ProfileAvatarWrap>
+                              <div className="msg-bubble">
+                                {showSenderNames && <MessageSenderLabel message={row.m} profileDisabled={embed} />}
+                                <MessageBubbleContent message={row.m} />
+                                <MessageBubbleMeta message={row.m} />
+                              </div>
+                            </div>
+                          ),
+                        )}
+                      </div>
                     </div>
-                  </div>
                   </div>
                   <ScrollDownFab visible={awayFromBottom} onClick={() => scrollToBottom(true)} />
                 </div>
@@ -1268,57 +1268,57 @@ export default function Index() {
                     </span>
                   </div>
                 ) : (
-                <form className={`msg-composer${pendingFile ? ' msg-composer--with-attach' : ''}`} onSubmit={submitMessage}>
-                  {pendingFile && (
-                    <div className="msg-pending-attach">
-                      {pendingPreviewUrl && <img className="msg-pending-attach-thumb" src={pendingPreviewUrl} alt="" />}
-                      <span className="msg-pending-attach-name">{pendingFile.name}</span>
-                      <button type="button" className="msg-pending-attach-clear" onClick={() => setPendingFile(null)} aria-label="Убрать файл">
-                        ×
+                  <form className={`msg-composer${pendingFile ? ' msg-composer--with-attach' : ''}`} onSubmit={submitMessage}>
+                    {pendingFile && (
+                      <div className="msg-pending-attach">
+                        {pendingPreviewUrl && <img className="msg-pending-attach-thumb" src={pendingPreviewUrl} alt="" />}
+                        <span className="msg-pending-attach-name">{pendingFile.name}</span>
+                        <button type="button" className="msg-pending-attach-clear" onClick={() => setPendingFile(null)} aria-label="Убрать файл">
+                          ×
+                        </button>
+                      </div>
+                    )}
+                    <div className="msg-composer-row">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="msg-composer-file-input"
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,image/jpeg,image/png,image/gif,image/webp,application/pdf"
+                        onChange={onPickAttachment}
+                      />
+                      {auth.user.role && ['admin', 'moderator'].includes(auth.user.role) || active?.can_attach_files ? (
+                        <button type="button" className="msg-composer-clip" title="Прикрепить файл" onClick={() => fileInputRef.current?.click()}>
+                          📎
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="msg-composer-clip msg-composer-clip--disabled"
+                          title="Файл можно отправить после ответа собеседника"
+                          disabled
+                        >
+                          📎
+                        </button>
+                      )}
+                      <input
+                        className="msg-composer-input"
+                        placeholder={pendingFile ? 'Подпись к файлу (необязательно)…' : 'Введите сообщение… '}
+                        value={form.data.message}
+                        onChange={(e) => form.setData('message', e.target.value)}
+                      />
+                      <button type="submit" className="msg-composer-send" disabled={sendBusy || (!form.data.message.trim() && !pendingFile)}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                          <path
+                            d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
                       </button>
                     </div>
-                  )}
-                  <div className="msg-composer-row">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      className="msg-composer-file-input"
-                      accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,image/jpeg,image/png,image/gif,image/webp,application/pdf"
-                      onChange={onPickAttachment}
-                    />
-                    {active?.can_attach_files ? (
-                      <button type="button" className="msg-composer-clip" title="Прикрепить файл" onClick={() => fileInputRef.current?.click()}>
-                        📎
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="msg-composer-clip msg-composer-clip--disabled"
-                        title="Файл можно отправить после ответа собеседника"
-                        disabled
-                      >
-                        📎
-                      </button>
-                    )}
-                    <input
-                      className="msg-composer-input"
-                      placeholder={pendingFile ? 'Подпись к файлу (необязательно)…' : 'Введите сообщение…'}
-                      value={form.data.message}
-                      onChange={(e) => form.setData('message', e.target.value)}
-                    />
-                    <button type="submit" className="msg-composer-send" disabled={sendBusy || (!form.data.message.trim() && !pendingFile)}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-                        <path
-                          d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </form>
+                  </form>
                 )}
                 {(sendError || form.errors.message) && (
                   <div style={{ color: '#b91c1c', fontSize: 12, padding: '0 1rem 0.5rem' }}>{sendError || form.errors.message}</div>

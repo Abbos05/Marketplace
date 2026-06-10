@@ -44,7 +44,7 @@ class HomeSlideController extends Controller
                     'button_text' => $s->button_text,
                     'image_path' => str_starts_with((string) $s->image_path, '/')
                         ? $s->image_path
-                        : '/'.$s->image_path,
+                        : '/' . $s->image_path,
                     'sort_order' => $s->sort_order,
                     'is_active' => $s->is_active,
                     'link_type' => $s->link_type,
@@ -58,12 +58,12 @@ class HomeSlideController extends Controller
             ->orderBy('parent_id')
             ->orderBy('name')
             ->get(['id', 'name', 'parent_id'])
-            ->map(fn (Category $c) => [
+            ->map(fn(Category $c) => [
                 'id' => $c->id,
-                'name' => $c->parent_id ? '↳ '.$c->name : $c->name,
+                'name' => $c->parent_id ? '↳ ' . $c->name : $c->name,
             ]);
 
-        $routeOptions = collect(HomeSlide::ALLOWED_ROUTE_NAMES)->map(fn (string $name) => [
+        $routeOptions = collect(HomeSlide::ALLOWED_ROUTE_NAMES)->map(fn(string $name) => [
             'value' => $name,
             'label' => $this->routeLabels()[$name] ?? $name,
         ])->values()->all();
@@ -175,6 +175,23 @@ class HomeSlideController extends Controller
                 'image',
                 'max:5120',
             ],
+        ], [
+            'title.string' => 'Заголовок должен быть текстом.',
+            'title.max' => 'Заголовок не должен превышать 80 символов.',
+            'description.string' => 'Описание должно быть текстом.',
+            'description.max' => 'Описание не должно превышать 400 символов.',
+            'button_text.string' => 'Текст кнопки должен быть текстом.',
+            'button_text.max' => 'Текст кнопки не должен превышать 32 символа.',
+            'is_active.in' => 'Статус активности должен быть 0 или 1.',
+            'link_type.required' => 'Необходимо указать тип ссылки.',
+            'link_type.string' => 'Тип ссылки должен быть текстом.',
+            'link_type.in' => 'Недопустимый тип ссылки.',
+            'link_target.string' => 'Ссылка должна быть текстом.',
+            'link_target.max' => 'Ссылка не должна превышать 500 символов.',
+            'image.required' => 'Необходимо загрузить изображение.',
+            'image.file' => 'Загруженный файл должен быть изображением.',
+            'image.image' => 'Файл должен быть изображением.',
+            'image.max' => 'Размер изображения не должен превышать 5 МБ.',
         ]);
 
         $type = $data['link_type'];
@@ -200,28 +217,33 @@ class HomeSlideController extends Controller
 
         if ($type === HomeSlide::LINK_URL) {
             $request->validate([
-                'link_target' => ['required', 'string', 'max:500', function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (! is_string($value) || $value === '') {
-                        $fail('Укажите корректный URL или путь.');
+                'link_target' => [
+                    'required',
+                    'string',
+                    'max:500',
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        if (!is_string($value) || $value === '') {
+                            $fail('Укажите корректный URL или путь.');
 
-                        return;
-                    }
-                    $v = trim($value);
-                    if (str_starts_with($v, 'http://') || str_starts_with($v, 'https://')) {
-                        if (! filter_var($v, FILTER_VALIDATE_URL)) {
-                            $fail('Некорректный URL.');
+                            return;
                         }
+                        $v = trim($value);
+                        if (str_starts_with($v, 'http://') || str_starts_with($v, 'https://')) {
+                            if (!filter_var($v, FILTER_VALIDATE_URL)) {
+                                $fail('Некорректный URL.');
+                            }
 
-                        return;
+                            return;
+                        }
+                        if (str_starts_with($v, '/')) {
+                            return;
+                        }
+                        if (preg_match('/^[a-zA-Z0-9][a-zA-Z0-9/_\\-]*$/', $v)) {
+                            return;
+                        }
+                        $fail('Разрешены пути, начинающиеся с /, или http(s)://…');
                     }
-                    if (str_starts_with($v, '/')) {
-                        return;
-                    }
-                    if (preg_match('/^[a-zA-Z0-9][a-zA-Z0-9/_\\-]*$/', $v)) {
-                        return;
-                    }
-                    $fail('Разрешены пути, начинающиеся с /, или http(s)://…');
-                }],
+                ],
             ]);
         }
 
@@ -240,7 +262,7 @@ class HomeSlideController extends Controller
     private function assertLandscapeSlideImage(UploadedFile $file): void
     {
         $path = $file->getRealPath();
-        if ($path === false || ! is_readable($path)) {
+        if ($path === false || !is_readable($path)) {
             throw ValidationException::withMessages([
                 'image' => 'Не удалось прочитать файл изображения.',
             ]);
@@ -257,7 +279,7 @@ class HomeSlideController extends Controller
 
         if ($width < 640) {
             throw ValidationException::withMessages([
-                'image' => 'Минимальная ширина изображения — 640 px (сейчас '.$width.' px).',
+                'image' => 'Минимальная ширина изображения — 640 px (сейчас ' . $width . ' px).',
             ]);
         }
 
@@ -372,13 +394,13 @@ class HomeSlideController extends Controller
     private function storeImage(\Illuminate\Http\UploadedFile $file): string
     {
         $dir = public_path('img/slides');
-        if (! is_dir($dir)) {
+        if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
-        $name = time().'_'.Str::random(8).'.'.$file->getClientOriginalExtension();
+        $name = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
         $file->move($dir, $name);
 
-        return '/img/slides/'.$name;
+        return '/img/slides/' . $name;
     }
 
     private function deleteStoredImageIfOwned(?string $path): void
@@ -386,8 +408,8 @@ class HomeSlideController extends Controller
         if ($path === null || $path === '') {
             return;
         }
-        $normalized = str_starts_with($path, '/') ? $path : '/'.$path;
-        if (! str_starts_with($normalized, '/img/slides/')) {
+        $normalized = str_starts_with($path, '/') ? $path : '/' . $path;
+        if (!str_starts_with($normalized, '/img/slides/')) {
             return;
         }
         $full = public_path(ltrim($normalized, '/'));

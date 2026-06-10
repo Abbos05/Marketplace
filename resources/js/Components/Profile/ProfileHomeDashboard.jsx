@@ -272,8 +272,7 @@ export default function ProfileHomeDashboard({
             products={LikeProducts}
             title=""
             initialCount={4}
-            step={4}
-            maxCount={8}
+            step={12}
             headingClassName=""
           />
         </section>

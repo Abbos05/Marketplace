@@ -15,12 +15,12 @@ export default function Contacts() {
           SupportAlvoraPlace@gmail.com
           </a>
         </p>
-        <p>
+        {/* <p>
           Telegram-канал:{' '}
           <a href="https://t.me/AlvoraPlace" className="info-page__link" target="_blank" rel="noopener noreferrer">
             @AlvoraPlace
           </a>
-        </p>
+        </p> */}
         <p>
           MAX:{' '}
           <a href="https://max.ru/join/uTTd84ZCWV6LDqeiR1KOFZnBPp-2ar4mgwWMtSsmfmQ" className="info-page__link" target="_blank" rel="noopener noreferrer">
@@ -43,12 +43,12 @@ export default function Contacts() {
         <p>
           Полные личные контакты предоставляются через службу поддержки только для рабочих обращений.
         </p>
-        <p>
+        {/* <p>
           Telegram:{' '}
           <a href="https://t.me/id_a_005_a" className="info-page__link" target="_blank" rel="noopener noreferrer">
             t.me/id_a_005_a
           </a>
-        </p>
+        </p> */}
         <p>
           VK:{' '}
           <a href="https://vk.com/id_a_i_09_05_i_a" className="info-page__link" target="_blank" rel="noopener noreferrer">

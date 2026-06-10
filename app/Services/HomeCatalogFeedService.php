@@ -69,7 +69,7 @@ class HomeCatalogFeedService
     public function buildRecommendations(array $options = []): Collection
     {
         $popularCount = max(0, (int) ($options['popular_count'] ?? config('marketplace.home_feed.recommendations_popular_count', 6)));
-        $limit = max(1, (int) ($options['limit'] ?? config('marketplace.home_feed.recommendations_limit', 12)));
+        $limit = max(0, (int) ($options['limit'] ?? 0));
 
         $excludeProductIds = array_values(array_unique(array_map('intval', $options['exclude_product_ids'] ?? [])));
         $excludeCategoryIds = array_values(array_unique(array_map('intval', $options['exclude_category_ids'] ?? [])));

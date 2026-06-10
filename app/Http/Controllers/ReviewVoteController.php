@@ -12,6 +12,9 @@ class ReviewVoteController extends Controller
     {
         $request->validate([
             'vote' => 'required|in:helpful,unhelpful',
+        ], [
+            'vote.required' => 'Необходимо указать тип голоса.',
+            'vote.in' => 'Недопустимый тип голоса. Доступные: полезный, бесполезный.',
         ]);
 
         $user = $request->user();
@@ -50,7 +53,7 @@ class ReviewVoteController extends Controller
             'user_vote' => $userVote,
         ];
 
-        if ($request->wantsJson() && ! $request->header('X-Inertia')) {
+        if ($request->wantsJson() && !$request->header('X-Inertia')) {
             return response()->json($payload);
         }
 

@@ -32,19 +32,19 @@ class SellerProductController extends Controller
             ->max('sort_order');
 
         for ($imgIndex = 0; $imgIndex < 10; $imgIndex++) {
-            $galleryKey = 'variant_gallery_'.$variantIndex.'_'.$imgIndex;
-            $legacyAdditionalKey = 'additional_image_'.$variantIndex.'_'.$imgIndex;
+            $galleryKey = 'variant_gallery_' . $variantIndex . '_' . $imgIndex;
+            $legacyAdditionalKey = 'additional_image_' . $variantIndex . '_' . $imgIndex;
             $key = $request->hasFile($galleryKey) ? $galleryKey : $legacyAdditionalKey;
-            if (! $request->hasFile($key)) {
+            if (!$request->hasFile($key)) {
                 continue;
             }
             $image = $request->file($key);
-            $imageName = time().'_v'.$variantIndex.'_g'.$imgIndex.'_'.Str::random(5).'.'.$image->extension();
+            $imageName = time() . '_v' . $variantIndex . '_g' . $imgIndex . '_' . Str::random(5) . '.' . $image->extension();
             $image->move($folder, $imageName);
             $created = ProductImage::create([
                 'product_id' => $product->id,
                 'variant_id' => $variant->id,
-                'url' => '/img/products/'.$userId.'/'.$imageName,
+                'url' => '/img/products/' . $userId . '/' . $imageName,
                 'sort_order' => ++$newSortOrder,
                 'is_main' => false,
             ]);
@@ -84,7 +84,7 @@ class SellerProductController extends Controller
         $targetMainId = null;
         if (is_string($mainImageKey) && str_starts_with($mainImageKey, 'existing:')) {
             $existingId = (int) substr($mainImageKey, 9);
-            if ($existingId > 0 && $remainingImages->contains(fn ($img) => (int) $img->id === $existingId)) {
+            if ($existingId > 0 && $remainingImages->contains(fn($img) => (int) $img->id === $existingId)) {
                 $targetMainId = $existingId;
             }
         }
@@ -190,20 +190,41 @@ class SellerProductController extends Controller
             'variants' => 'required|array|min:1',
             'variants.*.price' => 'required|numeric|min:0.01',
             'variants.*.stock' => 'required|integer|min:0',
+        ], [
+            'title.required' => 'Необходимо указать название товара.',
+            'title.string' => 'Название товара должно быть текстом.',
+            'title.max' => 'Название товара не должно превышать 200 символов.',
+            'short_description.required' => 'Необходимо указать краткое описание.',
+            'short_description.string' => 'Краткое описание должно быть текстом.',
+            'short_description.max' => 'Краткое описание не должно превышать 500 символов.',
+            'description.required' => 'Необходимо указать полное описание.',
+            'description.string' => 'Полное описание должно быть текстом.',
+            'description.max' => 'Полное описание не должно превышать 20000 символов.',
+            'category_id.required' => 'Необходимо выбрать категорию.',
+            'category_id.exists' => 'Выбранная категория не существует.',
+            'variants.required' => 'Необходимо добавить хотя бы один вариант товара.',
+            'variants.array' => 'Варианты товара должны быть массивом.',
+            'variants.min' => 'Добавьте хотя бы один вариант товара.',
+            'variants.*.price.required' => 'Необходимо указать цену варианта.',
+            'variants.*.price.numeric' => 'Цена должна быть числом.',
+            'variants.*.price.min' => 'Цена должна быть не менее 0.01.',
+            'variants.*.stock.required' => 'Необходимо указать количество на складе.',
+            'variants.*.stock.integer' => 'Количество должно быть целым числом.',
+            'variants.*.stock.min' => 'Количество не может быть отрицательным.',
         ]);
 
         $user = Auth::user();
 
         foreach (array_keys($request->variants ?? []) as $variantIndex) {
-            $hasLegacyMain = $request->hasFile('variant_image_'.$variantIndex);
+            $hasLegacyMain = $request->hasFile('variant_image_' . $variantIndex);
             $hasGallery = false;
             for ($imgIndex = 0; $imgIndex < 10; $imgIndex++) {
-                if ($request->hasFile('variant_gallery_'.$variantIndex.'_'.$imgIndex) || $request->hasFile('additional_image_'.$variantIndex.'_'.$imgIndex)) {
+                if ($request->hasFile('variant_gallery_' . $variantIndex . '_' . $imgIndex) || $request->hasFile('additional_image_' . $variantIndex . '_' . $imgIndex)) {
                     $hasGallery = true;
                     break;
                 }
             }
-            if (! $hasLegacyMain && ! $hasGallery) {
+            if (!$hasLegacyMain && !$hasGallery) {
                 return back()->withErrors([
                     "variants.{$variantIndex}.image" => 'Загрузите фото для каждого варианта',
                 ])->withInput();
@@ -213,14 +234,14 @@ class SellerProductController extends Controller
         $allowedAttributeIds = CategoryAttribute::query()
             ->where('category_id', (int) $request->category_id)
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->all();
 
         try {
             DB::beginTransaction();
 
             $minPrice = (float) collect($request->variants)->min(
-                fn ($v) => (float) ($v['price'] ?? 0)
+                fn($v) => (float) ($v['price'] ?? 0)
             );
 
             $product = Product::create([
@@ -234,8 +255,8 @@ class SellerProductController extends Controller
                 'is_on_action' => false,
             ]);
 
-            $folder = public_path('img/products/'.$user->id);
-            if (! file_exists($folder)) {
+            $folder = public_path('img/products/' . $user->id);
+            if (!file_exists($folder)) {
                 mkdir($folder, 0777, true);
             }
 
@@ -251,28 +272,28 @@ class SellerProductController extends Controller
                     $decoded = json_decode($options, true);
                     $options = is_array($decoded) ? $decoded : [];
                 }
-                if (! is_array($options)) {
+                if (!is_array($options)) {
                     $options = [];
                 }
 
                 $pv = ProductVariant::create([
-                    'product_id'   => $product->id,
-                    'options'      => $options,
-                    'price'        => $variant['price'],
-                    'old_price'    => null,
-                    'stock'        => (int) $variant['stock'],
+                    'product_id' => $product->id,
+                    'options' => $options,
+                    'price' => $variant['price'],
+                    'old_price' => null,
+                    'stock' => (int) $variant['stock'],
                     'weight_grams' => isset($variant['weight_grams']) ? (int) $variant['weight_grams'] : null,
-                    'is_active'    => true,
+                    'is_active' => true,
                 ]);
 
-                if ($request->hasFile('variant_image_'.$variantIndex)) {
-                    $legacyMain = $request->file('variant_image_'.$variantIndex);
-                    $legacyName = time().'_v'.$variantIndex.'_legacy_'.Str::random(5).'.'.$legacyMain->extension();
+                if ($request->hasFile('variant_image_' . $variantIndex)) {
+                    $legacyMain = $request->file('variant_image_' . $variantIndex);
+                    $legacyName = time() . '_v' . $variantIndex . '_legacy_' . Str::random(5) . '.' . $legacyMain->extension();
                     $legacyMain->move($folder, $legacyName);
                     ProductImage::create([
                         'product_id' => $product->id,
                         'variant_id' => $pv->id,
-                        'url' => '/img/products/'.$user->id.'/'.$legacyName,
+                        'url' => '/img/products/' . $user->id . '/' . $legacyName,
                         'sort_order' => 1,
                         'is_main' => false,
                     ]);
@@ -288,7 +309,7 @@ class SellerProductController extends Controller
 
             foreach ($request->input('attributes', []) as $attributeId => $value) {
                 $aid = (int) $attributeId;
-                if ($aid < 1 || ! in_array($aid, $allowedAttributeIds, true)) {
+                if ($aid < 1 || !in_array($aid, $allowedAttributeIds, true)) {
                     continue;
                 }
                 if ($value === '' || $value === null) {
@@ -328,7 +349,7 @@ class SellerProductController extends Controller
             'category.parent',
             'category.attributes',
             'attributeValues',
-            'variants' => fn ($q) => $q->with(['images' => fn ($qi) => $qi->orderBy('sort_order')])->orderBy('id'),
+            'variants' => fn($q) => $q->with(['images' => fn($qi) => $qi->orderBy('sort_order')])->orderBy('id'),
         ]);
 
         $categories = Category::where('is_active', true)
@@ -351,7 +372,7 @@ class SellerProductController extends Controller
             $variantImage = $v->images->firstWhere('is_main', true) ?? $v->images->first();
             $allImages = $v->images
                 ->values()
-                ->map(fn ($img) => [
+                ->map(fn($img) => [
                     'id' => $img->id,
                     'url' => $img->url,
                     'is_main' => (bool) $img->is_main,
@@ -361,7 +382,7 @@ class SellerProductController extends Controller
             $additionalImages = $v->images
                 ->where('is_main', false)
                 ->values()
-                ->map(fn ($img) => [
+                ->map(fn($img) => [
                     'id' => $img->id,
                     'url' => $img->url,
                     'sort_order' => $img->sort_order,
@@ -369,13 +390,13 @@ class SellerProductController extends Controller
                 ->all();
 
             return [
-                'id'        => $v->id,
-                'options'   => $opts,
-                'price'     => (string) $v->price,
+                'id' => $v->id,
+                'options' => $opts,
+                'price' => (string) $v->price,
                 'old_price' => $v->old_price !== null ? (string) $v->old_price : '',
-                'stock'     => (string) $v->stock,
+                'stock' => (string) $v->stock,
                 'image_url' => $variantImage?->url ?? null,
-                'image_id'  => $variantImage?->id ?? null,
+                'image_id' => $variantImage?->id ?? null,
                 'images' => $allImages,
                 'additional_images' => $additionalImages,
             ];
@@ -436,14 +457,37 @@ class SellerProductController extends Controller
                 'integer',
                 Rule::exists('product_images', 'id')->where('product_id', $product->id),
             ],
+        ], [
+            'title.required' => 'Необходимо указать название товара.',
+            'title.string' => 'Название товара должно быть текстом.',
+            'title.max' => 'Название товара не должно превышать 200 символов.',
+            'short_description.required' => 'Необходимо указать краткое описание.',
+            'short_description.string' => 'Краткое описание должно быть текстом.',
+            'short_description.max' => 'Краткое описание не должно превышать 500 символов.',
+            'description.required' => 'Необходимо указать полное описание.',
+            'description.string' => 'Полное описание должно быть текстом.',
+            'description.max' => 'Полное описание не должно превышать 20000 символов.',
+            'variants.required' => 'Необходимо добавить хотя бы один вариант товара.',
+            'variants.array' => 'Варианты товара должны быть массивом.',
+            'variants.min' => 'Добавьте хотя бы один вариант товара.',
+            'variants.*.id.integer' => 'ID варианта должен быть числом.',
+            'variants.*.id.exists' => 'Выбранный вариант товара не существует.',
+            'variants.*.price.required' => 'Необходимо указать цену варианта.',
+            'variants.*.price.numeric' => 'Цена должна быть числом.',
+            'variants.*.price.min' => 'Цена должна быть не менее 0.01.',
+            'variants.*.stock.required' => 'Необходимо указать количество на складе.',
+            'variants.*.stock.integer' => 'Количество должно быть целым числом.',
+            'variants.*.stock.min' => 'Количество не может быть отрицательным.',
+            'variants.*.remove_image_ids.array' => 'Список ID удаляемых изображений должен быть массивом.',
+            'variants.*.remove_image_ids.*.integer' => 'ID изображения должен быть числом.',
+            'variants.*.remove_image_ids.*.exists' => 'Одно из выбранных изображений не существует.',
         ]);
-
         DB::beginTransaction();
 
         try {
             $product->load(['variants', 'attributeValues']);
 
-            if (! $this->productUpdateRequiresModeration($product, $request)) {
+            if (!$this->productUpdateRequiresModeration($product, $request)) {
                 $this->applyMinorProductUpdate($product, $request, $user);
                 DB::commit();
 
@@ -456,7 +500,7 @@ class SellerProductController extends Controller
             }
 
             $minPrice = (float) collect($request->variants)->min(
-                fn ($v) => (float) ($v['price'] ?? 0)
+                fn($v) => (float) ($v['price'] ?? 0)
             );
 
             $product->update([
@@ -471,22 +515,22 @@ class SellerProductController extends Controller
             $allowedAttributeIds = CategoryAttribute::query()
                 ->where('category_id', $product->category_id)
                 ->pluck('id')
-                ->map(fn ($id) => (int) $id)
+                ->map(fn($id) => (int) $id)
                 ->all();
 
-            $submittedVariantIds = collect($request->variants)->pluck('id')->filter()->map(fn ($id) => (int) $id)->values()->all();
+            $submittedVariantIds = collect($request->variants)->pluck('id')->filter()->map(fn($id) => (int) $id)->values()->all();
 
             if ($submittedVariantIds !== []) {
                 $product->variants()
                     ->whereNotIn('id', $submittedVariantIds)
                     ->get()
-                    ->each(fn ($v) => $v->delete());
+                    ->each(fn($v) => $v->delete());
             } else {
-                $product->variants()->get()->each(fn ($v) => $v->delete());
+                $product->variants()->get()->each(fn($v) => $v->delete());
             }
 
-            $folder = public_path('img/products/'.$user->id);
-            if (! file_exists($folder)) {
+            $folder = public_path('img/products/' . $user->id);
+            if (!file_exists($folder)) {
                 mkdir($folder, 0777, true);
             }
 
@@ -496,12 +540,12 @@ class SellerProductController extends Controller
                     $decoded = json_decode($options, true);
                     $options = is_array($decoded) ? $decoded : [];
                 }
-                if (! is_array($options)) {
+                if (!is_array($options)) {
                     $options = [];
                 }
 
-                $newPrice        = (float) $variant['price'];
-                if (! empty($variant['id'])) {
+                $newPrice = (float) $variant['price'];
+                if (!empty($variant['id'])) {
                     $pv = ProductVariant::where('product_id', $product->id)->find($variant['id']);
                     if ($pv) {
                         $autoOldPrice = ((float) $pv->price !== $newPrice)
@@ -509,10 +553,10 @@ class SellerProductController extends Controller
                             : $pv->old_price;
 
                         $pv->update([
-                            'options'   => $options,
-                            'price'     => $newPrice,
+                            'options' => $options,
+                            'price' => $newPrice,
                             'old_price' => $autoOldPrice,
-                            'stock'     => (int) $variant['stock'],
+                            'stock' => (int) $variant['stock'],
                         ]);
 
                         foreach (($variant['remove_image_ids'] ?? []) as $imgId) {
@@ -524,14 +568,14 @@ class SellerProductController extends Controller
                             }
                         }
 
-                        if ($request->hasFile('variant_image_'.$variantIndex)) {
-                            $legacyMain = $request->file('variant_image_'.$variantIndex);
-                            $legacyName = time().'_v'.$variantIndex.'_legacy_'.Str::random(5).'.'.$legacyMain->extension();
+                        if ($request->hasFile('variant_image_' . $variantIndex)) {
+                            $legacyMain = $request->file('variant_image_' . $variantIndex);
+                            $legacyName = time() . '_v' . $variantIndex . '_legacy_' . Str::random(5) . '.' . $legacyMain->extension();
                             $legacyMain->move($folder, $legacyName);
                             ProductImage::create([
                                 'product_id' => $product->id,
                                 'variant_id' => $pv->id,
-                                'url' => '/img/products/'.$user->id.'/'.$legacyName,
+                                'url' => '/img/products/' . $user->id . '/' . $legacyName,
                                 'sort_order' => 1,
                                 'is_main' => false,
                             ]);
@@ -544,21 +588,21 @@ class SellerProductController extends Controller
 
                 $pv = ProductVariant::create([
                     'product_id' => $product->id,
-                    'options'    => $options,
-                    'price'      => $newPrice,
-                    'old_price'  => null,
-                    'stock'      => (int) $variant['stock'],
-                    'is_active'  => true,
+                    'options' => $options,
+                    'price' => $newPrice,
+                    'old_price' => null,
+                    'stock' => (int) $variant['stock'],
+                    'is_active' => true,
                 ]);
 
-                if ($request->hasFile('variant_image_'.$variantIndex)) {
-                    $legacyMain = $request->file('variant_image_'.$variantIndex);
-                    $legacyName = time().'_v'.$variantIndex.'_legacy_'.Str::random(5).'.'.$legacyMain->extension();
+                if ($request->hasFile('variant_image_' . $variantIndex)) {
+                    $legacyMain = $request->file('variant_image_' . $variantIndex);
+                    $legacyName = time() . '_v' . $variantIndex . '_legacy_' . Str::random(5) . '.' . $legacyMain->extension();
                     $legacyMain->move($folder, $legacyName);
                     ProductImage::create([
                         'product_id' => $product->id,
                         'variant_id' => $pv->id,
-                        'url' => '/img/products/'.$user->id.'/'.$legacyName,
+                        'url' => '/img/products/' . $user->id . '/' . $legacyName,
                         'sort_order' => 1,
                         'is_main' => false,
                     ]);
@@ -571,19 +615,19 @@ class SellerProductController extends Controller
                     continue;
                 }
                 $pv = ProductVariant::where('product_id', $product->id)->find($variant['id']);
-                if (! $pv) {
+                if (!$pv) {
                     continue;
                 }
-                $hasImage = $request->hasFile('variant_image_'.$variantIndex)
+                $hasImage = $request->hasFile('variant_image_' . $variantIndex)
                     || ProductImage::where('product_id', $product->id)->where('variant_id', $pv->id)->exists();
-                if (! $hasImage) {
+                if (!$hasImage) {
                     throw new \InvalidArgumentException('У каждого варианта должно быть фото');
                 }
             }
 
             foreach ($request->input('attributes', []) as $attributeId => $value) {
                 $aid = (int) $attributeId;
-                if ($aid < 1 || ! in_array($aid, $allowedAttributeIds, true)) {
+                if ($aid < 1 || !in_array($aid, $allowedAttributeIds, true)) {
                     continue;
                 }
                 if ($value === '' || $value === null) {
@@ -636,16 +680,16 @@ class SellerProductController extends Controller
 
         $product->load([
             'category',
-            'variants' => fn ($q) => $q->orderBy('id'),
+            'variants' => fn($q) => $q->orderBy('id'),
             'variants.images',
-            'images' => fn ($q) => $q->whereNull('variant_id')->orderBy('sort_order'),
+            'images' => fn($q) => $q->whereNull('variant_id')->orderBy('sort_order'),
         ]);
 
-        $liveVariants  = $product->variants->filter(fn ($v) => ! $v->trashed());
-        $totalStock    = $liveVariants->sum('stock');
-        $activeCount   = $liveVariants->where('is_active', true)->count();
-        $hiddenCount   = $liveVariants->where('is_active', false)->count();
-        $totalViews    = (int) $liveVariants->sum('views_count');
+        $liveVariants = $product->variants->filter(fn($v) => !$v->trashed());
+        $totalStock = $liveVariants->sum('stock');
+        $activeCount = $liveVariants->where('is_active', true)->count();
+        $hiddenCount = $liveVariants->where('is_active', false)->count();
+        $totalViews = (int) $liveVariants->sum('views_count');
         $sellerPromotion = $this->findSellerPromotionForProduct($product, (int) $user->id);
         $promotionSummary = null;
         if ($sellerPromotion && $sellerPromotion->isCurrentlyActive()) {
@@ -657,21 +701,21 @@ class SellerProductController extends Controller
 
         return Inertia::render('Seller/Products/Manage', [
             'product' => [
-                'id'             => $product->id,
-                'title'          => $product->title,
-                'status'             => $product->status,
+                'id' => $product->id,
+                'title' => $product->title,
+                'status' => $product->status,
                 'moderation_comment' => $product->moderation_comment,
-                'is_listed'          => (bool) $product->is_on_action,
-                'category'       => $product->category?->name ?? '—',
-                'min_price'      => (float) $product->min_price,
-                'views_count'    => $totalViews,
-                'sales_count'    => (int) ($product->sales_count ?? 0),
-                'created_at'     => $product->created_at?->format('d.m.Y') ?? '',
-                'main_image'     => $product->resolveListingImageUrl(),
-                'total_stock'    => $totalStock,
-                'active_variants'=> $activeCount,
-                'hidden_variants'=> $hiddenCount,
-                'promotion'      => $promotionSummary,
+                'is_listed' => (bool) $product->is_on_action,
+                'category' => $product->category?->name ?? '—',
+                'min_price' => (float) $product->min_price,
+                'views_count' => $totalViews,
+                'sales_count' => (int) ($product->sales_count ?? 0),
+                'created_at' => $product->created_at?->format('d.m.Y') ?? '',
+                'main_image' => $product->resolveListingImageUrl(),
+                'total_stock' => $totalStock,
+                'active_variants' => $activeCount,
+                'hidden_variants' => $hiddenCount,
+                'promotion' => $promotionSummary,
             ],
             'variants' => $liveVariants->map(function (ProductVariant $v) {
                 $opts = $v->options;
@@ -680,14 +724,14 @@ class SellerProductController extends Controller
                 }
 
                 return [
-                    'id'        => $v->id,
-                    'options'   => is_array($opts) ? $opts : [],
-                    'price'     => (float) $v->price,
+                    'id' => $v->id,
+                    'options' => is_array($opts) ? $opts : [],
+                    'price' => (float) $v->price,
                     'old_price' => $v->old_price ? (float) $v->old_price : null,
-                    'stock'     => (int) $v->stock,
+                    'stock' => (int) $v->stock,
                     'views_count' => (int) ($v->views_count ?? 0),
                     'is_active' => (bool) $v->is_active,
-                    'sku'       => $v->sku,
+                    'sku' => $v->sku,
                     'image_url' => $v->images->first()?->url ?? null,
                 ];
             })->values()->all(),
@@ -729,7 +773,7 @@ class SellerProductController extends Controller
             abort(403);
         }
 
-        $variant->update(['is_active' => ! $variant->is_active]);
+        $variant->update(['is_active' => !$variant->is_active]);
 
         return back()->with('success', 'Статус варианта обновлён');
     }
@@ -742,8 +786,13 @@ class SellerProductController extends Controller
             abort(403);
         }
 
-        $request->validate(['stock' => 'required|integer|min:0']);
-
+        $request->validate([
+            'stock' => 'required|integer|min:0',
+        ], [
+            'stock.required' => 'Необходимо указать количество на складе.',
+            'stock.integer' => 'Количество должно быть целым числом.',
+            'stock.min' => 'Количество не может быть отрицательным.',
+        ]);
         $variant->update(['stock' => (int) $request->stock]);
 
         return back()->with('success', 'Остаток обновлён');
@@ -754,7 +803,7 @@ class SellerProductController extends Controller
         return Promotion::query()
             ->where('seller_id', $sellerId)
             ->where('created_by', Promotion::CREATED_BY_SELLER)
-            ->whereHas('products', fn ($q) => $q->where('products.id', $product->id))
+            ->whereHas('products', fn($q) => $q->where('products.id', $product->id))
             ->first();
     }
 
@@ -763,7 +812,7 @@ class SellerProductController extends Controller
      */
     private function formatPromotionForEdit(?Promotion $promotion): array
     {
-        if (! $promotion) {
+        if (!$promotion) {
             return [
                 'enabled' => false,
                 'badge_key' => '',
@@ -792,14 +841,14 @@ class SellerProductController extends Controller
     private function syncSellerPromotion(Product $product, Request $request, User $user): void
     {
         $promo = $request->input('promotion', []);
-        if (! is_array($promo)) {
+        if (!is_array($promo)) {
             $promo = [];
         }
 
         $enabled = filter_var($promo['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $existing = $this->findSellerPromotionForProduct($product, (int) $user->id);
 
-        if (! $enabled) {
+        if (!$enabled) {
             if ($existing) {
                 $existing->products()->detach($product->id);
                 if ($existing->products()->count() === 0) {
@@ -813,7 +862,7 @@ class SellerProductController extends Controller
         $badgeKey = (string) ($promo['badge_key'] ?? '');
         $endsAt = $promo['ends_at'] ?? null;
 
-        if ($badgeKey === '' || ! $endsAt) {
+        if ($badgeKey === '' || !$endsAt) {
             throw new \InvalidArgumentException('Выберите акцию и укажите, до какой даты она действует.');
         }
 
@@ -858,7 +907,7 @@ class SellerProductController extends Controller
                 continue;
             }
             $pv = ProductVariant::where('product_id', $product->id)->find($variant['id']);
-            if (! $pv) {
+            if (!$pv) {
                 continue;
             }
 
@@ -877,7 +926,7 @@ class SellerProductController extends Controller
         }
 
         $minPrice = (float) collect($request->variants)->min(
-            fn ($v) => (float) ($v['price'] ?? 0)
+            fn($v) => (float) ($v['price'] ?? 0)
         );
         $product->update(['min_price' => $minPrice]);
 
@@ -902,7 +951,7 @@ class SellerProductController extends Controller
         }
 
         $submittedAttributes = $request->input('attributes', []);
-        if (! is_array($submittedAttributes)) {
+        if (!is_array($submittedAttributes)) {
             $submittedAttributes = [];
         }
         if ($this->attributesChanged($product, $submittedAttributes)) {
@@ -918,17 +967,17 @@ class SellerProductController extends Controller
 
         foreach ($submittedVariants as $variantIndex => $variant) {
             $variantId = (int) ($variant['id'] ?? 0);
-            if ($variantId < 1 || ! $existingVariants->has($variantId)) {
+            if ($variantId < 1 || !$existingVariants->has($variantId)) {
                 return true;
             }
 
             $pv = $existingVariants->get($variantId);
 
-            if (! $this->variantOptionsEqual($pv->options ?? [], $variant['options'] ?? [])) {
+            if (!$this->variantOptionsEqual($pv->options ?? [], $variant['options'] ?? [])) {
                 return true;
             }
 
-            if (! empty($variant['remove_image_ids'])) {
+            if (!empty($variant['remove_image_ids'])) {
                 return true;
             }
 
@@ -963,7 +1012,7 @@ class SellerProductController extends Controller
             if ($value === '' || $value === null) {
                 continue;
             }
-            if (! $existing->has($aid)) {
+            if (!$existing->has($aid)) {
                 return true;
             }
         }
@@ -992,7 +1041,7 @@ class SellerProductController extends Controller
             $decoded = json_decode($options, true);
             $options = is_array($decoded) ? $decoded : [];
         }
-        if (! is_array($options)) {
+        if (!is_array($options)) {
             return [];
         }
         ksort($options);
@@ -1007,15 +1056,15 @@ class SellerProductController extends Controller
 
     private function variantHasIncomingFiles(Request $request, int $variantIndex): bool
     {
-        if ($request->hasFile('variant_image_'.$variantIndex)) {
+        if ($request->hasFile('variant_image_' . $variantIndex)) {
             return true;
         }
 
         for ($imgIndex = 0; $imgIndex < 10; $imgIndex++) {
-            if ($request->hasFile('variant_gallery_'.$variantIndex.'_'.$imgIndex)) {
+            if ($request->hasFile('variant_gallery_' . $variantIndex . '_' . $imgIndex)) {
                 return true;
             }
-            if ($request->hasFile('additional_image_'.$variantIndex.'_'.$imgIndex)) {
+            if ($request->hasFile('additional_image_' . $variantIndex . '_' . $imgIndex)) {
                 return true;
             }
         }

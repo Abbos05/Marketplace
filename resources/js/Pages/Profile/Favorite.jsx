@@ -13,7 +13,8 @@ export default function Favorite({ auth, product, LikeProducts = [] }) {
             <Head title="Избранное" />
 
             <div className="favorite">
-                <h2 className='favorite__title'>Избранное</h2>
+                <h2 className='favorite__title'>Избранное ({product.length})</h2>
+
                     {initialProducts.length > 0 ? (
                         <div className="products__grid">
                             {initialProducts.map(product => (

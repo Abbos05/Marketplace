@@ -41,11 +41,10 @@ return [
         'limit' => (int) env('MARKETPLACE_HOME_FEED_LIMIT', 10000),
         'new_count' => (int) env('MARKETPLACE_HOME_FEED_NEW_COUNT', 6),
         'popular_count' => (int) env('MARKETPLACE_HOME_FEED_POPULAR_COUNT', 8),
-        'recommendations_limit' => (int) env('MARKETPLACE_HOME_FEED_RECOMMENDATIONS_LIMIT', 12),
         'recommendations_popular_count' => (int) env('MARKETPLACE_HOME_FEED_RECOMMENDATIONS_POPULAR_COUNT', 6),
     ],
 
-    /*
+    /*  
     | Вознаграждение оператора ПВЗ за выданный заказ: процент от суммы, с потолком.
     */
     'pvz_fee' => [
@@ -124,18 +123,18 @@ return [
                 'label' => 'VK',
                 'url' => env('FOOTER_VK_URL', 'https://vk.com/id_a_i_09_05_i_a'),
             ],
-            [
-                'label' => 'Telegram-канал',
-                'url' => env('FOOTER_TELEGRAM_URL', 'https://t.me/AlvoraPlace'),
-            ],
+            // [
+            //     // 'label' => 'Telegram-канал',
+            //     // 'url' => env('FOOTER_TELEGRAM_URL', 'https://t.me/AlvoraPlace'),
+            // ],
             [
                 'label' => 'MAX',
                 'url' => env('FOOTER_MAX_URL', 'https://max.ru/join/uTTd84ZCWV6LDqeiR1KOFZnBPp-2ar4mgwWMtSsmfmQ'),
             ],
-            [
-                'label' => 'Instagram',
-                'url' => env('FOOTER_INSTAGRAM_URL', 'https://www.instagram.com/id_a_l_00_05_l_a/'),
-            ],
+            // [
+            //     'label' => 'Instagram',
+            //     'url' => env('FOOTER_INSTAGRAM_URL', 'https://www.instagram.com/id_a_l_00_05_l_a/'),
+            // ],
         ],
     ],
 

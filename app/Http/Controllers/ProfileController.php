@@ -38,9 +38,23 @@ class ProfileController extends Controller
 
     public function index()
     {
-       $user = auth()->user()->load(['sellerProfile', 'defaultPickupPoint.region']);
+        $user = auth()->user()->load(['sellerProfile', 'defaultPickupPoint.region']);
 
-        $LikeProducts = $this->catalogRecommendations();
+        $favoriteProductIds = DB::table('favorites')
+            ->where('user_id', $user->id)
+            ->pluck('product_id')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        // Передаём их в рекомендации для исключения
+        $LikeProducts = $this->catalogRecommendations([
+            'exclude_product_ids' => $favoriteProductIds,
+            'limit' => '40'
+        ]);
+        // Перемешиваем
+        $LikeProducts = $LikeProducts->shuffle();
+
         // Заказы с items и маппингом статусов
         $orders = Order::with(['items.variant.product.images', 'items.variant.images'])
             ->where('buyer_id', $user->id)
@@ -68,14 +82,16 @@ class ProfileController extends Controller
                         default => 'pending',
                     };
 
-                if ($order->delivery_method === 'pvz'
-                    && in_array($order->status, [Order::STATUS_INTRANSIT, Order::STATUS_DELIVERED, Order::STATUS_ISSUED], true)) {
+                if (
+                    $order->delivery_method === 'pvz'
+                    && in_array($order->status, [Order::STATUS_INTRANSIT, Order::STATUS_DELIVERED, Order::STATUS_ISSUED], true)
+                ) {
                     $order->pickup_code = $order->order_code;
                 }
 
                 return $order;
             });
-            
+
         // Избранное
         $favoriteProductIds = DB::table('favorites')
             ->where('user_id', $user->id)
@@ -87,7 +103,7 @@ class ProfileController extends Controller
         $myFavorites = Product::forCatalogPresentation()
             ->whereIn('products.id', $favoriteProductIds)
             ->get()
-            ->sortBy(fn ($p) => $favoriteProductIds->search($p->id))
+            ->sortBy(fn($p) => $favoriteProductIds->search($p->id))
             ->values();
         Product::enrichForCatalog($myFavorites);
         $this->markFavorites($myFavorites, true);
@@ -104,16 +120,16 @@ class ProfileController extends Controller
                     $flags = $restriction->roleFlagsFor($u);
 
                     return [
-                        'id'             => $u->id,
-                        'name'           => $u->name,
-                        'last_name'      => $u->last_name,
-                        'email'          => $u->email,
-                        'phone'          => $u->phone,
-                        'role'           => $u->role,
-                        'is_blocked'     => $u->is_blocked,
-                        'avatar'         => $u->avatar,
-                        'deleted_at'     => $u->deleted_at,
-                        'created_at'     => $u->created_at,
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'last_name' => $u->last_name,
+                        'email' => $u->email,
+                        'phone' => $u->phone,
+                        'role' => $u->role,
+                        'is_blocked' => $u->is_blocked,
+                        'avatar' => $u->avatar,
+                        'deleted_at' => $u->deleted_at,
+                        'created_at' => $u->created_at,
                         'seller_profile' => $u->sellerProfile ? ['shop_name' => $u->sellerProfile->shop_name] : null,
                         'can_assign_seller' => $flags['can_assign_seller'],
                         'can_assign_pvz' => $flags['can_assign_pvz'],
@@ -128,9 +144,9 @@ class ProfileController extends Controller
             ->orderBy('sort_order')
             ->orderBy('title')
             ->get()
-            ->map(fn (PickupPoint $p) => [
+            ->map(fn(PickupPoint $p) => [
                 'id' => $p->id,
-                'label' => $p->title.($p->region ? ' — '.$p->region->name : ''),
+                'label' => $p->title . ($p->region ? ' — ' . $p->region->name : ''),
                 'title' => $p->title,
                 'address' => $p->address,
                 'region_name' => $p->region?->name,
@@ -164,7 +180,7 @@ class ProfileController extends Controller
             ->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_REFUSED])
             ->count();
 
-        $myReviewsScope = fn ($query) => $query
+        $myReviewsScope = fn($query) => $query
             ->where('user_id', $user->id)
             ->where(function ($q) {
                 $q->whereNull('deleted_at')
@@ -179,8 +195,8 @@ class ProfileController extends Controller
         $myReviewsCollection = Review::query()
             ->withTrashed()
             ->with([
-                'product' => fn ($q) => $q->select('id', 'title')->with([
-                    'images' => fn ($iq) => $iq->whereNull('variant_id')->orderByDesc('is_main')->orderBy('sort_order'),
+                'product' => fn($q) => $q->select('id', 'title')->with([
+                    'images' => fn($iq) => $iq->whereNull('variant_id')->orderByDesc('is_main')->orderBy('sort_order'),
                 ]),
             ])
             ->tap($myReviewsScope)
@@ -213,18 +229,18 @@ class ProfileController extends Controller
         });
 
         return Inertia::render('Profile/Index', [
-            'LikeProducts'  => $LikeProducts,
-            'auth'          => ['user' => $user],
-            'categories'    => Category::all(),
-            'orders'        => $orders,
-            'myFavorites'   => $myFavorites,
+            'LikeProducts' => $LikeProducts,
+            'auth' => ['user' => $user],
+            'categories' => Category::all(),
+            'orders' => $orders,
+            'myFavorites' => $myFavorites,
             'sellerProfile' => $user->sellerProfile,
             'closedSellerProfile' => app(\App\Services\AccountDeletionService::class)->closedSellerProfilePayload($user->id),
             'sellerRestorePending' => app(\App\Services\AccountDeletionService::class)->sellerRestorePendingPayload($user),
-            'adminUsers'    => $adminUsers,
-            'pickupPoints'  => $pickupPoints,
-            'userSessions'  => $userSessions,
-            'loginHistory'  => $loginHistory,
+            'adminUsers' => $adminUsers,
+            'pickupPoints' => $pickupPoints,
+            'userSessions' => $userSessions,
+            'loginHistory' => $loginHistory,
             'currentSessionId' => request()->session()->getId(),
             'accountDeletion' => app(\App\Services\AccountDeletionService::class)->accountDeletionInfo($user),
             'myReviews' => $myReviews,
@@ -244,10 +260,10 @@ class ProfileController extends Controller
 
         $deleted = DB::table('sessions')
             ->where('id', $sessionId)
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $request?->user()?->id)
             ->delete();
 
-        if (! $deleted) {
+        if (!$deleted) {
             return back()->with('error', 'Сессия не найдена или уже завершена.');
         }
 
@@ -259,7 +275,7 @@ class ProfileController extends Controller
         $currentSessionId = $request->session()->getId();
 
         $deleted = DB::table('sessions')
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $request?->user()?->id)
             ->where('id', '!=', $currentSessionId)
             ->delete();
 
@@ -276,15 +292,17 @@ class ProfileController extends Controller
         $request->merge([
             'default_pickup_point_id' => $raw === '' || $raw === null ? null : (int) $raw,
         ]);
-
         $data = $request->validate([
             'default_pickup_point_id' => 'nullable|integer|exists:pickup_points,id',
+        ], [
+            'default_pickup_point_id.integer' => 'ID пункта выдачи должен быть числом.',
+            'default_pickup_point_id.exists' => 'Выбранный пункт выдачи не существует.',
         ]);
 
         $id = $data['default_pickup_point_id'] ?? null;
         if ($id !== null) {
             $exists = PickupPoint::query()->active()->whereKey($id)->exists();
-            if (! $exists) {
+            if (!$exists) {
                 return back()->withErrors(['default_pickup_point_id' => 'Пункт выдачи недоступен.']);
             }
         }
@@ -297,7 +315,7 @@ class ProfileController extends Controller
     }
 
 
-   
+
 
     public function favorites()
     {
@@ -313,15 +331,28 @@ class ProfileController extends Controller
         $myFavorites = Product::forCatalogPresentation()
             ->whereIn('products.id', $favoriteProductIds)
             ->get()
-            ->sortBy(fn ($p) => $favoriteProductIds->search($p->id))
+            ->sortBy(fn($p) => $favoriteProductIds->search($p->id))
             ->values();
+
         Product::enrichForCatalog($myFavorites);
         $this->markFavorites($myFavorites, true);
+        // Получаем ID избранных товаров
+        $favoriteProductIds = DB::table('favorites')
+            ->where('user_id', $user->id)
+            ->pluck('product_id')
+            ->unique()
+            ->values()
+            ->toArray();
 
-
+        // Передаём их в рекомендации для исключения
         $LikeProducts = $this->catalogRecommendations([
-            'exclude_product_ids' => $favoriteProductIds->all(),
+            'exclude_product_ids' => $favoriteProductIds,
+            'limit' => '80'
         ]);
+
+        // Перемешиваем
+        $LikeProducts = $LikeProducts->shuffle();
+
 
         return Inertia::render('Profile/Favorite', [
             'auth' => ['user' => $user],
@@ -364,10 +395,10 @@ class ProfileController extends Controller
 
         $wasBlocked = (bool) $user->is_blocked;
         $user->update([
-            'is_blocked' => ! $user->is_blocked,
+            'is_blocked' => !$user->is_blocked,
         ]);
         $user->refresh();
-        if ($user->is_blocked && ! $wasBlocked) {
+        if ($user->is_blocked && !$wasBlocked) {
             app(UserRestrictionService::class)->applyBlock($user);
             $user->refresh();
             $user->notify(new MarketplaceAlert(
@@ -384,9 +415,9 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-      
+
         $rules = [
-            'name'      => 'nullable|string|max:50',
+            'name' => 'nullable|string|max:50',
             'last_name' => 'nullable|string|max:50',
             'avatar' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
             'current_password' => 'nullable|string',
@@ -409,23 +440,23 @@ class ProfileController extends Controller
             'password.confirmed' => 'Подтверждение нового пароля не совпадает.',
 
         ]);
-    // Аватар — напрямую в public/img/avatars (не storage)
-    if ($request->hasFile('avatar')) {
-        $this->deleteUserAvatar($user->avatar);
+        // Аватар — напрямую в public/img/avatars (не storage)
+        if ($request->hasFile('avatar')) {
+            $this->deleteUserAvatar($user->avatar);
 
-        $file = $request->file('avatar');
-        $dir = public_path("img/avatars/{$user->id}");  // ← public/img/avatars
+            $file = $request->file('avatar');
+            $dir = public_path("img/avatars/{$user->id}");  // ← public/img/avatars
 
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            $filename = $file->hashName();
+            $file->move($dir, $filename);
+            $validated['avatar'] = "/img/avatars/{$user->id}/{$filename}";
+        } else {
+            unset($validated['avatar']);
         }
-
-        $filename = $file->hashName();
-        $file->move($dir, $filename);
-        $validated['avatar'] = "/img/avatars/{$user->id}/{$filename}";
-    } else {
-        unset($validated['avatar']);
-    }
 
         // Пароль
         if ($request->filled('password')) {
@@ -504,10 +535,10 @@ class ProfileController extends Controller
         $expires = $request->session()->get('profile_phone_otp_expires');
 
         if (
-            ! $phone
-            || ! $otpHash
-            || ! Hash::check($request->input('code'), $otpHash)
-            || ! $expires
+            !$phone
+            || !$otpHash
+            || !Hash::check($request->input('code'), $otpHash)
+            || !$expires
             || now()->timestamp > $expires
         ) {
             return response()->json([
@@ -574,7 +605,7 @@ class ProfileController extends Controller
             $user,
         );
 
-        if (! $mailSent) {
+        if (!$mailSent) {
             $otp = $otpGenerator->fallback();
         }
 
@@ -620,10 +651,10 @@ class ProfileController extends Controller
         $expires = $request->session()->get('profile_email_otp_expires');
 
         if (
-            ! $pending
-            || ! $otpHash
-            || ! Hash::check($request->input('code'), $otpHash)
-            || ! $expires
+            !$pending
+            || !$otpHash
+            || !Hash::check($request->input('code'), $otpHash)
+            || !$expires
             || now()->timestamp > $expires
         ) {
             return response()->json([
@@ -664,9 +695,13 @@ class ProfileController extends Controller
     public function updateEmail(Request $request)
     {
         $user = $request->user();
-
         $validated = $request->validate([
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+        ], [
+            'email.required' => 'Необходимо указать email.',
+            'email.email' => 'Введите корректный email адрес.',
+            'email.max' => 'Email не должен превышать 255 символов.',
+            'email.unique' => 'Этот email уже используется другим пользователем.',
         ]);
 
         $user->update($validated);
@@ -681,6 +716,13 @@ class ProfileController extends Controller
         $validated = $request->validate([
             'current_password' => 'required|string',
             'password' => 'required|string|min:4|confirmed',
+        ], [
+            'current_password.required' => 'Необходимо ввести текущий пароль.',
+            'current_password.string' => 'Текущий пароль должен быть строкой.',
+            'password.required' => 'Необходимо ввести новый пароль.',
+            'password.string' => 'Новый пароль должен быть строкой.',
+            'password.min' => 'Новый пароль должен содержать минимум 4 символа.',
+            'password.confirmed' => 'Подтверждение пароля не совпадает.',
         ]);
 
         if (!Hash::check($request->current_password, $user->password)) {
@@ -708,9 +750,12 @@ class ProfileController extends Controller
             ? ['user', 'seller', 'pvz', 'moderator', 'admin']
             : ['user', 'seller'];
 
-        $request->validate([
-            'role' => 'required|in:'.implode(',', $allowedRoles),
-        ]);
+$request->validate([
+    'role' => 'required|in:' . implode(',', $allowedRoles),
+], [
+    'role.required' => 'Необходимо указать роль.',
+    'role.in' => 'Выбранная роль недопустима.',
+]);
 
         if ($user->id === $actor->id || $user->id === 1) {
             return back()->with('error', 'Нельзя изменить роль этого пользователя');
@@ -721,7 +766,7 @@ class ProfileController extends Controller
         }
 
         $check = app(UserRestrictionService::class)->canAssignRole($user, $request->role);
-        if (! $check['ok']) {
+        if (!$check['ok']) {
             return back()->with('error', $check['message']);
         }
 
@@ -784,7 +829,7 @@ class ProfileController extends Controller
             }
 
             $check = app(\App\Services\AccountDeletionService::class)->canDeleteOwnAccount($user);
-            if (! $check['ok']) {
+            if (!$check['ok']) {
                 return back()->with('error', $check['message']);
             }
 
@@ -798,7 +843,7 @@ class ProfileController extends Controller
 
     private function markFavorites(Collection $products, bool $favoriteOnly = false): void
     {
-        if (! auth()->check()) {
+        if (!auth()->check()) {
             $products->each(function ($product) use ($favoriteOnly) {
                 $product->is_favorite = false;
                 $product->favorite_variant_ids = [];
@@ -820,7 +865,7 @@ class ProfileController extends Controller
             ->select('product_id', 'variant_id')
             ->get()
             ->groupBy('product_id')
-            ->map(fn ($rows) => $rows->pluck('variant_id')->map(fn ($id) => (int) $id)->values()->all());
+            ->map(fn($rows) => $rows->pluck('variant_id')->map(fn($id) => (int) $id)->values()->all());
 
         $products->each(function ($product) use ($favoriteProductIds, $favoriteVariantIdsByProduct, $favoriteOnly) {
             $variantIds = $favoriteVariantIdsByProduct->get($product->id, []);
@@ -845,15 +890,15 @@ class ProfileController extends Controller
         if (empty($avatarPath)) {
             return;
         }
-        
+
         // Полный путь к файлу
         $fullPath = public_path($avatarPath);
-        
+
         // Удаляем файл если существует
         if (is_file($fullPath)) {
             unlink($fullPath);
         }
-        
+
         // Удаляем папку пользователя если она пустая
         $userDir = dirname($fullPath);
         if (is_dir($userDir) && count(scandir($userDir)) === 2) { // Только . и ..

@@ -16,7 +16,7 @@ class AdminPromotionController extends Controller
             ->withCount('products')
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn (Promotion $p) => [
+            ->map(fn(Promotion $p) => [
                 'id' => $p->id,
                 'badge_label' => $p->badge_label,
                 'status' => $p->status,
@@ -48,6 +48,16 @@ class AdminPromotionController extends Controller
             'ends_at' => 'nullable|date',
             'product_ids' => 'required|array|min:1',
             'product_ids.*' => 'integer|exists:products,id',
+        ], [
+            'badge_label.required' => 'Необходимо указать название бейджа.',
+            'badge_label.string' => 'Название бейджа должно быть текстом.',
+            'badge_label.max' => 'Название бейджа не должно превышать 64 символа.',
+            'ends_at.date' => 'Дата окончания должна быть корректной датой.',
+            'product_ids.required' => 'Необходимо выбрать хотя бы один товар.',
+            'product_ids.array' => 'Список товаров должен быть массивом.',
+            'product_ids.min' => 'Выберите хотя бы один товар.',
+            'product_ids.*.integer' => 'ID товара должен быть числом.',
+            'product_ids.*.exists' => 'Один из выбранных товаров не существует.',
         ]);
 
         $promotion = Promotion::create([

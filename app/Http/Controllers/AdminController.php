@@ -33,7 +33,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class AdminController extends Controller
 {
 
-   
+
     public function destroy(Request $request, string $sessionId)
     {
         if ($sessionId === $request->session()->getId()) {
@@ -49,40 +49,40 @@ class AdminController extends Controller
         $onlineThreshold = time() - 300; // 5 минут
 
         $stats = [
-            'total_users'      => User::count(),
-            'active_users'     => User::where(fn($q) => $q->where('is_blocked', false)->orWhereNull('is_blocked'))->count(),
-            'blocked_users'    => User::where('is_blocked', true)->count(),
-            'total_sellers'    => User::where('role', 'seller')->count(),
-            'total_orders'     => Order::count(),
-            'orders_today'     => Order::whereDate('created_at', today())->count(),
-            'revenue_total'    => (float) Order::whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_REFUSED])->sum('total'),
+            'total_users' => User::count(),
+            'active_users' => User::where(fn($q) => $q->where('is_blocked', false)->orWhereNull('is_blocked'))->count(),
+            'blocked_users' => User::where('is_blocked', true)->count(),
+            'total_sellers' => User::where('role', 'seller')->count(),
+            'total_orders' => Order::count(),
+            'orders_today' => Order::whereDate('created_at', today())->count(),
+            'revenue_total' => (float) Order::whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_REFUSED])->sum('total'),
             'platform_commission_total' => (float) OrderItem::query()
                 ->where('commission_status', 'finalized')
                 ->sum('commission_amount'),
-            'pending_approvals'=> User::query()
+            'pending_approvals' => User::query()
                 ->where(function ($q) {
-                    $q->whereHas('sellerProfile', fn ($p) => $p->whereNotNull('restore_requested_at'))
-                        ->orWhere(fn ($q2) => $q2->whereHas('sellerProfile')->where('role', 'user'));
+                    $q->whereHas('sellerProfile', fn($p) => $p->whereNotNull('restore_requested_at'))
+                        ->orWhere(fn($q2) => $q2->whereHas('sellerProfile')->where('role', 'user'));
                 })
                 ->count(),
             'pending_shop_changes' => SellerProfile::query()->shopChangesPending()->count(),
             'pvz_pending_applications' => PickupPointStaff::query()
                 ->where('status', PickupPointStaff::STATUS_PENDING)
                 ->count(),
-            'online_count'     => DB::table('sessions')
-                                      ->whereNotNull('user_id')
-                                      ->where('last_activity', '>=', $onlineThreshold)
-                                      ->distinct('user_id')
-                                      ->count('user_id'),
+            'online_count' => DB::table('sessions')
+                ->whereNotNull('user_id')
+                ->where('last_activity', '>=', $onlineThreshold)
+                ->distinct('user_id')
+                ->count('user_id'),
         ];
 
         $pendingSellers = User::with('sellerProfile')
             ->whereHas('sellerProfile')
             ->where(function ($q) {
-                $q->whereHas('sellerProfile', fn ($p) => $p->whereNotNull('restore_requested_at'))
+                $q->whereHas('sellerProfile', fn($p) => $p->whereNotNull('restore_requested_at'))
                     ->orWhere(function ($q2) {
                         $q2->where('role', 'user')
-                            ->whereHas('sellerProfile', fn ($p) => $p->whereNull('restore_requested_at'));
+                            ->whereHas('sellerProfile', fn($p) => $p->whereNull('restore_requested_at'));
                     });
             })
             ->orderBy('created_at', 'desc')
@@ -92,21 +92,21 @@ class AdminController extends Controller
                 $isRestore = $profile && $profile->isRestorePending();
 
                 return [
-                    'id'             => $u->id,
-                    'name'           => $u->name,
-                    'last_name'      => $u->last_name,
-                    'email'          => $u->email,
-                    'phone'          => $u->phone,
-                    'avatar'         => $u->avatar,
-                    'created_at'     => $u->created_at,
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'last_name' => $u->last_name,
+                    'email' => $u->email,
+                    'phone' => $u->phone,
+                    'avatar' => $u->avatar,
+                    'created_at' => $u->created_at,
                     'application_type' => $isRestore ? 'restore' : 'new',
                     'restore_requested_at' => $profile?->restore_requested_at,
                     'seller_profile' => $profile ? [
-                        'shop_name'      => $profile->shop_name,
-                        'inn'            => $profile->inn,
-                        'legal_address'  => $profile->legal_address,
+                        'shop_name' => $profile->shop_name,
+                        'inn' => $profile->inn,
+                        'legal_address' => $profile->legal_address,
                         'pickup_address' => $profile->pickup_address,
-                        'description'    => $profile->description,
+                        'description' => $profile->description,
                     ] : null,
                 ];
             });
@@ -130,18 +130,18 @@ class AdminController extends Controller
         $revenueChart = $chartService->getChartPayload($chartFrom, $chartTo, '30d')['data'];
 
         return Inertia::render('Admin/Dashboard', [
-            'stats'            => $stats,
-            'pendingSellers'   => $pendingSellers,
-            'users'            => $usersPayload['items'],
-            'usersMeta'        => $usersPayload['meta'],
-            'orderSearch'      => $orderSearch,
-            'orderResults'     => $orderResults,
-            'sessions'         => $sessionsPayload['items'],
-            'sessionsMeta'     => $sessionsPayload['meta'],
-            'loginHistory'     => $loginHistoryPayload['items'],
+            'stats' => $stats,
+            'pendingSellers' => $pendingSellers,
+            'users' => $usersPayload['items'],
+            'usersMeta' => $usersPayload['meta'],
+            'orderSearch' => $orderSearch,
+            'orderResults' => $orderResults,
+            'sessions' => $sessionsPayload['items'],
+            'sessionsMeta' => $sessionsPayload['meta'],
+            'loginHistory' => $loginHistoryPayload['items'],
             'loginHistoryMeta' => $loginHistoryPayload['meta'],
             'currentSessionId' => $request->session()->getId(),
-            'revenueChart'     => $revenueChart,
+            'revenueChart' => $revenueChart,
         ]);
     }
 
@@ -149,7 +149,7 @@ class AdminController extends Controller
     {
         $user = User::withTrashed()->with([
             'sellerProfile',
-            'pickupPointStaff' => fn ($q) => $q->with(['proposedRegion', 'pickupPoint'])->orderByDesc('created_at'),
+            'pickupPointStaff' => fn($q) => $q->with(['proposedRegion', 'pickupPoint'])->orderByDesc('created_at'),
             'approvedPickupPointStaff.pickupPoint',
         ])->findOrFail($userId);
 
@@ -161,23 +161,23 @@ class AdminController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(fn($o) => [
-                'id'               => $o->id,
-                'number'           => $o->number,
-                'total'            => $o->total,
-                'discount'         => $o->discount,
-                'status'           => $o->status,
-                'payment_status'   => $o->payment_status,
-                'delivery_method'  => $o->delivery_method,
+                'id' => $o->id,
+                'number' => $o->number,
+                'total' => $o->total,
+                'discount' => $o->discount,
+                'status' => $o->status,
+                'payment_status' => $o->payment_status,
+                'delivery_method' => $o->delivery_method,
                 'delivery_address' => $o->delivery_address,
-                'comment'          => $o->comment,
-                'created_at'       => $o->created_at,
-                'items'            => $o->items->map(fn($item) => [
-                    'id'                => $item->id,
-                    'quantity'          => $item->quantity,
+                'comment' => $o->comment,
+                'created_at' => $o->created_at,
+                'items' => $o->items->map(fn($item) => [
+                    'id' => $item->id,
+                    'quantity' => $item->quantity,
                     'price_at_purchase' => $item->price_at_purchase,
-                    'product_name'      => $item->variant?->product?->title ?? '—',
-                    'product_image'     => $item->variant?->product?->images?->firstWhere('is_main', true)?->url ?? null,
-                    'seller_id'         => $item->seller_id,
+                    'product_name' => $item->variant?->product?->title ?? '—',
+                    'product_image' => $item->variant?->product?->images?->firstWhere('is_main', true)?->url ?? null,
+                    'seller_id' => $item->seller_id,
                 ]),
             ]);
 
@@ -185,39 +185,39 @@ class AdminController extends Controller
         $sellerProductsPayload = $this->userDetailSellerProductsPayload($request, $user->id);
 
         $userData = [
-            'id'             => $user->id,
-            'name'           => $user->name,
-            'last_name'      => $user->last_name,
-            'email'          => $user->email,
-            'phone'          => $user->phone,
-            'role'           => $user->role,
-            'is_blocked'     => $user->is_blocked,
-            'avatar'         => $user->avatar,
-            'created_at'     => $user->created_at,
-            'deleted_at'     => $user->deleted_at,
+            'id' => $user->id,
+            'name' => $user->name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->role,
+            'is_blocked' => $user->is_blocked,
+            'avatar' => $user->avatar,
+            'created_at' => $user->created_at,
+            'deleted_at' => $user->deleted_at,
             'seller_profile' => $user->sellerProfile ? [
-                'shop_name'      => $user->sellerProfile->shop_name,
-                'inn'            => $user->sellerProfile->inn,
-                'legal_address'  => $user->sellerProfile->legal_address,
+                'shop_name' => $user->sellerProfile->shop_name,
+                'inn' => $user->sellerProfile->inn,
+                'legal_address' => $user->sellerProfile->legal_address,
                 'pickup_address' => $user->sellerProfile->pickup_address,
-                'rating'         => $user->sellerProfile->rating,
-                'total_sales'    => $user->sellerProfile->total_sales,
+                'rating' => $user->sellerProfile->rating,
+                'total_sales' => $user->sellerProfile->total_sales,
             ] : null,
             'closed_seller_profile' => app(\App\Services\AccountDeletionService::class)->closedSellerProfilePayload($user->id),
             'seller_restore_pending' => app(\App\Services\AccountDeletionService::class)->sellerRestorePendingPayload($user),
             'pending_shop_changes' => app(SellerProfileModerationService::class)->pendingPayload($user->sellerProfile),
             'seller_history' => $auditService->sellerHistorySummary($user->id),
             'audit_events' => $auditService->eventsForUser($user->id),
-            'has_orders'     => Order::where('buyer_id', $user->id)
+            'has_orders' => Order::where('buyer_id', $user->id)
                 ->whereNotIn('status', Order::statusesAllowingUserDeletion())
                 ->exists(),
-            'orders_count'   => Order::where('buyer_id', $user->id)->count(),
-            'has_sales'      => OrderItem::where('seller_id', $user->id)
-                ->whereHas('order', fn ($q) => $q->whereNotIn('status', Order::statusesAllowingUserDeletion()))
+            'orders_count' => Order::where('buyer_id', $user->id)->count(),
+            'has_sales' => OrderItem::where('seller_id', $user->id)
+                ->whereHas('order', fn($q) => $q->whereNotIn('status', Order::statusesAllowingUserDeletion()))
                 ->exists(),
-            'has_products'   => Product::where('seller_id', $user->id)->exists(),
+            'has_products' => Product::where('seller_id', $user->id)->exists(),
             'pvz_application' => ($pvzStaff = $user->pickupPointStaff
-                ->sortBy(fn ($s) => match ($s->status) {
+                ->sortBy(fn($s) => match ($s->status) {
                     PickupPointStaff::STATUS_PENDING => 0,
                     PickupPointStaff::STATUS_APPROVED => 1,
                     default => 2,
@@ -242,7 +242,7 @@ class AdminController extends Controller
             ->limit(30)
             ->get()
             ->map(function ($s) use ($onlineThreshold) {
-                $s->is_online     = $s->last_activity >= $onlineThreshold;
+                $s->is_online = $s->last_activity >= $onlineThreshold;
                 $s->last_activity = Carbon::createFromTimestamp($s->last_activity)->toIso8601String();
                 return $s;
             });
@@ -259,16 +259,16 @@ class AdminController extends Controller
             });
 
         return Inertia::render('Admin/UserDetail', [
-            'user'             => $userData,
-            'orders'           => $orders,
-            'sellerOrders'     => $sellerSalesPayload['items'],
+            'user' => $userData,
+            'orders' => $orders,
+            'sellerOrders' => $sellerSalesPayload['items'],
             'sellerOrdersMeta' => $sellerSalesPayload['meta'],
-            'products'         => $sellerProductsPayload['items'],
-            'productsMeta'     => $sellerProductsPayload['meta'],
-            'seller_history'   => $userData['seller_history'],
-            'audit_events'     => $userData['audit_events'],
-            'pvzOverview'      => app(PvzAdminOverviewService::class)->forUser($user),
-            'userSessions'     => $userSessions,
+            'products' => $sellerProductsPayload['items'],
+            'productsMeta' => $sellerProductsPayload['meta'],
+            'seller_history' => $userData['seller_history'],
+            'audit_events' => $userData['audit_events'],
+            'pvzOverview' => app(PvzAdminOverviewService::class)->forUser($user),
+            'userSessions' => $userSessions,
             'userLoginHistory' => $userLoginHistory,
             'currentSessionId' => request()->session()->getId(),
         ]);
@@ -322,7 +322,7 @@ class AdminController extends Controller
         }
 
         $user = $pickupPointStaff->user;
-        if (! $user) {
+        if (!$user) {
             return back()->with('error', 'Пользователь не найден.');
         }
 
@@ -336,7 +336,7 @@ class AdminController extends Controller
             ]);
             $pickupPointStaff->pickup_point_id = $point->id;
         } else {
-            if (! $pickupPointStaff->pickup_point_id) {
+            if (!$pickupPointStaff->pickup_point_id) {
                 return back()->with('error', 'Пункт выдачи не указан в заявке.');
             }
             if (PickupPointStaff::pickupPointHasApprovedStaff((int) $pickupPointStaff->pickup_point_id)) {
@@ -367,6 +367,9 @@ class AdminController extends Controller
 
         $request->validate([
             'reject_reason' => 'nullable|string|max:500',
+        ], [
+            'reject_reason.max' => 'Причина отклонения не должна превышать 500 символов.',
+            'reject_reason.string' => 'Причина отклонения должна быть текстом.',
         ]);
 
         $pickupPointStaff->update([
@@ -384,6 +387,11 @@ class AdminController extends Controller
         $request->validate([
             'status' => 'required|in:draft,moderation,approved,rejected,archived,hidden',
             'moderation_comment' => 'nullable|string|max:500',
+        ], [
+            'status.required' => 'Необходимо указать статус.',
+            'status.in' => 'Недопустимый статус. Доступные статусы: черновик, на модерации, одобрено, отклонено, архив, скрыто.',
+            'moderation_comment.max' => 'Комментарий модерации не должен превышать 500 символов.',
+            'moderation_comment.string' => 'Комментарий модерации должен быть текстом.',
         ]);
 
         $status = $request->status;
@@ -396,9 +404,9 @@ class AdminController extends Controller
         }
 
         $seller = User::withTrashed()->with('sellerProfile')->find($product->seller_id);
-        $sellerCanPublish = $seller && ! $seller->trashed() && $seller->hasActiveSellerCompany();
+        $sellerCanPublish = $seller && !$seller->trashed() && $seller->hasActiveSellerCompany();
 
-        if ($status === 'approved' && ! $sellerCanPublish) {
+        if ($status === 'approved' && !$sellerCanPublish) {
             return back()->with('error', 'Нельзя вывести товар на витрину: компания продавца закрыта или аккаунт недоступен. Продавец должен восстановить компанию.');
         }
 
@@ -426,7 +434,7 @@ class AdminController extends Controller
                 $statusLabels[$status] ?? $status,
             );
             if ($comment !== '') {
-                $message .= ' Комментарий модератора: '.$comment;
+                $message .= ' Комментарий модератора: ' . $comment;
             }
 
             $seller->notify(new MarketplaceAlert(
@@ -444,15 +452,18 @@ class AdminController extends Controller
     {
         $request->validate([
             'status' => ['required', Rule::in(Order::allStatuses())],
+        ], [
+            'status.required' => 'Необходимо указать статус заказа.',
+            'status.in' => 'Недопустимый статус заказа. Доступные статусы: ' . implode(', ', Order::allStatuses()) . '.',
         ]);
         $newStatus = $request->status;
         $actor = $request->user();
 
-        if (! $order->canStaffAssignStatus($actor, $newStatus)) {
+        if (!$order->canStaffAssignStatus($actor, $newStatus)) {
             return back()->with('error', 'Статусы «Выдан» и «Отказ от получения» может установить только администратор или сотрудник пункта выдачи.');
         }
 
-        if (! $order->canSetDeliveryStatus($newStatus)) {
+        if (!$order->canSetDeliveryStatus($newStatus)) {
             return back()->with('error', 'Нельзя выдать неоплаченный заказ. Остальные статусы доставки доступны.');
         }
 
@@ -493,9 +504,9 @@ class AdminController extends Controller
             return app(AdminUsersExcelExporter::class)->download($users);
         }
 
-        $filename = 'users_'.now()->format('Y-m-d_His').'.csv';
+        $filename = 'users_' . now()->format('Y-m-d_His') . '.csv';
         $headers = ['ID', 'Имя', 'Фамилия', 'Email', 'Телефон', 'Роль', 'Зарегистрирован', 'Заблокирован', 'Удалён'];
-        $rows = $users->map(fn (User $u) => [
+        $rows = $users->map(fn(User $u) => [
             $u->id,
             $u->name ?? '',
             $u->last_name ?? '',
@@ -567,7 +578,7 @@ class AdminController extends Controller
             'chartData' => $chartData,
         ]);
 
-        $filename = 'revenue_'.($from?->format('Y-m-d') ?? 'all').'_'.($to?->format('Y-m-d') ?? 'all').'.pdf';
+        $filename = 'revenue_' . ($from?->format('Y-m-d') ?? 'all') . '_' . ($to?->format('Y-m-d') ?? 'all') . '.pdf';
 
         return $pdf->download($filename);
     }
@@ -586,7 +597,7 @@ class AdminController extends Controller
             ->where('seller_id', $sellerId);
 
         if ($status !== 'all' && $status !== '') {
-            $query->whereHas('order', fn ($q) => $q->where('status', $status));
+            $query->whereHas('order', fn($q) => $q->where('status', $status));
         }
 
         if ($sort === 'date_asc') {
@@ -603,7 +614,7 @@ class AdminController extends Controller
             $rows = $rows->take($limit);
         }
 
-        $items = $rows->map(fn ($item) => [
+        $items = $rows->map(fn($item) => [
             'id' => $item->id,
             'quantity' => $item->quantity,
             'price_at_purchase' => $item->price_at_purchase,
@@ -652,7 +663,7 @@ class AdminController extends Controller
         }
 
         if ($search !== '') {
-            $like = '%'.addcslashes($search, '%_\\').'%';
+            $like = '%' . addcslashes($search, '%_\\') . '%';
             $query->where(function ($q) use ($search, $like) {
                 $q->where('title', 'like', $like);
                 if (ctype_digit($search)) {
@@ -680,7 +691,7 @@ class AdminController extends Controller
         }
 
         return [
-            'items' => $rows->map(fn ($p) => $this->mapProductForAdmin($p))->values()->all(),
+            'items' => $rows->map(fn($p) => $this->mapProductForAdmin($p))->values()->all(),
             'meta' => [
                 'page' => $page,
                 'per_page' => $perPage,
@@ -711,7 +722,7 @@ class AdminController extends Controller
             $rows = $rows->take($limit);
         }
 
-        $items = $rows->map(fn ($u) => [
+        $items = $rows->map(fn($u) => [
             'id' => $u->id,
             'name' => $u->name,
             'last_name' => $u->last_name,
@@ -725,7 +736,7 @@ class AdminController extends Controller
             'shop_name' => $u->sellerProfile?->shop_name,
             'shop_changes_pending' => (bool) $u->sellerProfile?->isShopChangesPending(),
             'pvz_application_pending' => $u->pickupPointStaff
-                ->contains(fn ($s) => $s->status === PickupPointStaff::STATUS_PENDING),
+                ->contains(fn($s) => $s->status === PickupPointStaff::STATUS_PENDING),
             'assignable_roles' => $restriction->assignableRolesFor(auth()->user(), $u),
         ])->values()->all();
 
@@ -755,20 +766,20 @@ class AdminController extends Controller
             ->with(['sellerProfile', 'approvedPickupPointStaff', 'pickupPointStaff']);
 
         if ($filter === 'active') {
-            $query->where(fn ($q) => $q->where('is_blocked', false)->orWhereNull('is_blocked'))
+            $query->where(fn($q) => $q->where('is_blocked', false)->orWhereNull('is_blocked'))
                 ->whereNull('deleted_at');
         } elseif ($filter === 'blocked') {
             $query->where('is_blocked', true)->whereNull('deleted_at');
         } elseif ($filter === 'deleted') {
             $query->whereNotNull('deleted_at');
         } elseif ($filter === 'shop_changes') {
-            $query->whereHas('sellerProfile', fn ($p) => $p->shopChangesPending());
+            $query->whereHas('sellerProfile', fn($p) => $p->shopChangesPending());
         } elseif ($filter === 'pvz_pending') {
-            $query->whereHas('pickupPointStaff', fn ($s) => $s->where('status', PickupPointStaff::STATUS_PENDING));
+            $query->whereHas('pickupPointStaff', fn($s) => $s->where('status', PickupPointStaff::STATUS_PENDING));
         }
 
         if ($search !== '') {
-            $like = '%'.addcslashes($search, '%_\\').'%';
+            $like = '%' . addcslashes($search, '%_\\') . '%';
             $query->where(function ($q) use ($search, $like) {
                 $q->where('name', 'like', $like)
                     ->orWhere('last_name', 'like', $like)
@@ -784,7 +795,7 @@ class AdminController extends Controller
             $query->orderBy('name', $dir)->orderBy('last_name', $dir);
         } elseif ($sort === 'role') {
             $query->orderByRaw(
-                "CASE role WHEN 'admin' THEN 1 WHEN 'moderator' THEN 2 WHEN 'seller' THEN 3 WHEN 'pvz' THEN 4 ELSE 5 END ".($dir === 'asc' ? 'ASC' : 'DESC')
+                "CASE role WHEN 'admin' THEN 1 WHEN 'moderator' THEN 2 WHEN 'seller' THEN 3 WHEN 'pvz' THEN 4 ELSE 5 END " . ($dir === 'asc' ? 'ASC' : 'DESC')
             )->orderBy('created_at', 'desc');
         } else {
             $query->orderBy('created_at', $dir);
@@ -887,9 +898,9 @@ class AdminController extends Controller
     private function parseDateRange(Request $request): array
     {
         $from = $request->input('from');
-        $to   = $request->input('to');
+        $to = $request->input('to');
         $from = $from ? Carbon::parse($from)->startOfDay() : null;
-        $to   = $to   ? Carbon::parse($to)->endOfDay()   : null;
+        $to = $to ? Carbon::parse($to)->endOfDay() : null;
         return [$from, $to];
     }
 
@@ -905,7 +916,7 @@ class AdminController extends Controller
             }
             fclose($out);
         }, 200, [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
@@ -921,13 +932,17 @@ class AdminController extends Controller
             : $this->parseDateRange($request);
         $minTotal = $request->input('min_total');
         $maxTotal = $request->input('max_total');
-        $status   = $request->input('status', 'paid'); // по умолчанию только успешные
+        $status = $request->input('status', 'paid'); // по умолчанию только успешные
 
         $q = Order::with(['buyer' => fn($q) => $q->withTrashed(), 'items']);
-        if ($from)   $q->where('created_at', '>=', $from);
-        if ($to)     $q->where('created_at', '<=', $to);
-        if ($minTotal !== null && $minTotal !== '') $q->where('total', '>=', (float) $minTotal);
-        if ($maxTotal !== null && $maxTotal !== '') $q->where('total', '<=', (float) $maxTotal);
+        if ($from)
+            $q->where('created_at', '>=', $from);
+        if ($to)
+            $q->where('created_at', '<=', $to);
+        if ($minTotal !== null && $minTotal !== '')
+            $q->where('total', '>=', (float) $minTotal);
+        if ($maxTotal !== null && $maxTotal !== '')
+            $q->where('total', '<=', (float) $maxTotal);
         if ($status === 'paid') {
             $q->whereNotIn('status', [Order::STATUS_CANCELED, Order::STATUS_REFUSED]);
         } elseif ($status !== 'all') {
@@ -936,7 +951,7 @@ class AdminController extends Controller
         $orders = $q->orderBy('created_at', 'desc')->get();
 
         $rangeLabel = ($from ? $from->format('Y-m-d') : 'all') . '_' . ($to ? $to->format('Y-m-d') : 'all');
-        $filename   = "revenue_{$rangeLabel}.csv";
+        $filename = "revenue_{$rangeLabel}.csv";
 
         $headers = ['№ заказа', 'Код', 'Дата', 'Покупатель', 'Email', 'Телефон', 'Позиций', 'Сумма', 'Скидка', 'Комиссия платформы', 'К выплате продавцам', 'Статус', 'Статус оплаты'];
         $rows = $orders->map(fn($o) => [
@@ -950,15 +965,15 @@ class AdminController extends Controller
             number_format($o->total, 2, '.', ''),
             number_format($o->discount ?? 0, 2, '.', ''),
             number_format($o->items->sum('commission_amount'), 2, '.', ''),
-            number_format($o->items->sum(fn ($i) => $i->seller_payout_amount > 0
+            number_format($o->items->sum(fn($i) => $i->seller_payout_amount > 0
                 ? $i->seller_payout_amount
                 : ($i->price_at_purchase * $i->quantity) - $i->commission_amount), 2, '.', ''),
             $o->status,
             $o->payment_status,
         ]);
-        $sum  = $orders->sum('total');
-        $commissionSum = $orders->sum(fn ($o) => $o->items->sum('commission_amount'));
-        $payoutSum = $orders->sum(fn ($o) => $o->items->sum(fn ($i) => $i->seller_payout_amount > 0
+        $sum = $orders->sum('total');
+        $commissionSum = $orders->sum(fn($o) => $o->items->sum('commission_amount'));
+        $payoutSum = $orders->sum(fn($o) => $o->items->sum(fn($i) => $i->seller_payout_amount > 0
             ? $i->seller_payout_amount
             : ($i->price_at_purchase * $i->quantity) - $i->commission_amount));
         $rows->push(['', '', '', '', '', '', 'ИТОГО:', number_format($sum, 2, '.', ''), '', number_format($commissionSum, 2, '.', ''), number_format($payoutSum, 2, '.', ''), '', '']);
@@ -974,17 +989,17 @@ class AdminController extends Controller
         if ($request->input('format') === 'xlsx') {
             $buyerOrders = Order::with('items.variant.product')
                 ->where('buyer_id', $user->id)
-                ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
-                ->when($to, fn ($q) => $q->where('created_at', '<=', $to))
+                ->when($from, fn($q) => $q->where('created_at', '>=', $from))
+                ->when($to, fn($q) => $q->where('created_at', '<=', $to))
                 ->orderBy('created_at', 'desc')
                 ->get();
             $sellerItems = OrderItem::with(['order', 'variant.product'])
                 ->where('seller_id', $user->id)
-                ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
-                ->when($to, fn ($q) => $q->where('created_at', '<=', $to))
+                ->when($from, fn($q) => $q->where('created_at', '>=', $from))
+                ->when($to, fn($q) => $q->where('created_at', '<=', $to))
                 ->orderBy('created_at', 'desc')
                 ->get();
-            $rangeLabel = ($from ? $from->format('Y-m-d') : 'all').'_'.($to ? $to->format('Y-m-d') : 'all');
+            $rangeLabel = ($from ? $from->format('Y-m-d') : 'all') . '_' . ($to ? $to->format('Y-m-d') : 'all');
 
             return app(AdminUserReportExcelExporter::class)->download($user, $buyerOrders, $sellerItems, $rangeLabel);
         }
@@ -993,7 +1008,7 @@ class AdminController extends Controller
         $buyerOrders = Order::with('items.variant.product')
             ->where('buyer_id', $user->id)
             ->when($from, fn($q) => $q->where('created_at', '>=', $from))
-            ->when($to,   fn($q) => $q->where('created_at', '<=', $to))
+            ->when($to, fn($q) => $q->where('created_at', '<=', $to))
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -1001,13 +1016,13 @@ class AdminController extends Controller
         $sellerItems = OrderItem::with(['order', 'variant.product'])
             ->where('seller_id', $user->id)
             ->when($from, fn($q) => $q->where('created_at', '>=', $from))
-            ->when($to,   fn($q) => $q->where('created_at', '<=', $to))
+            ->when($to, fn($q) => $q->where('created_at', '<=', $to))
             ->orderBy('created_at', 'desc')
             ->get();
 
         $rangeLabel = ($from ? $from->format('Y-m-d') : 'all') . '_' . ($to ? $to->format('Y-m-d') : 'all');
-        $name       = preg_replace('/[^A-Za-z0-9_-]/', '_', $user->name ?? 'user');
-        $filename   = "report_user{$user->id}_{$name}_{$rangeLabel}.csv";
+        $name = preg_replace('/[^A-Za-z0-9_-]/', '_', $user->name ?? 'user');
+        $filename = "report_user{$user->id}_{$name}_{$rangeLabel}.csv";
 
         return response()->stream(function () use ($user, $buyerOrders, $sellerItems) {
             $out = fopen('php://output', 'w');
@@ -1072,7 +1087,7 @@ class AdminController extends Controller
 
             fclose($out);
         }, 200, [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
@@ -1089,7 +1104,7 @@ class AdminController extends Controller
         $bySeller = $order->items->groupBy(fn($i) => $i->seller_id);
 
         $pdf = Pdf::loadView('pdf.order-receipt', [
-            'order'    => $order,
+            'order' => $order,
             'bySeller' => $bySeller,
         ])
             ->setPaper('a5', 'portrait')
@@ -1120,31 +1135,31 @@ class AdminController extends Controller
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('id', $search)
-                  ->orWhereHas('seller', function ($q2) use ($search) {
-                      $q2->where('name', 'like', "%{$search}%")
-                         ->orWhere('email', 'like', "%{$search}%")
-                         ->orWhere('id', $search);
-                  })
-                  ->orWhereHas('variants', function ($q2) use ($search) {
-                      $q2->where('sku', 'like', '%'.$search.'%');
-                  });
+                    ->orWhere('id', $search)
+                    ->orWhereHas('seller', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('id', $search);
+                    })
+                    ->orWhereHas('variants', function ($q2) use ($search) {
+                        $q2->where('sku', 'like', '%' . $search . '%');
+                    });
             });
         }
 
         $products = $query->paginate($perPage)->withQueryString();
-        $productItems = $products->getCollection()->map(fn ($p) => $this->mapProductForAdmin($p, includeSeller: true));
+        $productItems = $products->getCollection()->map(fn($p) => $this->mapProductForAdmin($p, includeSeller: true));
 
         $counts = [
-            'all'        => Product::count(),
+            'all' => Product::count(),
             'moderation' => Product::where('status', 'moderation')->count(),
-            'approved'   => Product::where('status', 'approved')->count(),
+            'approved' => Product::where('status', 'approved')->count(),
             'off_catalog' => Product::where('status', 'approved')->where('is_on_action', false)->count(),
             'on_catalog' => Product::where('status', 'approved')->where('is_on_action', true)->count(),
-            'rejected'   => Product::where('status', 'rejected')->count(),
-            'hidden'     => Product::where('status', 'hidden')->count(),
-            'archived'   => Product::where('status', 'archived')->count(),
-            'draft'      => Product::where('status', 'draft')->count(),
+            'rejected' => Product::where('status', 'rejected')->count(),
+            'hidden' => Product::where('status', 'hidden')->count(),
+            'archived' => Product::where('status', 'archived')->count(),
+            'draft' => Product::where('status', 'draft')->count(),
         ];
 
         return Inertia::render('Admin/Products', [
@@ -1156,33 +1171,33 @@ class AdminController extends Controller
                 'total' => $products->total(),
                 'has_more' => $products->hasMorePages(),
             ],
-            'search'   => $search,
-            'status'   => $status,
-            'counts'   => $counts,
+            'search' => $search,
+            'status' => $status,
+            'counts' => $counts,
         ]);
     }
 
     private function mapProductForAdmin(Product $p, bool $includeSeller = false): array
     {
         $row = [
-            'id'                 => $p->id,
-            'title'              => $p->title,
-            'name'               => $p->title,
-            'min_price'          => $p->min_price,
-            'status'             => $p->status,
+            'id' => $p->id,
+            'title' => $p->title,
+            'name' => $p->title,
+            'min_price' => $p->min_price,
+            'status' => $p->status,
             'moderation_comment' => $p->moderation_comment,
-            'is_on_action'       => (bool) $p->is_on_action,
-            'catalog_visible'    => $p->isPubliclyVisible(),
+            'is_on_action' => (bool) $p->is_on_action,
+            'catalog_visible' => $p->isPubliclyVisible(),
             'seller_can_publish' => $p->sellerCanPublish(),
             'storefront_block_reason' => $p->storefrontBlockReason(),
-            'sales_count'        => $p->sales_count ?? null,
-            'views_count'        => (int) ($p->variants_views_sum ?? 0),
-            'image'              => $p->relationLoaded('images')
+            'sales_count' => $p->sales_count ?? null,
+            'views_count' => (int) ($p->variants_views_sum ?? 0),
+            'image' => $p->relationLoaded('images')
                 ? ($p->images?->firstWhere('is_main', true)?->url)
                 : $p->images()->where('is_main', true)->value('url'),
-            'created_at'         => $p->created_at,
-            'variants_count'     => $p->variants_count ?? null,
-            'variant_skus'       => $p->relationLoaded('variants')
+            'created_at' => $p->created_at,
+            'variants_count' => $p->variants_count ?? null,
+            'variant_skus' => $p->relationLoaded('variants')
                 ? ($p->variants?->pluck('sku')->filter()->values()->all() ?? [])
                 : [],
         ];
@@ -1190,8 +1205,8 @@ class AdminController extends Controller
         if ($includeSeller) {
             $row['category'] = $p->category ? ['id' => $p->category->id, 'name' => $p->category->name] : null;
             $row['seller'] = $p->seller ? [
-                'id'    => $p->seller->id,
-                'name'  => $p->seller->name,
+                'id' => $p->seller->id,
+                'name' => $p->seller->name,
                 'email' => $p->seller->email,
             ] : null;
         }

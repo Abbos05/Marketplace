@@ -11,7 +11,8 @@ class ReviewController extends Controller
 {
     public function __construct(
         protected ReviewImageService $reviewImages
-    ) {}
+    ) {
+    }
 
     public function store(Request $request)
     {
@@ -23,8 +24,25 @@ class ReviewController extends Controller
             'order_id' => 'required|exists:orders,id',
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string|max:1000',
-            'photos' => 'nullable|array|max:'.$maxPhotos,
+            'photos' => 'nullable|array|max:' . $maxPhotos,
             'photos.*' => 'image|mimes:jpeg,jpg,png,webp|max:5120',
+        ], [
+            'product_id.required' => 'Необходимо указать товар.',
+            'product_id.exists' => 'Выбранный товар не существует.',
+            'variant_id.exists' => 'Выбранный вариант товара не существует.',
+            'order_id.required' => 'Необходимо указать заказ.',
+            'order_id.exists' => 'Выбранный заказ не существует.',
+            'rating.required' => 'Необходимо поставить оценку.',
+            'rating.integer' => 'Оценка должна быть числом.',
+            'rating.min' => 'Оценка должна быть от 1 до 5.',
+            'rating.max' => 'Оценка должна быть от 1 до 5.',
+            'comment.string' => 'Комментарий должен быть текстом.',
+            'comment.max' => 'Комментарий не должен превышать 1000 символов.',
+            'photos.array' => 'Фотографии должны быть массивом.',
+            'photos.max' => 'Максимальное количество фотографий: ' . $maxPhotos,
+            'photos.*.image' => 'Каждый файл должен быть изображением.',
+            'photos.*.mimes' => 'Допустимые форматы: JPEG, JPG, PNG, WEBP.',
+            'photos.*.max' => 'Размер каждого изображения не должен превышать 5 МБ.',
         ]);
 
         $order = Order::findOrFail($request->order_id);
@@ -62,7 +80,7 @@ class ReviewController extends Controller
         ]);
 
         $photos = $request->file('photos', []);
-        if (! is_array($photos)) {
+        if (!is_array($photos)) {
             $photos = $photos ? [$photos] : [];
         }
         $this->reviewImages->storeMany($review, $photos);
@@ -77,7 +95,7 @@ class ReviewController extends Controller
         }
 
         $order = $review->order;
-        if (! $order) {
+        if (!$order) {
             abort(404);
         }
 
@@ -90,10 +108,25 @@ class ReviewController extends Controller
         $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string|max:1000',
-            'keep_image_ids' => 'nullable|array|max:'.$maxPhotos,
+            'keep_image_ids' => 'nullable|array|max:' . $maxPhotos,
             'keep_image_ids.*' => 'integer',
-            'photos' => 'nullable|array|max:'.$maxPhotos,
+            'photos' => 'nullable|array|max:' . $maxPhotos,
             'photos.*' => 'image|mimes:jpeg,jpg,png,webp|max:5120',
+        ], [
+            'rating.required' => 'Необходимо поставить оценку.',
+            'rating.integer' => 'Оценка должна быть числом.',
+            'rating.min' => 'Оценка должна быть от 1 до 5.',
+            'rating.max' => 'Оценка должна быть от 1 до 5.',
+            'comment.string' => 'Комментарий должен быть текстом.',
+            'comment.max' => 'Комментарий не должен превышать 1000 символов.',
+            'keep_image_ids.array' => 'Список ID изображений должен быть массивом.',
+            'keep_image_ids.max' => 'Максимальное количество сохраняемых изображений: ' . $maxPhotos,
+            'keep_image_ids.*.integer' => 'ID изображения должен быть числом.',
+            'photos.array' => 'Фотографии должны быть массивом.',
+            'photos.max' => 'Максимальное количество фотографий: ' . $maxPhotos,
+            'photos.*.image' => 'Каждый файл должен быть изображением.',
+            'photos.*.mimes' => 'Допустимые форматы: JPEG, JPG, PNG, WEBP.',
+            'photos.*.max' => 'Размер каждого изображения не должен превышать 5 МБ.',
         ]);
 
         $review->update([
@@ -106,10 +139,10 @@ class ReviewController extends Controller
         ]);
 
         $keepIds = array_map('intval', $request->input('keep_image_ids', []));
-        $keepIds = array_values(array_filter($keepIds, fn ($id) => $review->images()->where('id', $id)->exists()));
+        $keepIds = array_values(array_filter($keepIds, fn($id) => $review->images()->where('id', $id)->exists()));
 
         $photos = $request->file('photos', []);
-        if (! is_array($photos)) {
+        if (!is_array($photos)) {
             $photos = $photos ? [$photos] : [];
         }
 

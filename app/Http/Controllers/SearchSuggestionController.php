@@ -12,6 +12,9 @@ class SearchSuggestionController extends Controller
     {
         $data = $request->validate([
             'q' => ['nullable', 'string', 'max:45'],
+        ], [
+            'q.string' => 'Поисковый запрос должен быть текстом.',
+            'q.max' => 'Поисковый запрос не должен превышать 45 символов.',
         ]);
 
         return response()->json(
