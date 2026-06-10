@@ -241,13 +241,42 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
   };
 
   // Универсальная обработка кода
-const processCodeVerification = async (codeValue, verifyCallback, skipCallback) => {
+ const processCodeVerification = async (codeValue, verifyCallback, skipCallback) => {
   if (isSixZerosCode(codeValue)) {
-    if (skipCallback) {
-      skipCallback();
+    setPhoneVerified(true);
+    
+    // Вызываем API напрямую для 000000
+    setLoading(true);
+    try {
+      const data = await apiPost('/auth/phone/verify-code', {
+        challenge_id: challengeId,
+        code: codeValue,
+      });
+      
+      if (data.success) {
+        if (data.requires_password) {
+          setRequiresPassword(true);
+          setStep(STEPS.PASSWORD);
+          persistFlow({ phoneVerified: true, step: STEPS.PASSWORD });
+        } else if (data.redirect) {
+          window.location.href = data.redirect;
+        } else {
+          window.location.href = '/';
+        }
+      } else {
+        setError(data.message || 'Ошибка верификации');
+        setCode('');
+      }
+    } catch (error) {
+      setError('Ошибка соединения');
+      setCode('');
+    } finally {
+      setLoading(false);
     }
+    
     return true;
   }
+  
   await verifyCallback(codeValue);
   return false;
 };
@@ -386,7 +415,7 @@ const processCodeVerification = async (codeValue, verifyCallback, skipCallback) 
         // skipCallback для 000000
         setError('');
         setCode('');
-        setActionMessage('Код отправлен');
+        setActionMessage('✅ Код подтверждён (000000)');
         
         // Если нужно ввести пароль
         if (requiresPassword) {
@@ -549,10 +578,38 @@ const handleForgotVerifyCode = async (currentCode) => {
   const c = currentCode ?? code;
   if (c.length !== 6) return;
 
+  // Перехватываем 000000 и обрабатываем отдельно
+  if (c === '000000') {
+    setLoading(true);
+    setError('');
+    try {
+      // Вызываем тот же API, что и в processCodeVerification
+      const data = await apiPost('/auth/phone/verify-code', {
+        challenge_id: challengeId,
+        code: c,
+      });
+      if (data.success) {
+        // Вместо STEPS.PASSWORD переходим на FORGOT_PASSWORD
+        setStep(STEPS.FORGOT_PASSWORD);
+        setCode('');
+        setActionMessage('✅ Доступ подтверждён (000000). Придумайте новый пароль.');
+      } else {
+        setError(data.message || 'Ошибка верификации');
+        setCode('');
+      }
+    } catch (error) {
+      setError('Ошибка соединения');
+      setCode('');
+    } finally {
+      setLoading(false);
+    }
+    return;
+  }
+
+  // Для обычного кода (не 000000) используем старую логику с processCodeVerification
   await processCodeVerification(
     c,
     async (codeValue) => {
-      // Обычная проверка кода (не 000000)
       setLoading(true);
       setError('');
       try {
@@ -574,12 +631,7 @@ const handleForgotVerifyCode = async (currentCode) => {
         setLoading(false);
       }
     },
-    // skipCallback для 000000 – сразу переходим к смене пароля
-    () => {
-      setStep(STEPS.FORGOT_PASSWORD);
-      setCode('');
-      setActionMessage('Код отправлен');
-    }
+    () => {} // skipCallback для 000000 уже обработан выше, здесь не нужен
   );
 };
 
