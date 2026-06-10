@@ -11,15 +11,12 @@ use Illuminate\Support\Collection;
 class Product extends Model
 {
     use HasFactory, SoftDeletes;
-
     protected $table = 'products';
-
     protected $fillable = [
         'seller_id', 'category_id', 'title', 'description', 'short_description',
         'min_price', 'sales_count', 'status',
         'moderation_comment', 'is_on_action',
     ];
-
     protected $casts = [
         'min_price' => 'decimal:2',
         'sales_count' => 'integer',
@@ -37,12 +34,10 @@ class Product extends Model
     {
         return $this->belongsTo(User::class, 'seller_id');
     }
-
     public function category()
     {
         return $this->belongsTo(Category::class, 'category_id');
     }
-
     public function variants()
     {
         return $this->hasMany(ProductVariant::class, 'product_id');

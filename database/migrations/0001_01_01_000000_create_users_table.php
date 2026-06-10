@@ -55,7 +55,7 @@ return new class extends Migration
         // Исправлены поля и данные для вставки
         DB::table('users')->insert([
             'id' => 1,
-            'email' => 'admin@gmail.com',
+            'email' => 'abbosdadomatov78@gmail.com',
             'password' => Hash::make('admin'),
             'name' => 'Администратор',
             'last_name' => 'главный',

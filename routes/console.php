@@ -22,7 +22,7 @@ Artisan::command('users:purge-deleted', function () {
             }
         });
 
-    $this->info("Purged {$purged} deleted users.");
-})->purpose('Permanently delete users after 30 days in trash');
+    $this->info("Очищено {$purged} удаленные пользователя.");
+})->purpose('Удалять пользователей навсегда через 30 дней после помещения в корзину.');
 
 Schedule::command('users:purge-deleted')->daily();

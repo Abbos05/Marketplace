@@ -242,7 +242,7 @@
 .ord-badge--INTRANSIT       { background: #e0f2fe; color: #0284c7; }
 .ord-badge--DELIVERED       { background: #f0fdf4; color: #15803d; }
 .ord-badge--CANCELED        { background: #fef2f2; color: #dc2626; }
-.ord-badge--REFUSED         { background: #fff7ed; color: #c2410c; }
+.ord-badge--REFUSED         { background: #fff7ed; color: #dc2626; }
 /* Оплата — отдельно от статуса доставки */
 .ord-badge--pay-pending     { background: #fef3c7; color: #d97706; }
 .ord-badge--pay-paid        { background: #f0fdf4; color: #16a34a; }

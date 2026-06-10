@@ -264,7 +264,6 @@ export default function Cart({ cartItems = [], pickupPoints = [], LikeProducts =
                                 </div>
                             ))}
                         </div>
-
                         {/* Правая колонка - итого */}
                         <div className="cart-summary">
                             <div className="summary-header">

@@ -3706,7 +3706,7 @@
 
 .profile-review-status.is-pending {
     background: #fff7ed;
-    color: #c2410c;
+    color: var(--background);
 }
 
 .profile-review-status.is-rejected {
@@ -4198,7 +4198,7 @@
 }
 .admin-role-badge.role-moderator {
     background: rgba(168,85,247,0.15);
-    color: #7c3aed;
+    color: var(--background);
 }
 .admin-role-badge.role-seller {
     background: rgba(245,158,11,0.15);

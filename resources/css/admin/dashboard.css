@@ -347,7 +347,7 @@
     font-weight: var(--fw-600);
 }
 .adm-role-badge.role-admin     { background: rgba(241, 99, 191, 0.15); color: var(--background); }
-.adm-role-badge.role-moderator { background: rgba(168,85,247,0.15); color: #7c3aed; }
+.adm-role-badge.role-moderator { background: rgba(168,85,247,0.15); color: #b45309; }
 .adm-role-badge.role-seller    { background: rgba(245,158,11,0.15);  color: #b45309; }
 .adm-role-badge.role-user      { background: rgba(100,116,139,0.12); color: #475569; }
 .adm-role-badge.role-pvz      { background: rgba(0, 106, 255, 0.164); color: #1a13aa; }

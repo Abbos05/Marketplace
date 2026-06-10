@@ -18,7 +18,7 @@ class TestModeAccess
 
     public static function ttlSeconds(): int
     {
-        return max(1, (int) config('test_mode.ttl_minutes', 60)) * 60;
+        return max(1, (int) config('test_mode.ttl_minutes', 1440)) * 60;
     }
 
     public static function isGranted(Session $session): bool
