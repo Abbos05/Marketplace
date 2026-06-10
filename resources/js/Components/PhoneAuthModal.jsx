@@ -244,7 +244,7 @@ export default function PhoneAuthModal({ isOpen, onClose }) {
 const processCodeVerification = async (codeValue, verifyCallback, skipCallback) => {
   if (isSixZerosCode(codeValue)) {
     if (skipCallback) {
-      skipCallback();       // ← сразу переходим к действию (сброс пароля / вход без пароля)
+      skipCallback();
     }
     return true;
   }
@@ -545,42 +545,43 @@ const processCodeVerification = async (codeValue, verifyCallback, skipCallback) 
     }
   };
 
-  const handleForgotVerifyCode = async (currentCode) => {
-    const c = currentCode ?? code;
-    if (c.length !== 6) return;
-    
-    await processCodeVerification(
-      c,
-      async (codeValue) => {
-        setLoading(true);
-        setError('');
-        try {
-          const data = await apiPost('/auth/phone/forgot-password/verify', {
-            challenge_id: challengeId,
-            code: codeValue,
-          });
-          if (data.success) {
-            setStep(STEPS.FORGOT_PASSWORD);
-            setCode('');
-          } else {
-            setError(data.message || 'Неверный код');
-            setCode('');
-          }
-        } catch {
-          setError('Ошибка соединения');
+const handleForgotVerifyCode = async (currentCode) => {
+  const c = currentCode ?? code;
+  if (c.length !== 6) return;
+
+  await processCodeVerification(
+    c,
+    async (codeValue) => {
+      // Обычная проверка кода (не 000000)
+      setLoading(true);
+      setError('');
+      try {
+        const data = await apiPost('/auth/phone/forgot-password/verify', {
+          challenge_id: challengeId,
+          code: codeValue,
+        });
+        if (data.success) {
+          setStep(STEPS.FORGOT_PASSWORD);
           setCode('');
-        } finally {
-          setLoading(false);
+        } else {
+          setError(data.message || 'Неверный код');
+          setCode('');
         }
-      },
-      () => {
-        // skipCallback для 000000
-        setStep(STEPS.FORGOT_PASSWORD);
+      } catch {
+        setError('Ошибка соединения');
         setCode('');
-        setActionMessage('Код отправлен');
+      } finally {
+        setLoading(false);
       }
-    );
-  };
+    },
+    // skipCallback для 000000 – сразу переходим к смене пароля
+    () => {
+      setStep(STEPS.FORGOT_PASSWORD);
+      setCode('');
+      setActionMessage('Код отправлен');
+    }
+  );
+};
 
   const handleForgotReset = async (e) => {
     e?.preventDefault();
