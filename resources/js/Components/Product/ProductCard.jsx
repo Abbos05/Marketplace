@@ -99,7 +99,7 @@ export default function ProductCard({ product, hideFooter = false,  }) {
             );
         } catch (error) {
             setIsFavorite(previousValue);
-            alert('Ошибка, попробуйте позже');
+            router.visit('/login')
         } finally {
             setIsToggling(false);
         }
