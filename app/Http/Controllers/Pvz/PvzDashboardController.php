@@ -72,10 +72,6 @@ class PvzDashboardController extends Controller
             'closure_reason.max' => 'Причина закрытия не должна превышать 1000 символов.',
         ]);
 
-        $check = app(PvzClosureService::class)->canRequestClosure($point);
-        if (!$check['ok']) {
-            return back()->with('error', $check['message']);
-        }
 
         $point->update([
             'closure_status' => PickupPoint::CLOSURE_PENDING,

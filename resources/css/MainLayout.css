@@ -394,6 +394,48 @@ main {
 .header-mobile-search-panel {
   display: none;
 }
+.remove-history-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: #9ca3af;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.remove-history-btn:hover {
+  background-color: #f3f4f6;
+  color: #ef4444;
+}
+
+.remove-history-btn:active {
+  transform: scale(0.95);
+}
+
+/* Если нужно позиционирование в элементе списка */
+.header-search-suggest__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-search-suggest__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
 
 .barcode-scanner-modal {
   position: fixed;
@@ -1833,6 +1875,39 @@ main {
   .header {
     padding: 16px 0;
   }
+  .header-search-suggest__title{
+    font-size: var(--size-m);
+  }
+ 
+.header-search-suggest__icon {
+  flex: 0  40px;
+  width: 24px;
+  height: 28px;
+  border-radius: 8px;
+  background: #f4f4f495;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--background);
+}
+
+
+.header-search-suggest__icon--search svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.header-search-suggest__icon--history {
+  color: #888;
+}
+
+.header-search-suggest__icon--history svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
 }
 
 /* Дополнительно для совсем крошечных экранов типа iPhone SE (320–375px) */
@@ -2484,7 +2559,7 @@ main {
     bottom: 8px;
     z-index: 10010;
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 4px;
     margin: 0;
     padding: 7px 8px calc(7px + env(safe-area-inset-bottom));

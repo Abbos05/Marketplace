@@ -36,7 +36,7 @@ class MarketplaceAuditService
     public function eventsForUser(int $userId, int $limit = 30): array
     {
         return MarketplaceAuditEvent::query()
-            ->with(['actor:id,name,email,role'])
+            ->with(['actor:id,name,email,role,phone'])
             ->where('subject_user_id', $userId)
             ->orderByDesc('created_at')
             ->limit($limit)
@@ -51,6 +51,7 @@ class MarketplaceAuditService
                     'id' => $e->actor->id,
                     'name' => $e->actor->name,
                     'email' => $e->actor->email,
+                    'phone' => $e->actor->phone,
                     'role' => $e->actor->role,
                 ] : null,
             ])

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '@/Layouts/MainLayout';
 import { router, useForm } from '@inertiajs/react';
 import { canManageUserAsStaff, canAssignStaffRoles, isStaff, roleOptionsFor, roleOptionsForTarget } from '@/lib/staffAccess';
@@ -43,14 +43,24 @@ function initialMobileShowMenu() {
   return !new URLSearchParams(window.location.search).has('tab');
 }
 
-export default function Profile({ auth, products = [], LikeProducts = [], orders = [], myFavorites = [], myReviews = [], profileCounts = {}, sellerProfile = null, closedSellerProfile = null, sellerRestorePending = null, adminUsers = [], pickupPoints = [], userSessions = [], loginHistory = [], currentSessionId = null, accountDeletion = null }) {
+export default function Profile({ auth, products = [], LikeProducts = [], orders = [], myFavorites = [], myReviews = [], profileCounts = {}, sellerProfile = null, closedSellerProfile = null, sellerRestorePending = null, adminUsers = [], pickupPoints = [], userSessions = [], loginHistory = [], currentSessionId = null, accountDeletion = null, mypvz = null }) {
+  const { errors: serverErrors } = usePage().props;
+  const [isPhoneOpen, setIsPhoneOpen] = useState(false);
+
   const { staffAccess, pvzAccess } = usePage().props;
   const { url: pageUrl } = usePage();
   const [selectedOrder, setSelectedOrder] = useState(null);
 
+
   const { data: pickupForm, setData: setPickupForm, patch: patchPickup, processing: pickupProcessing, errors: pickupErrors } = useForm({
     default_pickup_point_id: auth.user.default_pickup_point_id ?? '',
   });
+
+  useEffect(() => {
+    if (serverErrors.error) {
+      setIsPhoneOpen(true);
+    }
+  }, [serverErrors.error]);
 
   useEffect(() => {
     setPickupForm('default_pickup_point_id', auth.user.default_pickup_point_id ?? '');
@@ -63,7 +73,6 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
       onSuccess: () => { setShowPickupForm(false); setMessage('Пункт выдачи сохранён'); },
     });
   };
-
   const isStaffUser = staffAccess?.isStaff ?? isStaff(auth.user);
   const canAssignRoles = staffAccess?.canAssignStaffRoles ?? canAssignStaffRoles(auth.user);
   const panelTitle = staffAccess?.panelTitle ?? 'Панель управления';
@@ -90,7 +99,6 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
   const [adminFilter, setAdminFilter] = useState('all');
   const [adminRoleChanges, setAdminRoleChanges] = useState({});
   // Верификация: открывается когда нет email (телефон — основной идентификатор, уже есть)
-  const [isPhoneOpen, setIsPhoneOpen] = useState(false);
   const isUserBlocked = !!auth.user.is_blocked;
   const [isBlockedOpen, setIsBlockedOpen] = useState(isUserBlocked);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -101,6 +109,8 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
   const needsProfileVerification =
     (!auth.user.name?.trim() || !auth.user.email || !auth.user.phone) && auth.user.is_active !== 0;
   const isPvzUser = auth.user.role === 'pvz' || pvzAccess?.isPvz;
+  console.log(pvzAccess);
+
   const isSeller = auth.user.role === 'seller' && !!sellerProfile;
 
   useEffect(() => {
@@ -129,8 +139,8 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
   const [avatarUploadError, setAvatarUploadError] = useState(null);
   const [avatarUploadHint, setAvatarUploadHint] = useState(null);
   const { data: profileData, setData: setProfileData, post: postProfile, processing: profileProcessing, errors: profileErrors, reset: resetProfile } = useForm({
-    name:        auth.user.name        || '',
-    last_name:   auth.user.last_name   || '',
+    name: auth.user.name || '',
+    last_name: auth.user.last_name || '',
     avatar: null,
   });
 
@@ -161,8 +171,8 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
       return;
     }
     const formData = new FormData();
-    formData.append('name',        profileData.name);
-    formData.append('last_name',   profileData.last_name);
+    formData.append('name', profileData.name);
+    formData.append('last_name', profileData.last_name);
     if (profileData.avatar) formData.append('avatar', profileData.avatar);
     postProfile('/profile/update', {
       data: formData, forceFormData: true, preserveState: true, preserveScroll: true,
@@ -316,15 +326,15 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
   const handleSecuritySubmit = (e) => {
     e.preventDefault();
     const formData = new FormData();
-    formData.append('current_password',     secData.current_password);
-    formData.append('password',             secData.password);
+    formData.append('current_password', secData.current_password);
+    formData.append('password', secData.password);
     formData.append('password_confirmation', secData.password_confirmation);
     postSec('/profile/update', {
       data: formData, forceFormData: true, preserveState: true, preserveScroll: true,
       onSuccess: () => { resetSec(); setEditingCard(null); setMessage('Пароль успешно изменён!'); },
     });
   };
- 
+
   const handleLogout = () => {
     setConfirmModal({
       title: 'Выйти из аккаунта?',
@@ -431,7 +441,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
   return (
     <MainLayout>
       <Head title="Профиль" />
- 
+
       <div className={profilePageClassName}>
 
 
@@ -633,13 +643,12 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                         )}
                         <div className="profile-review-footer">
                           <span
-                            className={`profile-review-status ${
-                              review.moderation_status === 'published'
-                                ? 'is-published'
-                                : review.moderation_status === 'rejected'
-                                  ? 'is-rejected'
-                                  : 'is-pending'
-                            }`}
+                            className={`profile-review-status ${review.moderation_status === 'published'
+                              ? 'is-published'
+                              : review.moderation_status === 'rejected'
+                                ? 'is-rejected'
+                                : 'is-pending'
+                              }`}
                           >
                             {review.moderation_status === 'published'
                               ? 'Опубликован'
@@ -857,6 +866,17 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                 <p>Для добавления компании и работы с панелью продавца нужен широкий экран. Откройте этот раздел на ноутбуке или ПК.</p>
               </div>
 
+              {mypvz?.status == 'pending' && (
+                <div className="company-empty-state" style={{ marginBottom: 24, textAlign: 'left', maxWidth: 640 }}>
+                  <h2>Вы подпали заяаку на оператора ПВЗ</h2>
+                  <p>
+                    На одном аккаунте нельзя одновременно быть продавцом и оператором пункта выдачи.
+                    Чтобы открыть компанию продавца, сначала завершите работу ПВЗ в{' '}
+                    настройках панели ПВЗ (закрытие с подтверждением администратора),
+                    либо используйте отдельный аккаунт для продаж.
+                  </p>
+                </div>
+              )}
               {isPvzUser && (
                 <div className="company-empty-state" style={{ marginBottom: 24, textAlign: 'left', maxWidth: 640 }}>
                   <div className="empty-state-icon">📍</div>
@@ -902,16 +922,17 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                   <button type="button" className="add-company-btn" onClick={() => setConfirmRestoreCompany(true)}>
                     Подать заявку на восстановление
                   </button>
+                 
                 </div>
               )}
-
-              {!isPvzUser && !sellerProfile && !closedSellerProfile && !showCompanyForm && (
+              {!isPvzUser && !sellerProfile && !closedSellerProfile && !showCompanyForm && mypvz?.status !== 'pending' && (
                 <div className="company-empty-state profile-company-cta">
                   <div className="empty-state-icon">🏢</div>
                   <h2>Готовы открыть магазин?</h2>
                   <p>После прочтения вопросов выше нажмите кнопку и заполните данные компании.</p>
                   <button type="button" className="add-company-btn" onClick={() => setShowCompanyForm(true)}>
                     + Добавить компанию
+
                   </button>
                 </div>
               )}
@@ -951,11 +972,26 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                       <p className="hint" style={{ background: '#f1f5f9', borderRadius: 8, padding: '10px 14px', margin: 0, fontSize: 13 }}>
                         Режим работы можно настроить после создания компании в разделе{' '}
                         <strong>Настройки продавца → Магазин</strong>.
+                        {errors.error && (
+                          <div className="alert-banner alert-banner--error">
+                            {errors.error}
+                          </div>
+                        )}
                       </p>
                     </div>
                     <div className="form-actions">
+                      {needsProfileVerification && (
+                        <button
+                          type="button"
+                          className="profile-help-btn profile-help-btn--outline"
+                          onClick={() => setIsPhoneOpen(true)}
+                        >
+                          Заполнить профиль
+                        </button>
+                      )}
                       <button type="button" className="cancel-btn" onClick={() => setShowCompanyForm(false)}>Отмена</button>
                       <button type="submit" className="submit-btn" disabled={processing}>{processing ? 'Сохранение...' : 'Добавить компанию'}</button>
+
                     </div>
                   </form>
                 </div>
@@ -1054,8 +1090,8 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                   </div>
                   {editingCard !== 'personal' ? (
                     <button className="settings-edit-btn" onClick={() => {
-                      setProfileData('name',        auth.user.name        || '');
-                      setProfileData('last_name',   auth.user.last_name   || '');
+                      setProfileData('name', auth.user.name || '');
+                      setProfileData('last_name', auth.user.last_name || '');
                       setAvatarPreview(resolveAvatarUrl(auth.user.avatar) || '/img/profiles/profile.png');
                       setEditingCard('personal');
                     }}>Изменить</button>
@@ -1436,7 +1472,7 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
               (u.phone || '').includes(adminSearch);
 
             const matchesFilter = (u) => {
-              if (adminFilter === 'active')  return !u.is_blocked && !u.deleted_at;
+              if (adminFilter === 'active') return !u.is_blocked && !u.deleted_at;
               if (adminFilter === 'blocked') return !!u.is_blocked && !u.deleted_at;
               if (adminFilter === 'deleted') return !!u.deleted_at;
               if (adminFilter === 'pending') return u.seller_profile && u.role !== 'seller' && !u.deleted_at;
@@ -1446,8 +1482,8 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
             const filtered = adminUsers.filter(u => matchesSearch(u) && matchesFilter(u));
 
             const counts = {
-              all:     adminUsers.length,
-              active:  adminUsers.filter(u => !u.is_blocked && !u.deleted_at).length,
+              all: adminUsers.length,
+              active: adminUsers.filter(u => !u.is_blocked && !u.deleted_at).length,
               blocked: adminUsers.filter(u => !!u.is_blocked && !u.deleted_at).length,
               deleted: adminUsers.filter(u => !!u.deleted_at).length,
               pending: adminUsers.filter(u => u.seller_profile && u.role !== 'seller' && !u.deleted_at).length,
@@ -1470,10 +1506,10 @@ export default function Profile({ auth, products = [], LikeProducts = [], orders
                 {/* Filter tabs */}
                 <div className="admin-filter-tabs">
                   {[
-                    { key: 'all',     label: 'Все',               count: counts.all },
-                    { key: 'active',  label: 'Активные',          count: counts.active },
-                    { key: 'blocked', label: 'Заблокированные',   count: counts.blocked },
-                    { key: 'deleted', label: 'Удалённые',         count: counts.deleted },
+                    { key: 'all', label: 'Все', count: counts.all },
+                    { key: 'active', label: 'Активные', count: counts.active },
+                    { key: 'blocked', label: 'Заблокированные', count: counts.blocked },
+                    { key: 'deleted', label: 'Удалённые', count: counts.deleted },
                     { key: 'pending', label: 'Ожидают одобрения', count: counts.pending },
                   ].map(tab => (
                     <button

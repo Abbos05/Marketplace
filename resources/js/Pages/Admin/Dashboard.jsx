@@ -25,7 +25,7 @@ function formatPhone(p) {
     if (!p) return '';
     const d = p.replace(/\D/g, '');
     if (d.length < 7) return '+' + d;
-    return `+7 ${d.slice(1,4)} ${d.slice(4,7)} ${d.slice(7,9)} ${d.slice(9,11)}`;
+    return `+7 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
 }
 
 function parseUserAgent(ua) {
@@ -47,9 +47,9 @@ function parseUserAgent(ua) {
 function timeAgo(iso) {
     if (!iso) return '—';
     const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-    if (diff < 60)        return `${diff} с назад`;
-    if (diff < 3600)      return `${Math.floor(diff / 60)} мин назад`;
-    if (diff < 86400)     return `${Math.floor(diff / 3600)} ч назад`;
+    if (diff < 60) return `${diff} с назад`;
+    if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
     return `${Math.floor(diff / 86400)} д назад`;
 }
 
@@ -67,12 +67,12 @@ function formatChartTick(d, granularity = 'day') {
 }
 
 function RevenueChart({ data = [], chartId = 'adm-revenue-chart-svg', rangeLabel = '', periodLabel = '', granularity = 'day' }) {
-    const width  = 720;
+    const width = 720;
     const height = 220;
-    const padL   = 50;
-    const padR   = 10;
-    const padT   = 16;
-    const padB   = 32;
+    const padL = 50;
+    const padR = 10;
+    const padT = 16;
+    const padB = 32;
     const innerW = width - padL - padR;
     const innerH = height - padT - padB;
 
@@ -498,10 +498,10 @@ export default function AdminDashboard({
     const sections = [
         { key: 'overview', label: 'Обзор' },
         { key: 'sessions', label: `Сессии${onlineSessions.length > 0 ? ` · ${onlineSessions.length} онлайн` : ''}` },
-        { key: 'pending',  label: `Заявки продавцов${stats.pending_approvals > 0 ? ` (${stats.pending_approvals})` : ''}` },
-        { key: 'users',    label: 'Пользователи' },
-        { key: 'orders',   label: 'Поиск заказов' },
-        { key: 'extra',    label: 'Дополнительно' },
+        { key: 'pending', label: `Заявки продавцов${stats.pending_approvals > 0 ? ` (${stats.pending_approvals})` : ''}` },
+        { key: 'users', label: 'Пользователи' },
+        { key: 'orders', label: 'Поиск заказов' },
+        { key: 'extra', label: 'Дополнительно' },
     ];
 
     const extraLinks = [
@@ -538,6 +538,7 @@ export default function AdminDashboard({
         const t = setInterval(() => force(x => x + 1), 30000);
         return () => clearInterval(t);
     }, []);
+    console.log(visiblePending);
 
     return (
         <MainLayout auth={auth}>
@@ -568,7 +569,7 @@ export default function AdminDashboard({
                                 {s.label}
                             </button>
                         ))}
-                       
+
                         <a href="/profile" className="adm-nav-item adm-nav-back">← Профиль</a>
                     </nav>
                 </aside>
@@ -902,10 +903,14 @@ export default function AdminDashboard({
                                             )}
                                             <div className="adm-pending-actions">
                                                 <a href={`/admin/users/${u.id}/detail`} className="adm-action-btn adm-btn-view">Подробнее</a>
-                                                <button className="adm-action-btn adm-btn-approve" onClick={() => approveSeller(u.id)}>
-                                                    {u.application_type === 'restore' ? 'Одобрить восстановление' : 'Одобрить'}
-                                                </button>
-                                                <button className="adm-action-btn adm-btn-reject" onClick={() => rejectSeller(u.id)}>Отклонить</button>
+                                                {u?.application_type !== "edit" && (
+                                                    <>
+                                                        <button className="adm-action-btn adm-btn-approve" onClick={() => approveSeller(u.id)}>
+                                                            {u.application_type === 'restore' ? 'Одобрить восстановление' : 'Одобрить'}
+                                                        </button>
+                                                        <button className="adm-action-btn adm-btn-reject" onClick={() => rejectSeller(u.id)}>Отклонить</button>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
@@ -928,8 +933,8 @@ export default function AdminDashboard({
                                         applyUserSort(sort, dir);
                                     }}
                                 >
-                                    <option value="created_at:desc">Дата регистрации ↓</option>
-                                    <option value="created_at:asc">Дата регистрации ↑</option>
+                                    <option value="created_at:desc">Дата регистрации</option>
+                                    <option value="created_at:asc">Дата регистрации</option>
                                     <option value="name:asc">Имя А–Я</option>
                                     <option value="name:desc">Имя Я–А</option>
                                     <option value="role:asc">Роль: админ → пользователь</option>
@@ -1244,9 +1249,9 @@ export default function AdminDashboard({
                                                     </div>
 
                                                     <div className="adm-order-timeline">
-                                                        {['NEW','INTRANSIT','DELIVERED','ISSUED'].map((s, i, arr) => {
+                                                        {['NEW', 'INTRANSIT', 'DELIVERED', 'ISSUED'].map((s, i, arr) => {
                                                             const statusOrder = arr.indexOf(o.status);
-                                                            const isDone    = i <= statusOrder && !['CANCELED','REFUSED'].includes(o.status);
+                                                            const isDone = i <= statusOrder && !['CANCELED', 'REFUSED'].includes(o.status);
                                                             const isCurrent = s === o.status;
                                                             return (
                                                                 <div key={s} className={`adm-timeline-step ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''}`}>
@@ -1255,7 +1260,7 @@ export default function AdminDashboard({
                                                                 </div>
                                                             );
                                                         })}
-                                                        {['CANCELED','REFUSED'].includes(o.status) && (
+                                                        {['CANCELED', 'REFUSED'].includes(o.status) && (
                                                             <div className={`adm-timeline-step ${o.status} current`}>
                                                                 <div className="adm-timeline-dot" />
                                                                 <div className="adm-timeline-label">{ORDER_STATUS_MAP[o.status]}</div>

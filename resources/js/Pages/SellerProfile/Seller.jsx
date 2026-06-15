@@ -106,6 +106,27 @@ export default function Seller({ auth }) {
                             >
                                 Написать продавцу
                             </button>
+                            {1 && (
+                                <button
+                                    type="button"
+                                    className="seller-hero__btn seller-hero__btn--primary_admin"
+                                    onClick={() => {
+                                        if (!auth?.user) {
+                                            window.location.href = '/login';
+                                            return;
+                                        }
+                                        if (seller?.id && auth.user.id === seller.id) {
+                                            return;
+                                        }
+                                        if (!seller?.id) {
+                                            return;
+                                        }
+                                        router.visit(route('admin.users.detail', seller.id));
+                                    }}
+                                >
+                                    Управление
+                                </button>
+                            )}
                         </div>
                     </div>
                 </section>

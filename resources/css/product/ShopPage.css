@@ -620,8 +620,37 @@
     transition: background 0.2s ease, transform 0.15s ease;
 }
 
-.seller-hero__btn--primary {
+.seller-hero__btn--primary_admin {
     background-color: var(--background);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(0, 91, 255, 0.28);
+}
+
+.seller-hero__btn--primary_admin:hover {
+    background: var(--backgroundBlack);
+}
+
+.seller-hero__btn--primary_admin:active {
+    transform: scale(0.98);
+}
+.seller-hero__actions {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.seller-hero__btn {
+    border: none;
+    border-radius: 12px;
+    padding: 12px 22px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.seller-hero__btn--primary {
+    background-color: #005bff;
     color: #fff;
     box-shadow: 0 4px 14px rgba(0, 91, 255, 0.28);
 }
@@ -634,6 +663,42 @@
     transform: scale(0.98);
 }
 
+.seller-hero__btn--favorite {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: transparent;
+    border: 1.5px solid #e2e8f0;
+    color: #64748b;
+    box-shadow: none;
+}
+
+.seller-hero__btn--favorite:hover {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #ef4444;
+}
+
+.seller-hero__btn--favorite.active {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #ef4444;
+}
+
+.seller-hero__btn--favorite.active:hover {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.seller-hero__btn--favorite:active {
+    transform: scale(0.98);
+}
+
+.seller-hero__btn--favorite:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
 /* Анимация для карточек товаров */
 @keyframes productCardAppear {
     from {

@@ -3,6 +3,9 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import '../../../css/pickup/cooperate.css';
 
+
+
+
 const STEPS = [
     { n: 1, title: 'Анкета', text: 'Заполните данные организации и помещения пункта выдачи' },
     { n: 2, title: 'Проверка', text: 'Администрация проверяет заявку в течение нескольких дней' },

@@ -96,7 +96,7 @@ export function getSortOptions(state = {}) {
     ];
 
     if (state.search) {
-        return [{ value: 'relevance', label: 'По релевантности' }, ...options];
+        return [{ value: 'relevance', label: 'Сначала актуальные' }, ...options];
     }
 
     return options;

@@ -1683,7 +1683,7 @@
 
   .product-page__thumbnails {
     gap: 8px;
-    padding: 4px 2px;
+    padding: 4px;
   }
 
   .product-page__thumbnails img {

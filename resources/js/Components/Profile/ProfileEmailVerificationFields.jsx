@@ -103,32 +103,41 @@ export default function ProfileEmailVerificationFields({
     }
   };
 
-  const verifyCode = async () => {
-    if (code.trim().length !== 6) {
-      setError('Введите 6 цифр кода подтверждения.');
-      return false;
-    }
+const verifyCode = async () => {
+  if (code.trim().length !== 6) {
+    setError('Введите 6 цифр кода подтверждения.');
+    return false;
+  }
 
-    setProcessing(true);
-    setError('');
+  setProcessing(true);
+  setError('');
 
-    try {
-      const payload = await apiPost('/profile/email/verify-code', { code: code.trim() });
-      const verifiedEmail = payload?.email || email.trim();
-      onEmailChange?.(verifiedEmail);
-      onVerified?.(verifiedEmail);
-      setStep('email');
-      setCode('');
-      setInfo('Email подтверждён.');
-      router.reload({ only: ['auth', 'flash'] });
-      return true;
-    } catch (err) {
-      setError(err?.errors?.code?.[0] || err?.message || 'Неверный код подтверждения.');
-      return false;
-    } finally {
-      setProcessing(false);
-    }
-  };
+  try {
+    const payload = await apiPost('/profile/email/verify-code', { code: code.trim() });
+    const verifiedEmail = payload?.email || email.trim();
+    
+    onEmailChange?.(verifiedEmail);
+    onVerified?.(verifiedEmail);
+    setStep('email');
+    setCode('');
+    setInfo('Email подтверждён.');
+    
+    // ✅ Тихое обновление - перезагружаем только auth данные
+    // Страница не моргнёт, скролл не сбросится
+    router.reload({
+      only: ['auth'],
+      preserveScroll: true,
+      preserveState: true,
+    });
+    
+    return true;
+  } catch (err) {
+    setError(err?.errors?.code?.[0] || err?.message || 'Неверный код подтверждения.');
+    return false;
+  } finally {
+    setProcessing(false);
+  }
+};
 
   if (!needsVerification) {
     return null;

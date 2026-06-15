@@ -22,6 +22,8 @@ class MarketplaceAuditEvent extends Model
     public const TYPE_SELLER_SHOP_CHANGES_REJECTED = 'seller_shop_changes_rejected';
 
     public const TYPE_ROLE_CHANGED = 'role_changed';
+    public const TYPE_BLOCED = 'block_profile';
+    public const TYPE_ACTIVE = 'active_profile';
 
     protected $fillable = [
         'subject_user_id',
@@ -58,6 +60,8 @@ class MarketplaceAuditEvent extends Model
             self::TYPE_SELLER_SHOP_CHANGES_APPROVED => 'Изменения магазина одобрены',
             self::TYPE_SELLER_SHOP_CHANGES_REJECTED => 'Изменения магазина отклонены',
             self::TYPE_ROLE_CHANGED => 'Роль изменена',
+            self::TYPE_BLOCED => 'Аккаунт заблакирован',
+            self::TYPE_ACTIVE => 'Аккаунт Разблакирован',
             default => $this->event_type,
         };
     }

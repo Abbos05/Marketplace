@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { addSearchHistory, getSearchHistory } from '@/lib/searchHistory';
+import { addSearchHistory, getSearchHistory, removeSearchHistoryItem, clearSearchHistory} from '@/lib/searchHistory';
 import { mergeCatalogSearchParams } from '@/lib/catalogFilters';
-
 const DEBOUNCE_MS = 220;
 const MIN_QUERY_LENGTH = 2;
 
@@ -83,7 +82,19 @@ export default function HeaderSearchWithSuggestions({
     setHistoryItems(items);
     return items;
   }, []);
+  const handleRemoveHistoryItem = (e, query) => {
+    e.stopPropagation();
+    e.preventDefault();
 
+    removeSearchHistoryItem(query);
+
+    const updatedHistory = historyToItems(getSearchHistory());
+    setHistoryItems(updatedHistory);
+
+    if (showHistory && updatedHistory.length === 0) {
+      setIsOpen(false);
+    }
+  };
   const openHistoryPanel = useCallback(() => {
     const items = refreshHistory();
     if (items.length > 0) {
@@ -246,6 +257,17 @@ export default function HeaderSearchWithSuggestions({
     onSearch();
   }, [closePanel, onSearch, trimmed]);
 
+  // Обработчик удаления одного элемента
+
+
+  // Обработчик очистки всей истории
+  const handleClearAllHistory = () => {
+    clearSearchHistory();
+    setHistoryItems([]);
+    setSuggestions([]);
+    setIsOpen(false);
+    setActiveIndex(-1);
+  };
   const onInputKeyDown = (event) => {
     if (!isOpen || panelItems.length === 0) {
       if (event.key === 'Enter') {
@@ -300,16 +322,34 @@ export default function HeaderSearchWithSuggestions({
           onClick={() => applySuggestion(item)}
         >
           <span
-            className={`header-search-suggest__icon${
-              isHistory ? ' header-search-suggest__icon--history' : ' header-search-suggest__icon--search'
-            }`}
+            className={`header-search-suggest__icon${isHistory ? ' header-search-suggest__icon--history' : ' header-search-suggest__icon--search'
+              }`}
           >
             {isHistory ? <HistoryIcon /> : <SuggestionSearchIcon />}
           </span>
+          
           <span className="header-search-suggest__title">
             {isHistory ? mainText : highlightMatch(mainText, trimmed)}
           </span>
+           {isHistory && (
+          <button
+            type="button"
+            className="remove-history-btn"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRemoveHistoryItem(e, mainText);
+            }}
+          >
+            ✕
+          </button>
+        )}
         </button>
+
+       
       </li>
     );
   };
@@ -360,8 +400,6 @@ export default function HeaderSearchWithSuggestions({
         autoComplete="off"
         spellCheck={false}
       />
-
-
 
       <button
         type="button"

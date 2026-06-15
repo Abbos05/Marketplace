@@ -61,8 +61,16 @@ class AdminController extends Controller
                 ->sum('commission_amount'),
             'pending_approvals' => User::query()
                 ->where(function ($q) {
+                    // Новые заявки на продавца (role = user с sellerProfile)
                     $q->whereHas('sellerProfile', fn($p) => $p->whereNotNull('restore_requested_at'))
-                        ->orWhere(fn($q2) => $q2->whereHas('sellerProfile')->where('role', 'user'));
+                        ->orWhere(fn($q2) => $q2->whereHas('sellerProfile')->where('role', 'user'))
+                        // Добавляем заявки на редактирование названия/описания
+                        ->orWhereHas('sellerProfile', function ($sq) {
+                        $sq->where(function ($inner) {
+                            $inner->whereNotNull('pending_shop_name')
+                                ->orWhere('pending_description_change', true);
+                        });
+                    });
                 })
                 ->count(),
             'pending_shop_changes' => SellerProfile::query()->shopChangesPending()->count(),
@@ -83,13 +91,23 @@ class AdminController extends Controller
                     ->orWhere(function ($q2) {
                         $q2->where('role', 'user')
                             ->whereHas('sellerProfile', fn($p) => $p->whereNull('restore_requested_at'));
+                    })
+                    // Добавляем заявки на редактирование
+                    ->orWhereHas('sellerProfile', function ($sq) {
+                        $sq->where(function ($inner) {
+                            $inner->whereNotNull('pending_shop_name')
+                                ->orWhere('pending_description_change', true);
+                        });
                     });
             })
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($u) {
                 $profile = $u->sellerProfile;
+
+                // Определяем тип заявки
                 $isRestore = $profile && $profile->isRestorePending();
+                $isEdit = $profile && $profile->isShopChangesPending();
 
                 return [
                     'id' => $u->id,
@@ -99,8 +117,14 @@ class AdminController extends Controller
                     'phone' => $u->phone,
                     'avatar' => $u->avatar,
                     'created_at' => $u->created_at,
-                    'application_type' => $isRestore ? 'restore' : 'new',
+                    'application_type' => $isRestore ? 'restore' : ($isEdit ? 'edit' : 'new'),
                     'restore_requested_at' => $profile?->restore_requested_at,
+                    // Добавляем информацию о правках
+                    'pending_changes' => $isEdit ? [
+                        'shop_name' => $profile->pending_shop_name,
+                        'description' => $profile->pending_description,
+                        'requested_at' => $profile->shop_changes_requested_at,
+                    ] : null,
                     'seller_profile' => $profile ? [
                         'shop_name' => $profile->shop_name,
                         'inn' => $profile->inn,
@@ -110,7 +134,6 @@ class AdminController extends Controller
                     ] : null,
                 ];
             });
-
         $restriction = app(UserRestrictionService::class);
         $usersPayload = $this->dashboardUsersPayload($request, $restriction);
 

@@ -13,6 +13,7 @@ use App\Services\HomeCatalogFeedService;
 use App\Services\PromotionCatalogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -240,4 +241,45 @@ class HomeController extends Controller
         // Или если у вас Inertia:
         // return back()->with('success', true);
     }
+public function favorites_seller(Request $request, $seller)
+{
+    try {
+        $user = Auth::user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Не авторизован'], 401);
+        }
+        
+        $sellerProfile = DB::table('seller_profiles')->where('user_id', $seller)->first();
+        
+        if (!$sellerProfile) {
+            return response()->json(['error' => 'Продавец не найден'], 404);
+        }
+        
+        // Используем сессию для хранения состояния лайка
+        $sessionKey = "seller_liked_{$user->id}_{$seller}";
+        
+        if (session($sessionKey)) {
+            // Убираем лайк
+            session()->forget($sessionKey);
+            DB::table('seller_profiles')
+                ->where('user_id', $seller)
+                ->decrement('likes_count');
+            
+            return response()->json(['is_favorite' => false]);
+        } else {
+            // Добавляем лайк
+            session()->put($sessionKey, true);
+            DB::table('seller_profiles')
+                ->where('user_id', $seller)
+                ->increment('likes_count');
+            
+            return response()->json(['is_favorite' => true]);
+        }
+        
+    } catch (\Exception $e) {
+        \Log::error('favorites_seller error: ' . $e->getMessage());
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
 }

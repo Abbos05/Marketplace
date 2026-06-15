@@ -20,8 +20,6 @@ class PickupPointController extends Controller
     {
         $points = PickupPoint::query()
             ->with(['region', 'approvedStaff.user'])
-            ->orderBy('sort_order')
-            ->orderBy('title')
             ->get()
             ->map(fn(PickupPoint $p) => [
                 'id' => $p->id,
@@ -35,29 +33,187 @@ class PickupPointController extends Controller
                     'id' => $p->approvedStaff->user->id,
                     'name' => trim($p->approvedStaff->user->name . ' ' . ($p->approvedStaff->user->last_name ?? '')),
                     'email' => $p->approvedStaff->user->email,
+                    'phone' => $p->approvedStaff->user->phone,
                 ] : null,
                 'closure_status' => $p->closure_status ?? PickupPoint::CLOSURE_NONE,
                 'closure_requested_at' => $p->closure_requested_at,
                 'closure_reason' => $p->closure_reason,
                 'closure_admin_reject_reason' => $p->closure_admin_reject_reason,
                 'closure_admin_rejected_at' => $p->closure_admin_rejected_at,
-            ]);
+            ])
+            ->sortBy([
+                // Сначала открытые (активен и есть оператор и не закрыт)
+                fn($p) => ($p['is_active'] && $p['operator'] && $p['closure_status'] !== PickupPoint::CLOSURE_CLOSED) ? 0 : 1,
+                // Потом отключённые (неактивен, но не закрыт окончательно)
+                fn($p) => (!$p['is_active'] && $p['closure_status'] !== PickupPoint::CLOSURE_CLOSED) ? 0 : 1,
+                // Потом закрытые
+                fn($p) => $p['closure_status'] === PickupPoint::CLOSURE_CLOSED ? 0 : 1,
+                'sort_order' => 'asc',
+                'title' => 'asc',
+            ])
+            ->values();
 
         $regions = Region::query()->orderBy('name')->get(['id', 'name', 'delivery_hours']);
-
-        $assignableUsers = User::query()
-            ->whereIn('role', ['user'])
-            ->whereDoesntHave('approvedPickupPointStaff')
-            ->orderBy('name')
-            ->limit(100)
-            ->get(['id', 'name', 'last_name', 'email', 'phone']);
 
         return Inertia::render('Admin/PickupPoints', [
             'pickupPoints' => $points,
             'regions' => $regions,
-            'assignableUsers' => $assignableUsers,
         ]);
     }
+
+    // Метод store удалён – администратор не создаёт пункты вручную
+
+    public function update(Request $request, PickupPoint $pickupPoint): RedirectResponse
+    {
+        $data = $request->validate([
+            'title' => 'sometimes|required|string|max:120',
+            'address' => 'sometimes|required|string|max:500',
+            'region_id' => 'nullable|exists:regions,id',
+            'sort_order' => 'nullable|integer|min:0|max:65535',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        // Если пытаются включить пункт
+        if (!empty($data['is_active']) && $data['is_active'] == true) {
+            // Запрещаем активацию окончательно закрытого пункта
+            if ($pickupPoint->closure_status === PickupPoint::CLOSURE_CLOSED) {
+                return back()->withErrors(['is_active' => 'Нельзя активировать окончательно закрытый пункт выдачи.'])->withInput();
+            }
+            // Запрещаем активацию, если нет утверждённого оператора
+            if (!$pickupPoint->approvedStaff) {
+                return back()->withErrors(['is_active' => 'Пункт не может быть активен без оператора. Сначала назначьте оператора через заявку.'])->withInput();
+            }
+            // При активации сбрасываем статус закрытия (если был pending или отклонён)
+            $data['closure_status'] = PickupPoint::CLOSURE_NONE;
+            $data['closure_requested_at'] = null;
+            $data['closure_reason'] = null;
+            $data['closure_admin_reject_reason'] = null;
+            $data['closure_admin_rejected_at'] = null;
+        }
+
+        // Если выключают пункт – просто обновляем is_active, статус закрытия не трогаем (остаётся none/pending)
+        $pickupPoint->update($data);
+
+        return redirect()->route('admin.pickup-points.index')->with('success', 'Пункт выдачи обновлён.');
+    }
+
+    public function destroy(PickupPoint $pickupPoint): RedirectResponse
+    {
+        // Отключение пункта (не окончательное закрытие)
+        $pickupPoint->update([
+            'is_active' => false,
+            'closure_status' => PickupPoint::CLOSURE_NONE,
+            'closure_requested_at' => null,
+            'closure_reason' => null,
+        ]);
+
+        return redirect()->route('admin.pickup-points.index')->with('success', 'Пункт выдачи отключён.');
+    }
+
+    // assignOperator удалён – ручное назначение отсутствует
+
+    public function approveClosure(PickupPoint $pickupPoint): RedirectResponse
+    {
+        if ($pickupPoint->closure_status !== PickupPoint::CLOSURE_PENDING) {
+            return back()->with('error', 'Нет активного запроса на закрытие.');
+        }
+
+        $check = app(PvzClosureService::class)->canRequestClosure($pickupPoint);
+        if (!$check['ok'] && str_contains($check['message'], 'заказ')) {
+            return back()->with('error', $check['message']);
+        }
+
+        $operator = $pickupPoint->approvedStaff?->user;
+
+        $pickupPoint->update([
+            'is_active' => false,
+            'closure_status' => PickupPoint::CLOSURE_CLOSED,
+            'closure_requested_at' => null,
+            'closure_admin_reject_reason' => null,
+            'closure_admin_rejected_at' => null,
+        ]);
+     
+        if ($operator) {
+            $operator->update(['role' => 'user']);
+            $pickupPoint->approvedStaff?->update(['status' => PickupPointStaff::STATUS_REJECTED]);
+            if ($pickupPoint->approvedStaff) {
+                $pickupPoint->approvedStaff->delete();
+            }
+            app(PvzNotificationService::class)->notifyClosureApproved($operator);
+        }
+
+        return back()->with('success', 'Пункт выдачи закрыт окончательно.');
+    }
+
+    public function rejectClosure(Request $request, PickupPoint $pickupPoint): RedirectResponse
+    {
+        if ($pickupPoint->closure_status !== PickupPoint::CLOSURE_PENDING) {
+            return back()->with('error', 'Нет активного запроса на закрытие.');
+        }
+
+        $data = $request->validate([
+            'reject_reason' => 'required|string|min:5|max:1000',
+        ]);
+
+        $operator = $pickupPoint->approvedStaff?->user;
+
+        $pickupPoint->update([
+            'is_active' => true,
+            'closure_status' => PickupPoint::CLOSURE_NONE,
+            'closure_requested_at' => null,
+            'closure_reason' => null,
+            'closure_admin_reject_reason' => $data['reject_reason'],
+            'closure_admin_rejected_at' => now(),
+        ]);
+
+        if ($operator) {
+            app(PvzNotificationService::class)->notifyClosureRejected($operator, $data['reject_reason']);
+        }
+
+        return back()->with('success', 'Запрос на закрытие отклонён. Пункт продолжает работу, оператор уведомлён.');
+    }
+    // public function index(): Response
+    // {
+    //     $points = PickupPoint::query()
+    //         ->with(['region', 'approvedStaff.user'])
+    //         ->orderBy('sort_order')
+    //         ->orderBy('title')
+    //         ->get()
+    //         ->map(fn(PickupPoint $p) => [
+    //             'id' => $p->id,
+    //             'title' => $p->title,
+    //             'address' => $p->address,
+    //             'region_id' => $p->region_id,
+    //             'region_name' => $p->region?->name,
+    //             'is_active' => $p->is_active,
+    //             'sort_order' => $p->sort_order,
+    //             'operator' => $p->approvedStaff?->user ? [
+    //                 'id' => $p->approvedStaff->user->id,
+    //                 'name' => trim($p->approvedStaff->user->name . ' ' . ($p->approvedStaff->user->last_name ?? '')),
+    //                 'email' => $p->approvedStaff->user->email,
+    //             ] : null,
+    //             'closure_status' => $p->closure_status ?? PickupPoint::CLOSURE_NONE,
+    //             'closure_requested_at' => $p->closure_requested_at,
+    //             'closure_reason' => $p->closure_reason,
+    //             'closure_admin_reject_reason' => $p->closure_admin_reject_reason,
+    //             'closure_admin_rejected_at' => $p->closure_admin_rejected_at,
+    //         ]);
+
+    //     $regions = Region::query()->orderBy('name')->get(['id', 'name', 'delivery_hours']);
+
+    //     $assignableUsers = User::query()
+    //         ->whereIn('role', ['user'])
+    //         ->whereDoesntHave('approvedPickupPointStaff')
+    //         ->orderBy('name')
+    //         ->limit(100)
+    //         ->get(['id', 'name', 'last_name', 'email', 'phone']);
+
+    //     return Inertia::render('Admin/PickupPoints', [
+    //         'pickupPoints' => $points,
+    //         'regions' => $regions,
+    //         'assignableUsers' => $assignableUsers,
+    //     ]);
+    // }
 
     public function store(Request $request): RedirectResponse
     {
@@ -90,51 +246,51 @@ class PickupPointController extends Controller
         return redirect()->route('admin.pickup-points.index')->with('success', 'Пункт выдачи добавлен.');
     }
 
-    public function update(Request $request, PickupPoint $pickupPoint): RedirectResponse
-    {
-        $data = $request->validate([
-            'title' => 'sometimes|required|string|max:120',
-            'address' => 'sometimes|required|string|max:500',
-            'region_id' => 'nullable|exists:regions,id',
-            'sort_order' => 'nullable|integer|min:0|max:65535',
-            'is_active' => 'sometimes|boolean',
-        ], [
-            'title.required' => 'Необходимо указать название.',
-            'title.string' => 'Название должно быть текстом.',
-            'title.max' => 'Название не должно превышать 120 символов.',
-            'address.required' => 'Необходимо указать адрес.',
-            'address.string' => 'Адрес должен быть текстом.',
-            'address.max' => 'Адрес не должен превышать 500 символов.',
-            'region_id.exists' => 'Выбранный регион не существует.',
-            'sort_order.integer' => 'Порядок сортировки должен быть числом.',
-            'sort_order.min' => 'Порядок сортировки должен быть от 0 до 65535.',
-            'sort_order.max' => 'Порядок сортировки должен быть от 0 до 65535.',
-            'is_active.boolean' => 'Статус активности должен быть true или false.',
-        ]);
-        if (!empty($data['is_active'])) {
-            $data['closure_status'] = PickupPoint::CLOSURE_NONE;
-            $data['closure_requested_at'] = null;
-            $data['closure_reason'] = null;
-            $data['closure_admin_reject_reason'] = null;
-            $data['closure_admin_rejected_at'] = null;
-        }
+    // public function update(Request $request, PickupPoint $pickupPoint): RedirectResponse
+    // {
+    //     $data = $request->validate([
+    //         'title' => 'sometimes|required|string|max:120',
+    //         'address' => 'sometimes|required|string|max:500',
+    //         'region_id' => 'nullable|exists:regions,id',
+    //         'sort_order' => 'nullable|integer|min:0|max:65535',
+    //         'is_active' => 'sometimes|boolean',
+    //     ], [
+    //         'title.required' => 'Необходимо указать название.',
+    //         'title.string' => 'Название должно быть текстом.',
+    //         'title.max' => 'Название не должно превышать 120 символов.',
+    //         'address.required' => 'Необходимо указать адрес.',
+    //         'address.string' => 'Адрес должен быть текстом.',
+    //         'address.max' => 'Адрес не должен превышать 500 символов.',
+    //         'region_id.exists' => 'Выбранный регион не существует.',
+    //         'sort_order.integer' => 'Порядок сортировки должен быть числом.',
+    //         'sort_order.min' => 'Порядок сортировки должен быть от 0 до 65535.',
+    //         'sort_order.max' => 'Порядок сортировки должен быть от 0 до 65535.',
+    //         'is_active.boolean' => 'Статус активности должен быть true или false.',
+    //     ]);
+    //     if (!empty($data['is_active'])) {
+    //         $data['closure_status'] = PickupPoint::CLOSURE_NONE;
+    //         $data['closure_requested_at'] = null;
+    //         $data['closure_reason'] = null;
+    //         $data['closure_admin_reject_reason'] = null;
+    //         $data['closure_admin_rejected_at'] = null;
+    //     }
 
-        $pickupPoint->update($data);
+    //     $pickupPoint->update($data);
 
-        return redirect()->route('admin.pickup-points.index')->with('success', 'Пункт выдачи обновлён.');
-    }
+    //     return redirect()->route('admin.pickup-points.index')->with('success', 'Пункт выдачи обновлён.');
+    // }
 
-    public function destroy(PickupPoint $pickupPoint): RedirectResponse
-    {
-        $pickupPoint->update([
-            'is_active' => false,
-            'closure_status' => PickupPoint::CLOSURE_NONE,
-            'closure_requested_at' => null,
-            'closure_reason' => null,
-        ]);
+    // public function destroy(PickupPoint $pickupPoint): RedirectResponse
+    // {
+    //     $pickupPoint->update([
+    //         'is_active' => false,
+    //         'closure_status' => PickupPoint::CLOSURE_NONE,
+    //         'closure_requested_at' => null,
+    //         'closure_reason' => null,
+    //     ]);
 
-        return redirect()->route('admin.pickup-points.index')->with('success', 'Пункт выдачи отключён.');
-    }
+    //     return redirect()->route('admin.pickup-points.index')->with('success', 'Пункт выдачи отключён.');
+    // }
 
     public function assignOperator(Request $request, PickupPoint $pickupPoint): RedirectResponse
     {
@@ -181,66 +337,66 @@ class PickupPointController extends Controller
         return back()->with('success', 'Оператор назначен, пункт активирован.');
     }
 
-    public function approveClosure(PickupPoint $pickupPoint): RedirectResponse
-    {
-        if ($pickupPoint->closure_status !== PickupPoint::CLOSURE_PENDING) {
-            return back()->with('error', 'Нет активного запроса на закрытие.');
-        }
+    // public function approveClosure(PickupPoint $pickupPoint): RedirectResponse
+    // {
+    //     if ($pickupPoint->closure_status !== PickupPoint::CLOSURE_PENDING) {
+    //         return back()->with('error', 'Нет активного запроса на закрытие.');
+    //     }
 
-        $check = app(PvzClosureService::class)->canRequestClosure($pickupPoint);
-        if (!$check['ok'] && str_contains($check['message'], 'заказ')) {
-            return back()->with('error', $check['message']);
-        }
+    //     $check = app(PvzClosureService::class)->canRequestClosure($pickupPoint);
+    //     if (!$check['ok'] && str_contains($check['message'], 'заказ')) {
+    //         return back()->with('error', $check['message']);
+    //     }
 
-        $operator = $pickupPoint->approvedStaff?->user;
+    //     $operator = $pickupPoint->approvedStaff?->user;
 
-        $pickupPoint->update([
-            'is_active' => false,
-            'closure_status' => PickupPoint::CLOSURE_CLOSED,
-            'closure_requested_at' => null,
-            'closure_admin_reject_reason' => null,
-            'closure_admin_rejected_at' => null,
-        ]);
+    //     $pickupPoint->update([
+    //         'is_active' => false,
+    //         'closure_status' => PickupPoint::CLOSURE_CLOSED,
+    //         'closure_requested_at' => null,
+    //         'closure_admin_reject_reason' => null,
+    //         'closure_admin_rejected_at' => null,
+    //     ]);
 
-        if ($operator) {
-            $operator->update(['role' => 'user']);
-            $pickupPoint->approvedStaff?->update(['status' => PickupPointStaff::STATUS_REJECTED]);
-            app(PvzNotificationService::class)->notifyClosureApproved($operator);
-        }
+    //     if ($operator) {
+    //         $operator->update(['role' => 'user']);
+    //         $pickupPoint->approvedStaff?->update(['status' => PickupPointStaff::STATUS_REJECTED]);
+    //         app(PvzNotificationService::class)->notifyClosureApproved($operator);
+    //     }
 
-        return back()->with('success', 'Пункт выдачи закрыт.');
-    }
+    //     return back()->with('success', 'Пункт выдачи закрыт.');
+    // }
 
-    public function rejectClosure(Request $request, PickupPoint $pickupPoint): RedirectResponse
-    {
-        if ($pickupPoint->closure_status !== PickupPoint::CLOSURE_PENDING) {
-            return back()->with('error', 'Нет активного запроса на закрытие.');
-        }
+    // public function rejectClosure(Request $request, PickupPoint $pickupPoint): RedirectResponse
+    // {
+    //     if ($pickupPoint->closure_status !== PickupPoint::CLOSURE_PENDING) {
+    //         return back()->with('error', 'Нет активного запроса на закрытие.');
+    //     }
 
-        $data = $request->validate([
-            'reject_reason' => 'required|string|min:5|max:1000',
-        ], [
-            'reject_reason.required' => 'Укажите причину отклонения закрытия — оператор увидит её в уведомлениях.',
-            'reject_reason.min' => 'Причина должна содержать не менее :min символов.',
-        ], [
-            'reject_reason' => 'причина отклонения',
-        ]);
+    //     $data = $request->validate([
+    //         'reject_reason' => 'required|string|min:5|max:1000',
+    //     ], [
+    //         'reject_reason.required' => 'Укажите причину отклонения закрытия — оператор увидит её в уведомлениях.',
+    //         'reject_reason.min' => 'Причина должна содержать не менее :min символов.',
+    //     ], [
+    //         'reject_reason' => 'причина отклонения',
+    //     ]);
 
-        $operator = $pickupPoint->approvedStaff?->user;
+    //     $operator = $pickupPoint->approvedStaff?->user;
 
-        $pickupPoint->update([
-            'is_active' => true,
-            'closure_status' => PickupPoint::CLOSURE_NONE,
-            'closure_requested_at' => null,
-            'closure_reason' => null,
-            'closure_admin_reject_reason' => $data['reject_reason'],
-            'closure_admin_rejected_at' => now(),
-        ]);
+    //     $pickupPoint->update([
+    //         'is_active' => true,
+    //         'closure_status' => PickupPoint::CLOSURE_NONE,
+    //         'closure_requested_at' => null,
+    //         'closure_reason' => null,
+    //         'closure_admin_reject_reason' => $data['reject_reason'],
+    //         'closure_admin_rejected_at' => now(),
+    //     ]);
 
-        if ($operator) {
-            app(PvzNotificationService::class)->notifyClosureRejected($operator, $data['reject_reason']);
-        }
+    //     if ($operator) {
+    //         app(PvzNotificationService::class)->notifyClosureRejected($operator, $data['reject_reason']);
+    //     }
 
-        return back()->with('success', 'Запрос на закрытие отклонён. Пункт продолжает работу, оператор уведомлён.');
-    }
+    //     return back()->with('success', 'Запрос на закрытие отклонён. Пункт продолжает работу, оператор уведомлён.');
+    // }
 }

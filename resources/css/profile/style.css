@@ -1322,7 +1322,7 @@
 
 .blocked-banner__btn--ghost {
     background: transparent;
-    color: #fca5a5;
+    color: black;
     border: 1px solid rgba(239, 68, 68, 0.4);
 }
 

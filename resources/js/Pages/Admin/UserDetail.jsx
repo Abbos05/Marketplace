@@ -693,8 +693,8 @@ export default function UserDetail({
                                             <span>{new Date(ev.created_at).toLocaleString('ru-RU')}</span>
                                         </div>
                                         {ev.actor && (
-                                            <div className="adm-audit-item__actor">
-                                                Кто: {ev.actor.name || ev.actor.email} ({ev.actor.role})
+                                            <div className="adm-audit-item__actor" title={ev.actor.email}>
+                                                Кто: {ev.actor.name}, {ev.actor.phone} ({ev.actor.role})
                                             </div>
                                         )}
                                         {ev.event_type === 'seller_company_closed' && (

@@ -2,8 +2,7 @@
 
 .msg-page {
   width: 100%;
-  margin: 1rem auto 3rem;
-  padding: 0 1rem;
+  margin: 1rem auto 0;
   container-type: inline-size;
   container-name: msg-page;
   min-height: 0;
@@ -1076,6 +1075,18 @@
     min-height: calc(100vh - 80px);
     max-height: none;
   }
+  .msg-sidebar-actions{
+    display: none;
+  }
+   .msg-row--own .msg-bubble{
+    width: 90%;
+  }
+  .msg-sidebar-head{
+    flex-direction: row;
+  }
+  .msg-mac-controls{
+    display: none;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1141,7 +1152,9 @@
     border-radius: 10px;
     font-size: 0;
   }
-
+   .msg-row--own .msg-bubble{
+    width: 85%;
+  }
 }
 
 @media (max-width: 360px) {
@@ -1155,6 +1168,10 @@
   .msg-composer-clip {
     padding: 0.25rem;
   }
+
+  .msg-row--own .msg-bubble{
+    width: 80%;
+  }
 }
 
 /* Встроенная лента уведомлений (как диалог) */
@@ -1166,7 +1183,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f59e0b, #ea580c);
+  background: linear-gradient(135deg, #d30035, #FF2E63);
   color: #fff;
 }
 

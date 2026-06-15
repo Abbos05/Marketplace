@@ -39,7 +39,7 @@ class AccountDeletionService
             ];
         }
 
-        if ($user->sellerProfile) {
+        if ($user->sellerProfile && $user->role == 'seller') {
             $blockers[] = [
                 'code' => 'seller_company',
                 'message' => 'Сначала удалите компанию продавца в настройках продавца. ',

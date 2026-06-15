@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\PreparesCatalogRecommendations;
 use App\Models\Order;
 use App\Models\PickupPoint;
+use App\Models\PickupPointStaff;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\RedirectResponse;
@@ -151,7 +152,7 @@ class ProfileController extends Controller
                 'address' => $p->address,
                 'region_name' => $p->region?->name,
             ]);
-
+        $pvz = PickupPointStaff::where('user_id', $user->id)->latest()->first();
         $onlineThreshold = time() - 300;
         $userSessions = DB::table('sessions')
             ->where('user_id', $user->id)
@@ -227,12 +228,12 @@ class ProfileController extends Controller
                 'order_id' => $r->order_id,
             ];
         });
-
         return Inertia::render('Profile/Index', [
             'LikeProducts' => $LikeProducts,
             'auth' => ['user' => $user],
             'categories' => Category::all(),
             'orders' => $orders,
+            'mypvz' => $pvz,
             'myFavorites' => $myFavorites,
             'sellerProfile' => $user->sellerProfile,
             'closedSellerProfile' => app(\App\Services\AccountDeletionService::class)->closedSellerProfilePayload($user->id),
@@ -750,12 +751,12 @@ class ProfileController extends Controller
             ? ['user', 'seller', 'pvz', 'moderator', 'admin']
             : ['user', 'seller'];
 
-$request->validate([
-    'role' => 'required|in:' . implode(',', $allowedRoles),
-], [
-    'role.required' => 'Необходимо указать роль.',
-    'role.in' => 'Выбранная роль недопустима.',
-]);
+        $request->validate([
+            'role' => 'required|in:' . implode(',', $allowedRoles),
+        ], [
+            'role.required' => 'Необходимо указать роль.',
+            'role.in' => 'Выбранная роль недопустима.',
+        ]);
 
         if ($user->id === $actor->id || $user->id === 1) {
             return back()->with('error', 'Нельзя изменить роль этого пользователя');
@@ -781,7 +782,7 @@ $request->validate([
                 $request->role,
             );
         }
-
+            
         return back()->with('success', 'Роль пользователя изменена');
     }
 

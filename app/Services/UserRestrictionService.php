@@ -73,6 +73,7 @@ class UserRestrictionService
                 ->where('seller_id', $user->id)
                 ->update(['is_on_action' => false]);
         }
+       
     }
 
     public function roleFlagsFor(User $user): array

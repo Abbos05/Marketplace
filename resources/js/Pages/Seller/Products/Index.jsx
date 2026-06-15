@@ -203,6 +203,7 @@ export default function Index({ products, statusCounts = {}, filters = {}, highl
                                     <h3 className="idx-card-title" title={product.title}>
                                         {product.title}
                                     </h3>
+                                    <p className="idx-card-cat">Артикул: <span>{product.sku}</span></p>
                                     <p className="idx-card-cat idx-card-cat--variant">{product.variant_label}</p>
                                     <p className="idx-card-cat">{product.category?.name || '—'}</p>
 

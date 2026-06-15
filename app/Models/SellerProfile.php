@@ -13,8 +13,15 @@ class SellerProfile extends Model
     protected $table = 'seller_profiles';
 
     protected $fillable = [
-        'user_id', 'shop_name', 'description', 'inn', 'legal_address',
-        'pickup_address', 'rating', 'total_sales', 'working_hours',
+        'user_id',
+        'shop_name',
+        'description',
+        'inn',
+        'legal_address',
+        'pickup_address',
+        'rating',
+        'total_sales',
+        'working_hours',
         'restore_requested_at',
         'pending_shop_name',
         'pending_description',
@@ -54,9 +61,10 @@ class SellerProfile extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
-    }
+    }   
     public function products()
     {
         return $this->hasMany(Product::class, 'seller_id', 'user_id');
     }
+ 
 }

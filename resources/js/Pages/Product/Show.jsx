@@ -26,7 +26,7 @@ function IconReviews({ className = '' }) {
         stroke="currentColor"
         strokeWidth="1.75"
         strokeLinejoin="round"
-        d="M7 8h10M7 12h7M7 16h5M5 4h14a1 1 0 011 1v12l-3-2H5a1 1 0 01-1-1V5a1 1 0 011-1z"
+        d="M7 8h10M7 12h7M7 5M5 4h14a1 1 0 011 1v12l-3-2H5a1 1 0 01-1-1V5a1 1 0 011-1z"
       />
     </svg>
   );
@@ -779,7 +779,7 @@ export default function ProductShow({
                         fill="#FF0000"
                       />
                     </svg>
-                    <span>{formatCompact(seller?.total_sales ?? 0)}</span>
+                    <span>{formatCompact(seller?.likes_count ?? 0)}</span>
                   </div>
                   <div className="product-page__seller-rating">
                     <IconStar className="product-page__ui-icon product-page__ui-icon--amber" />

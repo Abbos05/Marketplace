@@ -27,7 +27,6 @@
 }
 
 .pickup-cooperate__card--pending {
-  border-color: #f0d78c;
   background: #fffdf5;
 }
 
@@ -276,4 +275,123 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+/* Прогресс-бар */
+.pickup-apply__progress {
+    position: relative;
+    background: #e5e7eb;
+    border-radius: 20px;
+    height: 8px;
+    margin: 20px 0 16px;
+    overflow: hidden;
+}
+.pickup-apply__progress-bar {
+    background: var(--background, #ff2e63);
+    width: 0%;
+    height: 100%;
+    transition: width 0.3s ease;
+    border-radius: 20px;
+}
+.pickup-apply__progress-text {
+    position: absolute;
+    right: 0;
+    top: -20px;
+    font-size: 11px;
+    color: #667685;
+}
+
+/* Поля с ошибкой */
+.pickup-cooperate__field input.error,
+.pickup-cooperate__field select.error,
+.pickup-apply__form textarea.error {
+    border-color: #c00;
+    background-color: #fff5f5;
+}
+.pickup-cooperate__field input:focus.error,
+.pickup-cooperate__field select:focus.error {
+    box-shadow: 0 0 0 2px rgba(204, 0, 0, 0.15);
+}
+
+/* Спиннер для кнопки отправки */
+.pickup-apply__spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #fff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Заголовок */
+.pickup-apply__header {
+    margin-bottom: 8px;
+}
+
+/* Подсказки */
+.pickup-cooperate__hint {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+/* Карточка ожидающей заявки */
+.pickup-cooperate__card--pending {
+    border-left: 4px solid var(--backgroundBlack);
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.pickup-cooperate__card--pending h2 {
+    font-size: 1.2rem;
+    margin: 0 0 12px 0;
+    color: #b86e00;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pickup-cooperate__card--pending h2::before {
+    font-size: 1.2rem;
+}
+
+.pickup-cooperate__card--pending p {
+    margin: 6px 0;
+    line-height: 1.4;
+}
+
+.pickup-cooperate__card--pending strong {
+    color: #2c3e2f;
+    font-weight: 600;
+}
+
+.pickup-cooperate__card--pending .pickup-cooperate__muted {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.08);
+    font-size: 0.8rem;
+    color: #8b7a5c;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pickup-cooperate__card--pending .pickup-cooperate__muted::before {
+    content: "📅";
+    font-size: 0.8rem;
+}
+
+/* Для мобильных устройств */
+@media (max-width: 640px) {
+    .pickup-cooperate__card--pending {
+        padding: 14px 16px;
+    }
+    .pickup-cooperate__card--pending h2 {
+        font-size: 1rem;
+    }
 }

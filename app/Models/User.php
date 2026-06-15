@@ -9,6 +9,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes; // <--- Добавьте этот импорт
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\Cache;
+
 /**
  * @method void decrement(string $column, float|int $amount = 1)
  */
@@ -299,5 +301,10 @@ class User extends Authenticatable
         ])->save();
 
         return $code;
+    }
+    public function hasLikedSeller($sellerId)
+    {
+        $cacheKey = "seller_like_{$this->id}_{$sellerId}";
+        return Cache::has($cacheKey);
     }
 }

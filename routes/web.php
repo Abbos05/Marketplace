@@ -94,6 +94,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Избранное
     Route::post('/favorites/{product}', [HomeController::class, 'favorites'])
         ->name('favorites.toggle');
+    Route::post('/favorites/seller/{seller}', [HomeController::class, 'favorites_seller'])
+        ->name('favorites.seller.toggle');
     Route::get('/favorites', [ProfileController::class, 'favorites'])
         ->name('favorites.index');
 

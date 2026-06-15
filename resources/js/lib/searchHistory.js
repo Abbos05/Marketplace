@@ -41,3 +41,37 @@ export function addSearchHistory(query) {
 }
 
 export const SEARCH_HISTORY_LIMIT = MAX_ITEMS;
+/**
+ * Удалить конкретный элемент из истории поиска
+ * @param {string} query - поисковый запрос для удаления
+ */
+export function removeSearchHistoryItem(query) {
+  const value = String(query ?? '').trim();
+  if (!value || typeof window === 'undefined') {
+    return;
+  }
+
+  const current = getSearchHistory();
+  const next = current.filter((item) => item !== value);
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+/**
+ * Очистить всю историю поиска
+ */
+export function clearSearchHistory() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}

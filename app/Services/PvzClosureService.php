@@ -29,7 +29,7 @@ class PvzClosureService
         }
 
         if ($point->closure_status === PickupPoint::CLOSURE_CLOSED || ! $point->is_active) {
-            return ['ok' => false, 'message' => 'Пункт уже закрыт.'];
+            return ['ok' => false, 'message' => 'Пункт выдачи не активно.'];
         }
 
         $count = $this->activeOrdersCount($point);

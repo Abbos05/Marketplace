@@ -39,7 +39,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $status = $request->query('status', 'all');
-        $sort   = $request->query('sort', 'newest');
+        $sort = $request->query('sort', 'newest');
         $search = trim((string) $request->query('search', ''));
 
         $query = ProductVariant::query()
@@ -50,25 +50,25 @@ class ProductController extends Controller
                 }
                 if ($search !== '') {
                     $q->where(function ($sq) use ($search) {
-                        $sq->where('title', 'like', '%'.$search.'%')
-                            ->orWhere('short_description', 'like', '%'.$search.'%');
+                        $sq->where('title', 'like', '%' . $search . '%')
+                            ->orWhere('short_description', 'like', '%' . $search . '%');
                     });
                 }
             })
             ->with([
-                'images' => fn ($q) => $q->orderByDesc('is_main')->orderBy('sort_order'),
-                'product' => fn ($q) => $q->with(['category']),
+                'images' => fn($q) => $q->orderByDesc('is_main')->orderBy('sort_order'),
+                'product' => fn($q) => $q->with(['category']),
             ]);
 
         match ($sort) {
-            'oldest'     => $query->orderBy('id'),
-            'price_asc'  => $query->orderBy('price'),
+            'oldest' => $query->orderBy('id'),
+            'price_asc' => $query->orderBy('price'),
             'price_desc' => $query->orderByDesc('price'),
-            'title'      => $query
+            'title' => $query
                 ->join('products', 'products.id', '=', 'product_variants.product_id')
                 ->orderBy('products.title')
                 ->select('product_variants.*'),
-            default      => $query->orderByDesc('id'),
+            default => $query->orderByDesc('id'),
         };
 
         $products = $query->paginate(50)->withQueryString();
@@ -97,21 +97,22 @@ class ProductController extends Controller
             $badges = $promotionBadgesByProduct[$productId] ?? [];
 
             return [
-                'id'             => $variant->id,
-                'product_id'     => $product?->id,
-                'title'          => $product?->title ?? 'Товар',
-                'variant_label'  => $variant->displayLabel(),
-                'category'       => ['name' => $product?->category?->name],
-                'min_price'      => (float) $variant->price,
-                'status'         => $product?->status,
+                'id' => $variant->id,
+                'sku' => $variant->sku,
+                'product_id' => $product?->id,
+                'title' => $product?->title ?? 'Товар',
+                'variant_label' => $variant->displayLabel(),
+                'category' => ['name' => $product?->category?->name],
+                'min_price' => (float) $variant->price,
+                'status' => $product?->status,
                 'moderation_comment' => $product?->moderation_comment,
-                'is_listed'      => (bool) ($product?->is_on_action ?? false),
+                'is_listed' => (bool) ($product?->is_on_action ?? false),
                 'variants_count' => (int) ($variantCountsByProduct[$product?->id] ?? 0),
-                'total_stock'    => (int) $variant->stock,
-                'main_image'     => $variant->images->first()?->url
+                'total_stock' => (int) $variant->stock,
+                'main_image' => $variant->images->first()?->url
                     ?? $product?->resolveListingImageUrl()
                     ?? '/img/products/default.png',
-                'created_at'     => $variant->created_at?->format('d.m.Y'),
+                'created_at' => $variant->created_at?->format('d.m.Y'),
                 'promotion_badges' => $badges,
                 'promotion_label' => $badges[0]['label'] ?? null,
             ];
@@ -122,8 +123,8 @@ class ProductController extends Controller
             ->where('products.seller_id', Auth::id())
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($sq) use ($search) {
-                    $sq->where('products.title', 'like', '%'.$search.'%')
-                        ->orWhere('products.short_description', 'like', '%'.$search.'%');
+                    $sq->where('products.title', 'like', '%' . $search . '%')
+                        ->orWhere('products.short_description', 'like', '%' . $search . '%');
                 });
             })
             ->selectRaw('products.status as status, count(product_variants.id) as cnt')
@@ -134,9 +135,9 @@ class ProductController extends Controller
         $highlightVariantId = $request->session()->pull('highlight_variant_id');
 
         return Inertia::render('Seller/Products/Index', [
-            'products'    => $products,
-            'statusCounts'=> $counts,
-            'filters'     => ['status' => $status, 'sort' => $sort, 'search' => $search],
+            'products' => $products,
+            'statusCounts' => $counts,
+            'filters' => ['status' => $status, 'sort' => $sort, 'search' => $search],
             'highlightVariantId' => $highlightVariantId ? (int) $highlightVariantId : null,
         ]);
     }
@@ -151,7 +152,7 @@ class ProductController extends Controller
                 (int) $user->id === (int) $product->seller_id || $user->isStaff()
             );
 
-            if (! $canPreview) {
+            if (!$canPreview) {
                 return Inertia::render('Product/Unavailable', [
                     'reason' => $blockReason,
                     'message' => $product->storefrontBlockMessage(),
@@ -167,7 +168,7 @@ class ProductController extends Controller
 
         $variants = $product->variants()
             ->where('is_active', true)
-            ->with(['images' => fn ($q) => $q->orderByDesc('is_main')->orderBy('sort_order')])
+            ->with(['images' => fn($q) => $q->orderByDesc('is_main')->orderBy('sort_order')])
             ->orderBy('price')
             ->get();
 
@@ -178,13 +179,13 @@ class ProductController extends Controller
                 'stock' => 0,
                 'is_active' => true,
             ]);
-            $created->load(['images' => fn ($q) => $q->orderByDesc('is_main')->orderBy('sort_order')]);
+            $created->load(['images' => fn($q) => $q->orderByDesc('is_main')->orderBy('sort_order')]);
             $variants = collect([$created]);
         }
 
         $buildGalleryForVariant = function (ProductVariant $v): array {
             $fromVariant = $v->images
-                ->map(fn ($img) => Product::normalizeListingUrl($img->url))
+                ->map(fn($img) => Product::normalizeListingUrl($img->url))
                 ->filter()
                 ->values()
                 ->all();
@@ -205,10 +206,10 @@ class ProductController extends Controller
             $favoriteVariantIds = $favoriteRows
                 ->pluck('variant_id')
                 ->filter()
-                ->map(fn ($id) => (int) $id)
+                ->map(fn($id) => (int) $id)
                 ->values()
                 ->all();
-            $hasProductFavorite = $favoriteRows->contains(fn ($row) => $row->variant_id === null);
+            $hasProductFavorite = $favoriteRows->contains(fn($row) => $row->variant_id === null);
         }
 
         $commissionService = app(CommissionService::class);
@@ -281,11 +282,11 @@ class ProductController extends Controller
         $mainImage = $selectedRow['image'] ?? null;
 
         $baseSpecs = $product->attributeValues
-            ->map(fn ($av) => [
+            ->map(fn($av) => [
                 'name' => $av->attribute?->name ?? 'Характеристика',
                 'value' => (string) ($av->value ?? ''),
             ])
-            ->filter(fn ($row) => $row['value'] !== '')
+            ->filter(fn($row) => $row['value'] !== '')
             ->values()
             ->all();
 
@@ -308,8 +309,8 @@ class ProductController extends Controller
 
         $variantLabel = $selectedVariant?->displayLabel() ?? '';
         $displayTitle = $product->title;
-        if ($variantLabel !== '' && $variantLabel !== 'Вариант #'.$selectedRow['id']) {
-            $displayTitle = $product->title.' — '.$variantLabel;
+        if ($variantLabel !== '' && $variantLabel !== 'Вариант #' . $selectedRow['id']) {
+            $displayTitle = $product->title . ' — ' . $variantLabel;
         }
 
         $moderatedReviewsQuery = $product->reviews()->where('is_moderated', true);
@@ -367,7 +368,7 @@ class ProductController extends Controller
         })->values()->all();
 
         $isFavorite = (bool) ($selectedRow['is_favorite'] ?? false);
-        if (! $isFavorite && $variants->count() === 1) {
+        if (!$isFavorite && $variants->count() === 1) {
             $isFavorite = $hasProductFavorite;
         }
 
@@ -410,21 +411,24 @@ class ProductController extends Controller
 
         $product->setAttribute('promotion_badges', Promotion::query()
             ->active()
-            ->whereHas('products', fn ($q) => $q->where('products.id', $product->id))
+            ->whereHas('products', fn($q) => $q->where('products.id', $product->id))
             ->get(['badge_label'])
-            ->map(fn (Promotion $p) => [
+            ->map(fn(Promotion $p) => [
                 'label' => $p->badge_label,
                 'title' => $p->badge_label,
             ])
             ->values()
             ->all());
-
+        $shopFavoritesCount = DB::table('favorites')
+            ->join('products', 'favorites.product_id', '=', 'products.id')
+            ->where('products.seller_id', $seller->id)
+            ->count();
         $sellerPayload = $seller ? [
             'id' => $seller->id,
             'name' => $seller->sellerProfile?->shop_name ?? $seller->name,
             'avatar' => $seller->avatar ? Product::normalizeListingUrl($seller->avatar) : null,
             'rating' => $seller->sellerProfile ? (float) $seller->sellerProfile->rating : null,
-            'total_sales' => (int) ($seller->sellerProfile?->total_sales ?? 0),
+            'likes_count' => (int) ($shopFavoritesCount ?? 0),
             'verified' => (bool) $seller->sellerProfile,
         ] : null;
 
@@ -437,12 +441,12 @@ class ProductController extends Controller
             ->orderBy('sort_order')
             ->orderBy('title')
             ->get()
-            ->map(fn (PickupPoint $p) => [
+            ->map(fn(PickupPoint $p) => [
                 'id' => $p->id,
                 'title' => $p->title,
                 'address' => $p->address,
                 'region' => $p->region?->name,
-                'label' => $p->title.($p->region ? ' — '.$p->region->name : ''),
+                'label' => $p->title . ($p->region ? ' — ' . $p->region->name : ''),
                 'delivery_hours' => $p->region?->delivery_hours,
             ]);
 

@@ -63,13 +63,13 @@ export default function Settings({
                                     value={data.closure_reason}
                                     onChange={(e) => setData('closure_reason', e.target.value)}
                                     style={{ width: '100%', maxWidth: 480, padding: 10, borderRadius: 10, border: '1px solid #ccc' }}
-                                    disabled={!canRequestClosure || processing}
+                                    disabled={ processing}
                                 />
                             </label>
                             <button
                                 type="submit"
                                 className="pvz-btn pvz-btn--outline"
-                                disabled={!canRequestClosure || processing}
+                                disabled={ processing}
                             >
                                 {processing ? 'Отправка…' : 'Запросить закрытие пункта'}
                             </button>

@@ -38,7 +38,7 @@ export default function PhoneVerificationModal({ isOpen, onClose, auth, onSucces
     setPhoneError('');
     setPhoneInfo('');
     setResendCooldown(0);
-  }, [isOpen, auth?.user?.name, auth?.user?.last_name, auth?.user?.email]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return undefined;

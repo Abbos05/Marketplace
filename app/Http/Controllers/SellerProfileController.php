@@ -16,8 +16,6 @@ class SellerProfileController extends Controller
      */
     public function store(Request $request)
     {
-        \Log::info('Store request:', $request->all());
-
         $request->validate([
             'inn' => 'required|string|min:10|max:12|unique:seller_profiles,inn',
             'shop_name' => 'required|string|max:120',
@@ -48,6 +46,9 @@ class SellerProfileController extends Controller
         if ($user->is_blocked) {
             return back()->withErrors(['error' => 'Аккаунт заблокирован.']);
         }
+        if (!$user->email) {
+            return back()->withErrors(['error' => 'Укажите имя, email и подтвердите телефон, чтобы открыть все возможности платформы .']);
+        }
 
         if (in_array($user->role, ['admin', 'moderator'], true)) {
             return back()->withErrors([
@@ -65,14 +66,9 @@ class SellerProfileController extends Controller
             return back()->withErrors(['error' => 'У вас уже есть компания']);
         }
 
-        if (app(AccountDeletionService::class)->closedSellerProfileFor($user->id)) {
-            return back()->withErrors([
-                'error' => 'У вас уже была компания. Восстановите её через ссылку «Стать продавцом» в подвале сайта, а не создавайте новую.',
-            ]);
-        }
+       
 
         DB::beginTransaction();
-
         try {
             // working_hours уже приходит как объект/массив
             $workingHours = $request->working_hours;
@@ -96,13 +92,11 @@ class SellerProfileController extends Controller
             ]);
 
             // Меняем роль пользователя на seller
-            $user->role = 'seller';
-            $user->save();
+
 
             DB::commit();
-
-            \Log::info('Seller profile created successfully');
-
+            $user->role = 'user';
+            $user->save();
             return redirect()->back()->with('success', 'Компания успешно добавлена! Теперь вы продавец.');
 
         } catch (\Exception $e) {
@@ -187,7 +181,9 @@ class SellerProfileController extends Controller
         if ($user->is_blocked) {
             return back()->withErrors(['error' => 'Аккаунт заблокирован.']);
         }
-
+        if (!$user->email) {
+            return back()->withErrors(['error' => 'Укажите имя, email и подтвердите телефон, чтобы открыть все возможности платформы .']);
+        }
         try {
             app(AccountDeletionService::class)->requestSellerCompanyRestore($user);
         } catch (\Illuminate\Validation\ValidationException $e) {

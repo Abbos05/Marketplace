@@ -1,35 +1,104 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import '../../../css/admin/dashboard.css';
 
 const inertiaOpts = { preserveScroll: true, preserveState: false };
 
-export default function AdminPickupPoints({ auth, pickupPoints = [], regions = [], assignableUsers = [] }) {
-    const assignForm = useForm({ user_id: '', pickup_point_id: '' });
-    const createForm = useForm({
-        title: '',
-        address: '',
-        region_id: regions[0]?.id ?? '',
-        sort_order: 0,
-    });
+export default function AdminPickupPoints({ auth, pickupPoints = [], regions = [] }) {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'inactive'
+    const [sortColumn, setSortColumn] = useState('sort_order');
+    const [sortDirection, setSortDirection] = useState('asc');
+    const [editingId, setEditingId] = useState(null);
+    let count = pickupPoints.length < 200 ? pickupPoints.length : 200 ;
 
-    const submitCreate = (e) => {
-        e.preventDefault();
-        createForm.post(route('admin.pickup-points.store'), {
-            ...inertiaOpts,
-            onSuccess: () => createForm.reset('title', 'address', 'sort_order'),
-        });
-    };
+    // Сброс редактирования при изменении фильтров
+    useEffect(() => {
+        setEditingId(null);
+    }, [searchQuery, filterStatus, sortColumn, sortDirection]);
 
-    const assignOperator = (pickupPointId) => {
-        if (!assignForm.data.user_id) {
-            alert('Выберите пользователя');
-            return;
+    // Фильтрация
+    const filteredPoints = useMemo(() => {
+        let result = [...pickupPoints];
+
+        // Фильтр по активности
+        if (filterStatus === 'active') {
+            result = result.filter(p => p.is_active === true);
+        } else if (filterStatus === 'inactive') {
+            result = result.filter(p => p.is_active === false);
         }
-        router.post(route('admin.pickup-points.assign-operator', pickupPointId), {
-            user_id: assignForm.data.user_id,
-        }, { ...inertiaOpts, onSuccess: () => assignForm.reset() });
+
+        // Поиск
+        if (searchQuery.trim()) {
+            const query = searchQuery.trim().toLowerCase();
+            result = result.filter(p => {
+                count = 50;
+                const titleMatch = p.title?.toLowerCase().includes(query);
+                const addressMatch = p.address?.toLowerCase().includes(query);
+                const operatorNameMatch = p.operator?.name?.toLowerCase().includes(query);
+                const operatorEmailMatch = p.operator?.email?.toLowerCase().includes(query);
+                const operatorPhoneMatch = p.operator?.phone?.toLowerCase().includes(query);
+                return titleMatch || addressMatch || operatorNameMatch || operatorEmailMatch || operatorPhoneMatch;
+            });
+        }
+
+        return result;
+    }, [pickupPoints, searchQuery, filterStatus]);
+
+    // Сортировка
+    const sortedPoints = useMemo(() => {
+        const sorted = [...filteredPoints];
+        const direction = sortDirection === 'asc' ? 1 : -1;
+
+        sorted.sort((a, b) => {
+            let valA, valB;
+
+            switch (sortColumn) {
+                case 'title':
+                    valA = a.title || '';
+                    valB = b.title || '';
+                    break;
+                case 'address':
+                    valA = a.address || '';
+                    valB = b.address || '';
+                    break;
+                case 'region_name':
+                    valA = a.region_name || '';
+                    valB = b.region_name || '';
+                    break;
+                case 'sort_order':
+                    valA = a.sort_order ?? 0;
+                    valB = b.sort_order ?? 0;
+                    return (valA - valB) * direction;
+                case 'operator_name':
+                    valA = a.operator?.name || '';
+                    valB = b.operator?.name || '';
+                    break;
+                case 'is_active':
+                    valA = a.is_active ? 1 : 0;
+                    valB = b.is_active ? 1 : 0;
+                    return (valA - valB) * direction;
+                default:
+                    return 0;
+            }
+
+            if (typeof valA === 'string') {
+                return valA.localeCompare(valB) * direction;
+            }
+            return (valA - valB) * direction;
+        });
+
+        return sorted;
+    }, [filteredPoints, sortColumn, sortDirection]);
+
+    const handleSort = (column) => {
+        if (sortColumn === column) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
     };
 
     const deactivate = (id) => {
@@ -59,7 +128,6 @@ export default function AdminPickupPoints({ auth, pickupPoints = [], regions = [
         return '—';
     };
 
-    const [editingId, setEditingId] = useState(null);
     const editForm = useForm({
         title: '',
         address: '',
@@ -86,6 +154,10 @@ export default function AdminPickupPoints({ auth, pickupPoints = [], regions = [
         });
     };
 
+    const SortIcon = ({ column }) => {
+        if (sortColumn !== column) return <span style={{ opacity: 0.3 }}>↕️</span>;
+        return sortDirection === 'asc' ? <span>↑</span> : <span>↓</span>;
+    };
     return (
         <MainLayout auth={auth}>
             <Head title="Пункты выдачи · Админ" />
@@ -97,80 +169,71 @@ export default function AdminPickupPoints({ auth, pickupPoints = [], regions = [
 
                 <h1 className="adm-title">Пункты выдачи</h1>
 
-                <div className="adm-detail-card" style={{ marginBottom: 24, padding: 20 }}>
-                    <h2 className="adm-stat-label" style={{ marginTop: 0, marginBottom: 16, fontSize: 16, fontWeight: 700 }}>
-                        Новый пункт
-                    </h2>
-                    <form onSubmit={submitCreate} style={{ display: 'grid', gap: 12, maxWidth: 720 }}>
-                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            Название
-                            <input
-                                type="text"
-                                value={createForm.data.title}
-                                onChange={(e) => createForm.setData('title', e.target.value)}
-                                className="admin-search-input"
-                                required
-                            />
-                        </label>
-                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            Адрес
-                            <input
-                                type="text"
-                                value={createForm.data.address}
-                                onChange={(e) => createForm.setData('address', e.target.value)}
-                                className="admin-search-input"
-                                required
-                            />
-                        </label>
-                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            Регион (город)
-                            <select
-                                value={createForm.data.region_id}
-                                onChange={(e) => createForm.setData('region_id', e.target.value ? Number(e.target.value) : '')}
-                                className="admin-search-input"
-                            >
-                                <option value="">— не указан —</option>
-                                {regions.map((r) => (
-                                    <option key={r.id} value={r.id}>
-                                        {r.name} ({r.delivery_hours} ч)
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            Порядок
-                            <input
-                                type="number"
-                                min={0}
-                                value={createForm.data.sort_order}
-                                onChange={(e) => createForm.setData('sort_order', Number(e.target.value))}
-                                className="admin-search-input"
-                            />
-                        </label>
-                        <div style={{ alignSelf: 'end' }}>
-                            <button type="submit" className="adm-action-btn adm-btn-view" disabled={createForm.processing}>
-                                Добавить
-                            </button>
-                        </div>
-                    </form>
+                {/* Панель фильтров */}
+                <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <input
+                        type="text"
+                        placeholder="Поиск по названию, адресу, оператору (имя, email, телефон)..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="admin-search-input"
+                        style={{ flex: '1 1 300px', minWidth: 200 }}
+                    />
+                    <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="admin-search-input"
+                        style={{ width: 'auto' }}
+                    >
+                        <option value="all">Все пункты</option>
+                        <option value="active">Только активные</option>
+                        <option value="inactive">Только неактивные</option>
+                    </select>
+                    <button
+                        type="button"
+                        className="adm-action-btn"
+                        onClick={() => {
+                            setSearchQuery('');
+                            setFilterStatus('all');
+                            setSortColumn('sort_order');
+                            setSortDirection('asc');
+                        }}
+                    >
+                        Сбросить фильтры
+                    </button>
+                    <span style={{ fontSize: 14, color: '#4b5563' }}>
+                        Найдено: {sortedPoints.length} из {pickupPoints.length}
+                    </span>
                 </div>
 
                 <div className="adm-table-wrap">
                     <table className="adm-table">
                         <thead>
                             <tr>
-                                <th>Название</th>
-                                <th>Адрес</th>
-                                <th>Регион</th>
-                                <th>Порядок</th>
-                                <th>Оператор</th>
+                                <th onClick={() => handleSort('title')} style={{ cursor: 'pointer' }}>
+                                    Название <SortIcon column="title" />
+                                </th>
+                                <th onClick={() => handleSort('address')} style={{ cursor: 'pointer' }}>
+                                    Адрес <SortIcon column="address" />
+                                </th>
+                                <th onClick={() => handleSort('region_name')} style={{ cursor: 'pointer' }}>
+                                    Регион <SortIcon column="region_name" />
+                                </th>
+                                <th onClick={() => handleSort('sort_order')} style={{ cursor: 'pointer' }}>
+                                    Порядок <SortIcon column="sort_order" />
+                                </th>
+                                <th onClick={() => handleSort('operator_name')} style={{ cursor: 'pointer' }}>
+                                    Оператор <SortIcon column="operator_name" />
+                                </th>
                                 <th>Закрытие</th>
-                                <th>Активен</th>
+                                <th onClick={() => handleSort('is_active')} style={{ cursor: 'pointer' }}>
+                                    Активен <SortIcon column="is_active" />
+                                </th>
                                 <th />
                             </tr>
                         </thead>
                         <tbody>
-                            {pickupPoints.map((p) =>
+                            {sortedPoints.slice(0, count).map((p) =>
                                 editingId === p.id ? (
                                     <tr key={p.id}>
                                         <td colSpan={8}>
@@ -210,11 +273,22 @@ export default function AdminPickupPoints({ auth, pickupPoints = [], regions = [
                                                         type="checkbox"
                                                         checked={editForm.data.is_active}
                                                         onChange={(e) => editForm.setData('is_active', e.target.checked)}
+                                                        disabled={p.closure_status === 'closed'}
                                                     />
                                                     активен (включение сбрасывает статус «закрыт» и ожидание закрытия)
+                                                    {p.closure_status === 'closed' && (
+                                                        <span style={{ color: '#b91c1c', marginLeft: 8, fontSize: 12 }}>
+                                                            ⚠️ Пункт окончательно закрыт, активация невозможна
+                                                        </span>
+                                                    )}
                                                 </label>
                                                 <div style={{ display: 'flex', gap: 8 }}>
-                                                    <button type="button" className="adm-action-btn adm-btn-view" onClick={() => saveEdit(p.id)}>
+                                                    <button
+                                                        type="button"
+                                                        className="adm-action-btn adm-btn-view"
+                                                        disabled={p.closure_status === 'closed'}
+                                                        onClick={() => saveEdit(p.id)}
+                                                    >
                                                         Сохранить
                                                     </button>
                                                     <button type="button" className="adm-action-btn" onClick={() => setEditingId(null)}>
@@ -232,37 +306,14 @@ export default function AdminPickupPoints({ auth, pickupPoints = [], regions = [
                                         <td>{p.sort_order}</td>
                                         <td>
                                             {p.operator ? (
-                                                <span>{p.operator.name}<br /><small>{p.operator.email}</small></span>
+                                                <span>
+                                                    {p.operator.name || 'Не указано'}
+                                                    <br />
+                                                    <small>{p.operator.email || p.operator.phone}</small>
+                                                </span>
                                             ) : (
                                                 <span style={{ color: '#92400e', fontSize: 12 }}>Без оператора — недоступен в заказах</span>
                                             )}
-                                            {!p.operator && p.closure_status !== 'pending' ? (
-                                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
-                                                    <select
-                                                        className="admin-search-input"
-                                                        style={{ minWidth: 140 }}
-                                                        value={assignForm.data.pickup_point_id === p.id ? assignForm.data.user_id : ''}
-                                                        onChange={(e) => {
-                                                            assignForm.setData('user_id', e.target.value);
-                                                            assignForm.setData('pickup_point_id', p.id);
-                                                        }}
-                                                    >
-                                                        <option value="">Назначить…</option>
-                                                        {assignableUsers.map((u) => (
-                                                            <option key={u.id} value={u.id}>
-                                                                {[u.name, u.last_name].filter(Boolean).join(' ') || u.email}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <button
-                                                        type="button"
-                                                        className="adm-action-btn adm-btn-view"
-                                                        onClick={() => assignOperator(p.id)}
-                                                    >
-                                                        OK
-                                                    </button>
-                                                </div>
-                                            ) : null}
                                         </td>
                                         <td>
                                             {p.closure_status === 'pending' && p.operator ? (
@@ -295,6 +346,13 @@ export default function AdminPickupPoints({ auth, pickupPoints = [], regions = [
                                         </td>
                                     </tr>
                                 )
+                            )}
+                            {sortedPoints.length === 0 && (
+                                <tr>
+                                    <td colSpan={8} style={{ textAlign: 'center', padding: 32 }}>
+                                        Ничего не найдено
+                                    </td>
+                                </tr>
                             )}
                         </tbody>
                     </table>
