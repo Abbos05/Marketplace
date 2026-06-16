@@ -178,6 +178,7 @@
     .summary-row.total {
         font-size: var(--size-base);
         margin-top: 20px;
+        font-weight: 500;
     }
 
     .pay-btn,

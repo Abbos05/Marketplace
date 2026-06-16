@@ -29,6 +29,9 @@ class SellerProfileController extends Controller
             'inn.string' => 'ИНН должен быть строкой.',
             'inn.min' => 'ИНН должен содержать от 10 до 12 символов.',
             'inn.max' => 'ИНН должен содержать от 10 до 12 символов.',
+            'inn' => 'required|string|regex:/^\d+$/|min:10|max:12|unique:seller_profiles,inn',
+            'inn.regex' => 'ИНН должен содержать только цифры.',
+            'inn.numeric' => 'ИНН должен состоять только из цифр.',
             'inn.unique' => 'Продавец с таким ИНН уже зарегистрирован.',
             'shop_name.required' => 'Необходимо указать название магазина.',
             'shop_name.string' => 'Название магазина должно быть текстом.',
@@ -66,7 +69,7 @@ class SellerProfileController extends Controller
             return back()->withErrors(['error' => 'У вас уже есть компания']);
         }
 
-       
+
 
         DB::beginTransaction();
         try {
