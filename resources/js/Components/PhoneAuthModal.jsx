@@ -724,7 +724,7 @@ const handleForgotVerifyCode = async (currentCode) => {
             </button>
 
             <div className="modal-form-divider"><span>или войти через</span></div>
-            {['google', 'yandex', 'github'].map((provider) => (
+            {['yandex'].map((provider) => (
               <button
                 key={provider}
                 type="button"

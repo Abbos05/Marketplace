@@ -69,4 +69,5 @@ class Review extends Model
 
         return $this->images()->exists();
     }
+    
 }

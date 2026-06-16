@@ -316,7 +316,7 @@ class ProductController extends Controller
         $moderatedReviewsQuery = $product->reviews()->where('is_moderated', true);
 
         $reviews = (clone $moderatedReviewsQuery)
-            ->with(['user:id,name,avatar', 'images'])
+            ->with(['user:id,name,avatar', 'images', 'variant'])
             ->orderByDesc('created_at')
             ->limit(50)
             ->get();
@@ -352,6 +352,15 @@ class ProductController extends Controller
         $reviewsList = $reviews->map(function ($r) use ($userVotes, $imageService) {
             $images = $imageService->mapImagesForFrontend($r->images);
 
+            // Получаем название варианта
+            $variantLabel = null;
+            if ($r->variant) {
+                $variantLabel = $r->variant->displayLabel(); // используем существующий метод
+                // Или если нужно только название из options:
+                // $options = $r->variant->options;
+                // $variantLabel = is_array($options) ? implode(', ', $options) : null;
+            }
+
             return [
                 'id' => $r->id,
                 'rating' => (int) $r->rating,
@@ -359,6 +368,8 @@ class ProductController extends Controller
                 'created_at' => $r->created_at?->format('d.m.Y'),
                 'likes_count' => (int) ($r->likes_count ?? 0),
                 'dislikes_count' => (int) ($r->dislikes_count ?? 0),
+                'variant_id' => (int) ($r->variant_id ?? 0),
+                'variant_name' => $variantLabel, // добавляем название
                 'user_vote' => $userVotes[$r->id] ?? null,
                 'user_name' => $r->user?->name ?? 'Покупатель',
                 'user_avatar' => $r->user?->avatar ? Product::normalizeListingUrl($r->user->avatar) : null,
@@ -366,6 +377,7 @@ class ProductController extends Controller
                 'has_photos' => count($images) > 0,
             ];
         })->values()->all();
+
 
         $isFavorite = (bool) ($selectedRow['is_favorite'] ?? false);
         if (!$isFavorite && $variants->count() === 1) {

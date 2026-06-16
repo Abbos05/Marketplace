@@ -48,9 +48,9 @@ function ReviewLightbox({ images, index, onClose, onNavigate }) {
             ‹
           </button>
         )}
-       <div className="product-reviews-lightbox__img-container">
-       <img src={current.url} alt="" className="product-reviews-lightbox__img" />
-       </div>
+        <div className="product-reviews-lightbox__img-container">
+          <img src={current.url} alt="" className="product-reviews-lightbox__img" />
+        </div>
 
         {images.length > 1 && (
           <button
@@ -79,6 +79,8 @@ function ReviewCard({ review, auth, onVote }) {
   const comment = review.comment?.trim() ?? '';
   const longComment = comment.length > 280;
   const displayComment = expanded || !longComment ? comment : `${comment.slice(0, 280)}…`;
+  const variantId = review.variant_id ?? null;
+  const variantName = review.variant_name ?? null;
 
   const openLightbox = (idx) => setLightbox({ images, index: idx });
 
@@ -118,16 +120,20 @@ function ReviewCard({ review, auth, onVote }) {
           ))}
         </div>
       )}
-
       {comment ? (
-        <p className="product-page__review-text">
-          {displayComment}
-          {longComment && !expanded && (
-            <button type="button" className="product-reviews__read-more" onClick={() => setExpanded(true)}>
-              Читать полностью
-            </button>
-          )}
-        </p>
+        <>
+          <p className="product-page__review-text">
+         {variantName}, артикул: 000{variantId}
+          </p>
+          <p className="product-page__review-text">
+            {displayComment}
+            {longComment && !expanded && (
+              <button type="button" className="product-reviews__read-more" onClick={() => setExpanded(true)}>
+                Читать полностью
+              </button>
+            )}
+          </p>
+          </>
       ) : (
         <p className="product-page__review-text product-page__review-text--muted">Без текста</p>
       )}
@@ -174,9 +180,9 @@ export default function ProductReviewsSection({
   auth,
   onVote,
 }) {
+  
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('newest');
-
   const filtered = useMemo(() => {
     let list = [...reviews];
     if (filter === 'with_photos') {
